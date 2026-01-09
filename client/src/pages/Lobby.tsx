@@ -1,0 +1,350 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Gamepad, Users, Plus, Settings as SettingsIcon } from "lucide-react";
+import { useRoomStore } from "../stores/roomStore";
+import { getSocket } from "../services/socket";
+import { getAllGames } from "../games/registry";
+import type { Room } from "../stores/roomStore";
+
+export default function Lobby() {
+  const { publicRooms, setPublicRooms } = useRoomStore();
+  const [showCreateModal, setShowCreateModal] = useState<string | null>(null);
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    // Request public rooms list
+    socket.emit("room:list", (rooms: Room[]) => {
+      setPublicRooms(rooms);
+    });
+
+    // Listen for room list updates
+    socket.on("room:list:update", (rooms: Room[]) => {
+      setPublicRooms(rooms);
+    });
+
+    return () => {
+      socket.off("room:list:update");
+    };
+  }, [setPublicRooms]);
+
+  const handleSelectGame = (gameId: string) => {
+    // Open create room modal
+    setShowCreateModal(gameId);
+  };
+
+  return (
+    <div className="min-h-screen bg-background-primary">
+      {/* Navbar */}
+      <nav className="fixed top-4 left-4 right-4 z-50">
+        <div className="max-w-7xl mx-auto glass-card rounded-2xl px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Gamepad className="w-8 h-8 text-primary" />
+              <span className="text-xl font-display text-text-primary">
+                Gaming Hub
+              </span>
+            </div>
+            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
+              <SettingsIcon className="w-5 h-5 text-text-secondary" />
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="pt-32 px-2 md:px-4 pb-16">
+        <div className="max-w-7xl mx-auto">
+          {/* Hero Section */}
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-display text-text-primary mb-4 neon-glow">
+              Play Together, Anywhere
+            </h2>
+            <p className="text-xl text-text-secondary mb-8">
+              Join multiplayer games with friends in real-time
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => setShowCreateModal("")}
+                className="px-8 py-3 bg-primary hover:bg-primary-light text-white font-display rounded-xl shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/70 transition-all duration-200 cursor-pointer flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Create Room
+              </button>
+            </div>
+          </div>
+
+          {/* Games Gallery */}
+          <section className="mb-16">
+            <div className="flex items-center gap-3 mb-6">
+              <Gamepad className="w-6 h-6 text-primary" />
+              <h3 className="text-2xl font-display text-text-primary">
+                Available Games
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {getAllGames().map((game) => {
+                const Icon = game.icon;
+                return (
+                  <div
+                    key={game.id}
+                    className={`glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-200 ${
+                      !game.isAvailable ? "opacity-50" : ""
+                    }`}
+                  >
+                    <div className="mb-4">
+                      <Icon className="w-12 h-12 text-primary" />
+                    </div>
+                    <h4 className="font-display text-xl text-text-primary mb-2">
+                      {game.name}
+                    </h4>
+                    <p className="text-sm text-text-secondary mb-4">
+                      {game.description}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-text-muted mb-4">
+                      <Users className="w-4 h-4" />
+                      <span>
+                        {game.minPlayers === game.maxPlayers
+                          ? `${game.minPlayers} Players`
+                          : `${game.minPlayers}-${game.maxPlayers} Players`}
+                      </span>
+                    </div>
+                    {game.isAvailable ? (
+                      <button
+                        onClick={() => handleSelectGame(game.id)}
+                        className="w-full px-4 py-2 bg-primary hover:bg-primary-light text-white font-semibold rounded-lg transition-colors cursor-pointer"
+                      >
+                        Create Room
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="w-full px-4 py-2 bg-white/5 text-text-muted font-semibold rounded-lg cursor-not-allowed"
+                      >
+                        Coming Soon
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Public Rooms */}
+          <section id="public-rooms-section">
+            <div className="flex items-center gap-3 mb-6">
+              <Users className="w-6 h-6 text-primary" />
+              <h3 className="text-2xl font-display text-text-primary">
+                Public Rooms
+              </h3>
+            </div>
+
+            {publicRooms.length === 0 ? (
+              <div className="glass-card rounded-2xl p-12 text-center">
+                <p className="text-text-muted">
+                  No public rooms available. Create one to get started!
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {publicRooms.map((room) => (
+                  <RoomListItem key={room.id} room={room} />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+
+      {/* Create Room Modal */}
+      {showCreateModal != null && (
+        <CreateRoomModal
+          gameId={showCreateModal}
+          onClose={() => setShowCreateModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Room List Item Component
+function RoomListItem({ room }: { room: Room }) {
+  const navigate = useNavigate();
+  const socket = getSocket();
+  const { setCurrentRoom } = useRoomStore();
+
+  const handleJoin = () => {
+    socket.emit(
+      "room:join",
+      { roomId: room.id },
+      (response: { success: boolean; room?: Room; error?: string }) => {
+        if (response.success && response.room) {
+          setCurrentRoom(response.room);
+          navigate(`/room/${room.id}`);
+        } else {
+          alert(response.error || "Failed to join room");
+        }
+      }
+    );
+  };
+
+  return (
+    <div className="glass-card rounded-xl p-4 hover:border-primary/30 transition-all duration-200 cursor-pointer group">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-1">
+            <h4 className="font-display text-lg text-text-primary group-hover:text-primary transition-colors">
+              {room.name}
+            </h4>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-text-secondary">
+            <span className="capitalize">{room.gameType}</span>
+            <span>•</span>
+            <span>
+              {room.players.length}/{room.maxPlayers} players
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleJoin}
+          className="px-6 py-2.5 bg-primary hover:bg-primary-light text-white font-semibold rounded-lg shadow-lg shadow-primary/30 transition-all duration-200"
+        >
+          Join
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Create Room Modal Component
+function CreateRoomModal({
+  onClose,
+  gameId,
+}: {
+  onClose: () => void;
+  gameId: string;
+}) {
+  const [roomName, setRoomName] = useState("");
+  const [gameType, setGameType] = useState(gameId);
+  const [isPublic, setIsPublic] = useState(true);
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+  const socket = getSocket();
+  const { setCurrentRoom } = useRoomStore();
+
+  const handleCreate = () => {
+    if (!roomName.trim()) {
+      alert("Please enter a room name");
+      return;
+    }
+
+    socket.emit(
+      "room:create",
+      {
+        name: roomName,
+        gameType,
+        isPublic,
+        password: isPublic ? undefined : password,
+        maxPlayers: 4,
+      },
+      (response: { success: boolean; room?: Room; error?: string }) => {
+        if (response.success && response.room) {
+          setCurrentRoom(response.room);
+          navigate(`/room/${response.room.id}`);
+        } else {
+          alert(response.error || "Failed to create room");
+        }
+      }
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+      <div className="bg-background-secondary border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-slideUp mx-4">
+        <h2 className="font-display text-2xl text-text-primary mb-6">
+          Create Room
+        </h2>
+
+        <div className="space-y-4 mb-6">
+          {/* Room Name */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Room Name
+            </label>
+            <input
+              type="text"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+              placeholder="Enter room name"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+
+          {/* Game Type */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Game Type
+            </label>
+            <select
+              value={gameType}
+              onChange={(e) => setGameType(e.target.value)}
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
+            >
+              {getAllGames().map((game) => (
+                <option key={game.id} value={game.id}>
+                  {game.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Public/Private */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="w-4 h-4 text-primary bg-white/5 border-white/10 rounded focus:ring-2 focus:ring-primary cursor-pointer"
+              />
+              <span className="text-sm text-text-secondary">Public Room</span>
+            </label>
+          </div>
+
+          {/* Password (if private) */}
+          {!isPublic && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary-light text-white rounded-lg shadow-lg shadow-primary/30 transition-all cursor-pointer"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

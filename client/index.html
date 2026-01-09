@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Hub - Play Together</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Russo+One&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tailwind CDN (fallback) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: "#7C3AED",
+                light: "#A78BFA",
+                dark: "#4C1D95",
+              },
+              accent: {
+                DEFAULT: "#F43F5E",
+                hover: "#FB7185",
+              },
+              neon: {
+                green: "#00FF00",
+                cyan: "#00FFFF",
+                pink: "#FF00FF",
+              },
+              background: {
+                primary: "#0F0F23",
+                secondary: "#1A1A2E",
+                tertiary: "#16213E",
+              },
+              text: {
+                primary: "#E2E8F0",
+                secondary: "#CBD5E1",
+                muted: "#94A3B8",
+              },
+            },
+            fontFamily: {
+              display: ["Russo One", "sans-serif"],
+              body: ["Chakra Petch", "sans-serif"],
+            },
+            animation: {
+              fadeIn: "fadeIn 0.3s ease-out",
+              slideUp: "slideUp 0.3s ease-out",
+            },
+            keyframes: {
+              fadeIn: {
+                "0%": { opacity: "0" },
+                "100%": { opacity: "1" },
+              },
+              slideUp: {
+                "0%": { transform: "translateY(20px)", opacity: "0" },
+                "100%": { transform: "translateY(0)", opacity: "1" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Custom styles -->
+    <style>
+      .glass-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .neon-glow {
+        text-shadow: 0 0 10px rgba(124, 58, 237, 0.8),
+          0 0 20px rgba(124, 58, 237, 0.5);
+      }
+
+      .neon-border {
+        box-shadow: 0 0 15px rgba(124, 58, 237, 0.5),
+          inset 0 0 15px rgba(124, 58, 237, 0.2);
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1a1a2e;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(124, 58, 237, 0.3);
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(124, 58, 237, 0.5);
+      }
+    </style>
+  </head>
+  <body class="bg-background-primary text-text-primary font-body">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
