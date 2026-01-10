@@ -38,6 +38,7 @@ export default class ChessGame extends BaseGame {
       },
       pendingUndoRequest: null,
       pendingNewGameRequest: null,
+      isBotLoading: false,
     };
 
     this.init();
@@ -202,6 +203,7 @@ export default class ChessGame extends BaseGame {
       },
       pendingUndoRequest: null,
       pendingNewGameRequest: null,
+      isBotLoading: false,
     };
     this.broadcastState();
     this.setState({ ...this.state });
@@ -294,7 +296,7 @@ export default class ChessGame extends BaseGame {
   private stockfishWorker: Worker | null = null;
   private isBotThinking: boolean = false;
 
-  addBot(): void {
+  async addBot(): Promise<void> {
     if (!this.isHost) return;
     // Assign bot to empty slot, prioritize Black
     if (!this.state.players.black) {
@@ -303,21 +305,44 @@ export default class ChessGame extends BaseGame {
       this.state.players.white = "BOT";
     }
 
+    this.state.isBotLoading = true;
+    this.broadcastState();
+    this.setState({ ...this.state });
+
     // Initialize Stockfish
     if (!this.stockfishWorker) {
-      this.stockfishWorker = new Worker("./stockfish.js");
+      const stockfishUrl =
+        "https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js";
+      // Create a blob to load the worker from CDN to avoid cross-origin issues with direct Worker URL
+      const blob = new Blob([`importScripts('${stockfishUrl}');`], {
+        type: "application/javascript",
+      });
+      const workerUrl = URL.createObjectURL(blob);
+
+      this.stockfishWorker = new Worker(workerUrl);
       this.stockfishWorker.onmessage = (event) => {
         this.handleStockfishMessage(event.data);
       };
-      // Initialize UCI
+
+      // Wait for engine to be ready
+      const readyPromise = new Promise<void>((resolve) => {
+        this.onBotReady = resolve;
+      });
+
       this.stockfishWorker.postMessage("uci");
       this.stockfishWorker.postMessage("isready");
-    }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
-    this.checkBotTurn();
+      await readyPromise;
+    } else {
+      // Already loaded, just ready check
+      this.state.isBotLoading = false;
+      this.broadcastState();
+      this.setState({ ...this.state });
+      this.checkBotTurn();
+    }
   }
+
+  private onBotReady?: () => void;
 
   private checkBotTurn(): void {
     if (!this.isHost) return;
@@ -350,6 +375,17 @@ export default class ChessGame extends BaseGame {
 
   private handleStockfishMessage(message: string) {
     // console.log("Stockfish:", message);
+
+    if (message === "readyok") {
+      this.state.isBotLoading = false;
+      this.broadcastState();
+      this.setState({ ...this.state });
+      this.checkBotTurn();
+      if (this.onBotReady) {
+        this.onBotReady();
+        this.onBotReady = undefined;
+      }
+    }
 
     if (message.startsWith("bestmove")) {
       // Format: "bestmove e2e4 ponder ..."

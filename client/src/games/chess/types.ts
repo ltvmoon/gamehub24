@@ -17,6 +17,7 @@ export interface ChessState {
   };
   pendingUndoRequest: string | null;
   pendingNewGameRequest: string | null;
+  isBotLoading: boolean;
 }
 
 export type ChessAction =

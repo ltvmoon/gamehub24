@@ -4,7 +4,7 @@ import { Server, Socket } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
-import { RoomManager } from "./managers/RoomManager";
+import { RoomManager } from "./RoomManager";
 import { ChatMessage, CreateRoomData, JoinRoomData } from "./types";
 
 dotenv.config();

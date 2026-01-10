@@ -1,5 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
-import { Room, Player, CreateRoomData } from "../types";
+import type { Room, CreateRoomData } from "./types";
 
 export class RoomManager {
   private rooms: Map<string, Room> = new Map();
@@ -11,7 +10,7 @@ export class RoomManager {
     username: string,
     socketId: string
   ): Room {
-    const roomId = `room_${uuidv4()}`;
+    const roomId = username;
 
     const room: Room = {
       id: roomId,

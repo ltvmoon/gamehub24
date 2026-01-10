@@ -183,10 +183,17 @@ export default function ChessUI({ game }: ChessUIProps) {
           {!state.gameOver && !state.players.black && game.isHostUser && (
             <button
               onClick={() => game.addBot()}
-              className="px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+              disabled={state.isBotLoading}
+              className={`px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2 ${
+                state.isBotLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              <Bot className="w-4 h-4" />
-              Play vs Bot
+              {state.isBotLoading ? (
+                <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Bot className="w-4 h-4" />
+              )}
+              {state.isBotLoading ? "Loading Bot..." : "Play vs Bot"}
             </button>
           )}
         </div>

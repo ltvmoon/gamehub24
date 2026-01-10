@@ -4,6 +4,7 @@ import { Gamepad, Users, Plus, Trash2 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { useSocketStore } from "../stores/socketStore";
+import { useAlertStore } from "../stores/alertStore";
 import { getSocket } from "../services/socket";
 import { getAllGames } from "../games/registry";
 import type { Room } from "../stores/roomStore";
@@ -90,6 +91,21 @@ export default function Lobby() {
                 <Plus className="w-5 h-5" />
                 Create Room
               </button>
+
+              <button
+                onClick={() => {
+                  const roomDiv = document.getElementById(
+                    "public-rooms-section"
+                  );
+                  if (roomDiv) {
+                    roomDiv.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 backdrop-blur-sm"
+              >
+                <Users className="w-5 h-5" />
+                Public Rooms ({publicRooms.length})
+              </button>
             </div>
           </div>
 
@@ -156,7 +172,7 @@ export default function Lobby() {
             <div className="flex items-center gap-3 mb-6">
               <Users className="w-6 h-6 text-primary" />
               <h3 className="text-2xl font-display text-text-primary">
-                Public Rooms
+                Public Rooms ({publicRooms.length})
               </h3>
             </div>
 
@@ -200,10 +216,11 @@ function RoomListItem({ room }: { room: Room }) {
   const navigate = useNavigate();
   const { username } = useUserStore();
   const { setCurrentRoom } = useRoomStore();
+  const { show: showAlert } = useAlertStore();
 
   const handleJoin = () => {
     const socket = getSocket();
-    if (!socket) return alert("Socket not connected");
+    if (!socket) return showAlert("Socket not connected", { type: "error" });
     socket.emit(
       "room:join",
       { roomId: room.id },
@@ -212,7 +229,7 @@ function RoomListItem({ room }: { room: Room }) {
           setCurrentRoom(response.room);
           navigate(`/room/${room.id}`);
         } else {
-          alert(response.error || "Failed to join room");
+          showAlert(response.error || "Failed to join room", { type: "error" });
         }
       }
     );
@@ -308,15 +325,20 @@ function CreateRoomModal({
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const { setCurrentRoom } = useRoomStore();
+  const { show: showAlert } = useAlertStore();
 
   const handleCreate = () => {
     if (!roomName.trim()) {
-      alert("Please enter a room name");
+      showAlert("Please enter a room name", { type: "warning" });
       return;
     }
 
     const socket = getSocket();
-    if (!socket) return alert("Socket not connected");
+    if (!socket) return showAlert("Socket not connected", { type: "error" });
+
+    const game = getAllGames().find((g) => g.id === gameType);
+    if (!game) return showAlert("Game not found", { type: "error" });
+
     socket.emit(
       "room:create",
       {
@@ -324,14 +346,16 @@ function CreateRoomModal({
         gameType,
         isPublic,
         password: isPublic ? undefined : password,
-        maxPlayers: 4,
+        maxPlayers: game.maxPlayers,
       },
       (response: { success: boolean; room?: Room; error?: string }) => {
         if (response.success && response.room) {
           setCurrentRoom(response.room);
           navigate(`/room/${response.room.id}`);
         } else {
-          alert(response.error || "Failed to create room");
+          showAlert(response.error || "Failed to create room", {
+            type: "error",
+          });
         }
       }
     );

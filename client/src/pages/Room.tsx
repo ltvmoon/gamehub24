@@ -4,6 +4,7 @@ import { Crown, ArrowLeft } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useChatStore } from "../stores/chatStore";
 import { useUserStore } from "../stores/userStore";
+import { useAlertStore } from "../stores/alertStore";
 import { getSocket } from "../services/socket";
 import ChatPanel from "../components/ChatPanel";
 import GameContainer from "../games/GameContainer";
@@ -14,6 +15,7 @@ export default function RoomPage() {
   const { currentRoom, setCurrentRoom, updatePlayers } = useRoomStore();
   const { clearMessages } = useChatStore();
   const { userId } = useUserStore();
+  const { show: showAlert } = useAlertStore();
   const socket = getSocket();
 
   // Effect for joining room via direct URL
@@ -55,7 +57,9 @@ export default function RoomPage() {
             setCurrentRoom(response.room);
           } else {
             isJoining = false;
-            alert(response.error || "Failed to join room");
+            showAlert(response.error || "Failed to join room", {
+              type: "error",
+            });
             navigate("/");
           }
         }
@@ -94,7 +98,10 @@ export default function RoomPage() {
     });
 
     socket.on("room:deleted", (data) => {
-      alert(data.reason || "Room deleted by host");
+      showAlert(data.reason || "Room deleted by host", {
+        type: "info",
+        title: "Room Closed",
+      });
       setCurrentRoom(null);
       clearMessages();
       navigate("/");
