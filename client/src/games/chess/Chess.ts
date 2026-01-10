@@ -37,6 +37,7 @@ export class ChessGame extends BaseGame {
         black: [],
       },
       pendingUndoRequest: null,
+      pendingNewGameRequest: null,
     };
 
     this.init();
@@ -77,8 +78,14 @@ export class ChessGame extends BaseGame {
         case "UNDO_RESPONSE":
           // this.handleUndoResponse(action.accepted);
           break;
-        case "RESET_GAME":
+        case "RESET_GAME": // Legacy or direct reset
           this.reset();
+          break;
+        case "NEW_GAME_REQUEST":
+          this.handleNewGameRequest(action.playerId);
+          break;
+        case "NEW_GAME_RESPONSE":
+          this.handleNewGameResponse(action.accepted);
           break;
       }
     }
@@ -194,11 +201,14 @@ export class ChessGame extends BaseGame {
         black: [],
       },
       pendingUndoRequest: null,
+      pendingNewGameRequest: null,
     };
     this.broadcastState();
     this.setState({ ...this.state });
     this.checkBotTurn();
   }
+
+  // --- Actions ---
 
   // --- Actions ---
 
@@ -214,8 +224,22 @@ export class ChessGame extends BaseGame {
   }
 
   requestReset(): void {
-    const action: ChessAction = { type: "RESET_GAME" };
-    this.isHost ? this.reset() : this.sendAction(action);
+    // If bot game -> Reset immediately
+    const isBotGame =
+      this.state.players.black === "BOT" || this.state.players.white === "BOT";
+    if (isBotGame) {
+      if (this.isHost) this.reset();
+      return;
+    }
+
+    // PvP -> Request New Game
+    const action: ChessAction = {
+      type: "NEW_GAME_REQUEST",
+      playerId: this.userId,
+    };
+    this.isHost
+      ? this.handleNewGameRequest(this.userId)
+      : this.sendAction(action);
   }
 
   requestUndo(): void {
@@ -223,6 +247,23 @@ export class ChessGame extends BaseGame {
   }
 
   // --- Handlers ---
+
+  private handleNewGameRequest(playerId: string): void {
+    this.state.pendingNewGameRequest = playerId;
+    this.broadcastState();
+    this.setState({ ...this.state });
+  }
+
+  private handleNewGameResponse(accepted: boolean): void {
+    if (accepted) {
+      this.reset();
+    } else {
+      this.state.pendingNewGameRequest = null;
+      this.broadcastState();
+      this.setState({ ...this.state });
+    }
+  }
+
   private handleUndoRequest(playerId: string) {
     // TODO
   }

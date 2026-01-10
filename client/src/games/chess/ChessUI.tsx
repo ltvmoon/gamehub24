@@ -172,9 +172,18 @@ export default function ChessUI({ game }: ChessUIProps) {
           </div>
         </div>
 
-        {/* Controls: New Game */}
-        {state.gameOver && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {!state.gameOver && !state.pendingNewGameRequest && (
+            <button
+              onClick={() => game.requestReset()}
+              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              New Game
+            </button>
+          )}
+
+          {state.gameOver && (
             <button
               onClick={() => game.requestReset()}
               className="px-3 py-2 bg-primary-600 hover:bg-primary-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
@@ -182,11 +191,9 @@ export default function ChessUI({ game }: ChessUIProps) {
               <RotateCcw className="w-4 h-4" />
               Play Again
             </button>
-          </div>
-        )}
+          )}
 
-        {!state.gameOver && !state.players.black && game.isHostUser && (
-          <div className="flex gap-2">
+          {!state.gameOver && !state.players.black && game.isHostUser && (
             <button
               onClick={() => game.addBot()}
               className="px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
@@ -194,8 +201,47 @@ export default function ChessUI({ game }: ChessUIProps) {
               <Bot className="w-4 h-4" />
               Play vs Bot
             </button>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* New Game Request Handling */}
+        {state.pendingNewGameRequest &&
+          state.pendingNewGameRequest !== userId && (
+            <div className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700 absolute top-20 left-1/2 -translate-x-1/2 z-10 shadow-xl">
+              <div className="text-sm text-white font-medium whitespace-nowrap">
+                Opponent wants New Game
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    game.handleAction({
+                      action: { type: "NEW_GAME_RESPONSE", accepted: true },
+                    })
+                  }
+                  className="flex-1 bg-green-600 hover:bg-green-500 text-xs py-1 px-2 rounded text-white"
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={() =>
+                    game.handleAction({
+                      action: { type: "NEW_GAME_RESPONSE", accepted: false },
+                    })
+                  }
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-xs py-1 px-2 rounded text-white"
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          )}
+
+        {state.pendingNewGameRequest &&
+          state.pendingNewGameRequest === userId && (
+            <div className="text-sm text-yellow-400 animate-pulse flex items-center">
+              Requesting New Game...
+            </div>
+          )}
       </div>
 
       {/* Chessboard */}

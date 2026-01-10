@@ -16,6 +16,7 @@ export interface ChessState {
     black: string[]; // Pieces captured by black
   };
   pendingUndoRequest: string | null;
+  pendingNewGameRequest: string | null;
 }
 
 export type ChessAction =
@@ -28,4 +29,6 @@ export type ChessAction =
     }
   | { type: "UNDO_REQUEST"; playerId: string }
   | { type: "UNDO_RESPONSE"; accepted: boolean }
+  | { type: "NEW_GAME_REQUEST"; playerId: string }
+  | { type: "NEW_GAME_RESPONSE"; accepted: boolean }
   | { type: "RESET_GAME" };
