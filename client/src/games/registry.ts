@@ -3,11 +3,11 @@ import { Grid3x3, Crown, Tv, Circle, Palette } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { BaseGame } from "./BaseGame";
-import { TicTacToe } from "./tictactoe/TicTacToe";
-import { Caro } from "./caro/Caro";
-import { ChessGame } from "./chess/Chess";
-import { YouTubeWatch } from "./youtube/YouTubeWatch";
-import { CanvasGame } from "./canvas/CanvasGame";
+import TicTacToe from "./tictactoe/TicTacToe";
+import Caro from "./caro/Caro";
+import ChessGame from "./chess/Chess";
+import YouTubeWatch from "./youtube/YouTubeWatch";
+import CanvasGame from "./canvas/CanvasGame";
 
 export interface GameModule {
   id: string;

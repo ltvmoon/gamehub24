@@ -5,15 +5,23 @@ export default defineConfig({
   plugins: [react()],
   base: "/",
   build: {
-    outDir: "dist",
-    sourcemap: false,
+    outDir: "../",
+    emptyOutDir: false,
+    assetsDir: "built",
     minify: "terser",
     rollupOptions: {
       output: {
         manualChunks: {
-          "react-vendor": ["react", "react-dom"],
+          "react-vendor": [
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "lucide-react",
+          ],
           socket: ["socket.io-client"],
           zustand: ["zustand"],
+          chess: ["chess.js"],
+          chessground: ["chessground"],
         },
       },
     },

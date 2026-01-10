@@ -4,17 +4,29 @@ import { useUserStore } from "../stores/userStore";
 import { useGameStore } from "../stores/gameStore";
 import { getSocket } from "../services/socket";
 import { getGame } from "./registry";
+import loadable from "@loadable/component";
 
-import TicTacToeUI from "./tictactoe/TicTacToeUI";
-import { TicTacToe } from "./tictactoe/TicTacToe";
-import CaroUI from "./caro/CaroUI";
-import { Caro } from "./caro/Caro";
-import ChessUI from "./chess/ChessUI";
-import { ChessGame } from "./chess/Chess";
-import { YouTubeWatch } from "./youtube/YouTubeWatch";
-import { YouTubeWatchUI } from "./youtube/YouTubeWatchUI";
-import { CanvasGame } from "./canvas/CanvasGame";
-import { CanvasGameUI } from "./canvas/CanvasGameUI";
+import TicTacToe from "./tictactoe/TicTacToe";
+import Caro from "./caro/Caro";
+import ChessGame from "./chess/Chess";
+import YouTubeWatch from "./youtube/YouTubeWatch";
+import CanvasGame from "./canvas/CanvasGame";
+
+const TicTacToeUI = loadable(() => import("./tictactoe/TicTacToeUI"), {
+  fallback: <div>Loading TicTacToe...</div>,
+});
+const CaroUI = loadable(() => import("./caro/CaroUI"), {
+  fallback: <div>Loading Caro...</div>,
+});
+const ChessUI = loadable(() => import("./chess/ChessUI"), {
+  fallback: <div>Loading Chess...</div>,
+});
+const YouTubeWatchUI = loadable(() => import("./youtube/YouTubeWatchUI"), {
+  fallback: <div>Loading YouTube...</div>,
+});
+const CanvasGameUI = loadable(() => import("./canvas/CanvasGameUI"), {
+  fallback: <div>Loading Canvas...</div>,
+});
 
 export default function GameContainer() {
   const { currentRoom } = useRoomStore();

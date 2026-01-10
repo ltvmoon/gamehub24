@@ -1,9 +1,15 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { initSocket, connectSocket } from "./services/socket";
-import Lobby from "./pages/Lobby";
-import Room from "./pages/Room";
+import loadable from "@loadable/component";
 import "./App.css";
+
+const Lobby = loadable(() => import("./pages/Lobby"), {
+  fallback: <div>Loading Lobby...</div>,
+});
+const Room = loadable(() => import("./pages/Room"), {
+  fallback: <div>Loading Room...</div>,
+});
 
 function App() {
   useEffect(() => {

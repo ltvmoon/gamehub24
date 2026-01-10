@@ -4,7 +4,7 @@ import { type CaroState, type CaroAction } from "./types";
 
 const BOARD_SIZE = 50;
 
-export class Caro extends BaseGame {
+export default class Caro extends BaseGame {
   private state: CaroState;
   private onStateChange?: (state: CaroState) => void;
 

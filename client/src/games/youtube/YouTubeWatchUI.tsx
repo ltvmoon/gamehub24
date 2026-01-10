@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import YouTube, { type YouTubeProps, type YouTubePlayer } from "react-youtube";
-import { YouTubeWatch, type YouTubeWatchState } from "./YouTubeWatch";
+import YouTubeWatch, { type YouTubeWatchState } from "./YouTubeWatch";
 import {
   Play,
   Pause,
@@ -14,7 +14,7 @@ interface YouTubeWatchUIProps {
   game: YouTubeWatch;
 }
 
-export const YouTubeWatchUI: React.FC<YouTubeWatchUIProps> = ({ game }) => {
+export default function YouTubeWatchUI({ game }: YouTubeWatchUIProps) {
   const [state, setState] = useState<YouTubeWatchState>(game.getState());
   const [urlInput, setUrlInput] = useState("");
   const [player, setPlayer] = useState<YouTubePlayer | null>(null);
@@ -267,4 +267,4 @@ export const YouTubeWatchUI: React.FC<YouTubeWatchUIProps> = ({ game }) => {
       </div>
     </div>
   );
-};
+}

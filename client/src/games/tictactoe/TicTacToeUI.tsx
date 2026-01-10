@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { TicTacToe } from "./TicTacToe";
-import { type TicTacToeState } from "./types";
+import { useNavigate, useParams } from "react-router-dom";
+import TicTacToe from "./TicTacToe";
+import type { TicTacToeState } from "./types";
 import { RefreshCcw, X, Circle, LogOut, Bot } from "lucide-react";
 import { useRoomStore } from "../../stores/roomStore";
 import { useChatStore } from "../../stores/chatStore";
 import { getSocket } from "../../services/socket";
-import { useNavigate, useParams } from "react-router-dom";
 
 interface TicTacToeUIProps {
   game: TicTacToe;
@@ -24,16 +24,6 @@ export default function TicTacToeUI({ game }: TicTacToeUIProps) {
   const board = state.board;
   const winningLine = state.winningLine;
   const lastMoveIndex = state.lastMoveIndex;
-  // Wait, state.winner stores "X" or "O".
-  // The prompt said: state.winner === myId ? "You Won!"
-  // This implies state.winner might be storing IDs in the prompt's mind, OR I need to adjust the check.
-  // interacting with existing code: state.winner is "X" | "O" | null.
-  // So I should check: state.winner === mySymbol
-
-  // Prompt logic vs My Logic:
-  // Prompt: state.winner === myId
-  // My Logic: state.winner is symbol.
-  // Correction: state.winner === mySymbol ? "You Won!" : "Opponent Won!"
 
   useEffect(() => {
     // Subscribe to game state updates

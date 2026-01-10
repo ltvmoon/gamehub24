@@ -3,7 +3,7 @@ import type { Socket } from "socket.io-client";
 import { type ChessState, type ChessAction } from "./types";
 import { Chess } from "chess.js";
 
-export class ChessGame extends BaseGame {
+export default class ChessGame extends BaseGame {
   private state: ChessState;
   private onStateChange?: (state: ChessState) => void;
   private chess: Chess;
@@ -264,14 +264,6 @@ export class ChessGame extends BaseGame {
     }
   }
 
-  private handleUndoRequest(playerId: string) {
-    // TODO
-  }
-
-  private handleUndoResponse(accepted: boolean) {
-    // TODO
-  }
-
   public getPlayerColor(): "w" | "b" | null {
     if (this.state.players.white === this.userId) return "w";
     if (this.state.players.black === this.userId) return "b";
@@ -313,7 +305,7 @@ export class ChessGame extends BaseGame {
 
     // Initialize Stockfish
     if (!this.stockfishWorker) {
-      this.stockfishWorker = new Worker("/stockfish.js");
+      this.stockfishWorker = new Worker("./stockfish.js");
       this.stockfishWorker.onmessage = (event) => {
         this.handleStockfishMessage(event.data);
       };

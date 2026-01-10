@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Caro } from "./Caro";
+import Caro from "./Caro";
 import { type CaroState } from "./types";
 import {
   X,

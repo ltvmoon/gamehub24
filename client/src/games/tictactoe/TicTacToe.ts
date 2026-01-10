@@ -2,7 +2,7 @@ import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
 import type { Socket } from "socket.io-client";
 import { type TicTacToeState, type TicTacToeAction } from "./types";
 
-export class TicTacToe extends BaseGame {
+export default class TicTacToe extends BaseGame {
   private state: TicTacToeState;
   private onStateChange?: (state: TicTacToeState) => void;
 

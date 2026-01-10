@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type BaseGame } from "../games/BaseGame";
+import type { BaseGame } from "../games/BaseGame";
 
 interface GameStore {
   gameInstance: BaseGame | null;

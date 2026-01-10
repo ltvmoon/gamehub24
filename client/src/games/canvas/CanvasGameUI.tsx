@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import {
-  CanvasGame,
+import CanvasGame, {
   type CanvasState,
   type DrawStroke,
   type Point,
@@ -22,10 +21,10 @@ const COLORS = [
   "#000000", // black
 ];
 
-export const CanvasGameUI: React.FC<CanvasGameUIProps> = ({
+export default function CanvasGameUI({
   game,
   currentUserId,
-}) => {
+}: CanvasGameUIProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<CanvasState>(game.getState());
   const [isDrawing, setIsDrawing] = useState(false);
@@ -267,4 +266,4 @@ export const CanvasGameUI: React.FC<CanvasGameUIProps> = ({
       </div>
     </div>
   );
-};
+}

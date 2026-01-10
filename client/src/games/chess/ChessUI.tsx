@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import { ChessGame } from "./Chess";
-import { type ChessState } from "./types";
+import { useEffect, useRef, useState } from "react";
+import ChessGame from "./Chess";
+import type { ChessState } from "./types";
 import { Chess } from "chess.js";
 import { Chessground as ChessgroundApi } from "chessground";
 import type { Api } from "chessground/api";
@@ -111,19 +111,6 @@ export default function ChessUI({ game }: ChessUIProps) {
     r: "rook",
     q: "queen",
     k: "king",
-  };
-
-  const getPieceElement = (piece: string, color: string) => {
-    // Just return class names for now, relying on chessground css
-    // Or we can use proper SVG rendering if needed like the user provided code
-    return (
-      <div
-        className={`piece ${
-          PIECE_SVGS[piece.toLowerCase()] || "pawn"
-        } ${color}`}
-        style={{ width: 25, height: 25 }}
-      ></div>
-    );
   };
 
   return (

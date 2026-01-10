@@ -23,7 +23,7 @@ export interface CanvasAction extends GameAction {
   payload?: any;
 }
 
-export class CanvasGame extends BaseGame {
+export default class CanvasGame extends BaseGame {
   private state: CanvasState;
   private onStateChange?: (state: CanvasState) => void;
 

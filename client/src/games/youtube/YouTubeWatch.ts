@@ -14,7 +14,7 @@ export interface YouTubeWatchAction extends GameAction {
   payload?: any;
 }
 
-export class YouTubeWatch extends BaseGame {
+export default class YouTubeWatch extends BaseGame {
   private state: YouTubeWatchState;
   private onStateChange?: (state: YouTubeWatchState) => void;
 
