@@ -1,221 +1,126 @@
-# 🎮 Game Hub
+# 🎮 GameHub24
+> **Your Ultimate Real-Time Multiplayer Gaming Destination**
 
-A real-time multiplayer game platform built with React, Socket.IO, and modern web technologies. Play various games with friends in a vibrant, gaming-themed interface.
+### [Play now](https://gamehub24.pages.dev)
 
-## ✨ Features (Phase 1 - MVP)
+![GameHub Banner](https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop)
 
-### Core Functionality
-- **User Sessions**: Persistent anonymous user IDs stored in localStorage
-- **Room Management**: Create and join public/private rooms with password protection
-- **Real-time Chat**: In-room messaging with player status indicators
-- **Host-Client Architecture**: First player becomes host and manages game state
-- **Live Updates**: Real-time room list updates and player presence
-- **AI Opponent**: Single-player mode vs Stockfish engine (100MB+ WASM integration)
-- **Settings System**: Dynamic server configuration and identity management
-- **Global Alerts**: Unified modal system for notifications and confirmations
+**GameHub** is a cutting-edge web platform that brings friends together through seamless real-time gaming experiences. Built with modern web technologies, it offers a sleek, dark-themed interface where players can create rooms, chat, and compete in classic board games or relax with watch parties.
 
-### UI/UX
-- **Dark Mode OLED Design**: Eye-friendly gaming aesthetic
-- **Vibrant Purple Theme**: Neon accents with glassmorphism effects
-- **Responsive Layout**: Mobile-first design, works on all devices
-- **Accessibility**: WCAG AAA compliant, keyboard navigation support
-- **Custom Typography**: Russo One + Chakra Petch font pairing
+---
 
-## 🛠️ Tech Stack
+## ✨ Key Features
 
-### Frontend
-- **React 19** + **TypeScript**
-- **Vite** - Lightning-fast build tool
-- **Tailwind CSS 4** - Utility-first styling
-- **Socket.IO Client** - Real-time communication
-- **Zustand** - State management
-- **React Router** - Client-side routing
-- **Lucide React** - Beautiful SVG icons
+### 🕹️ Diverse Game Library
+- **Chess**:
+  - **Single Player**: Challenge our advanced Stockfish AI with varying difficulty levels.
+  - **Multiplayer**: Classic 1v1 matches with move validation, history, and captured piece tracking.
+- **Caro (Gomoku)**: The ultimate test of strategy on a boundless board. Win by connecting 5 in a row!
+- **Tic Tac Toe**: The classic game, reimagined with a modern UI.
+- **YouTube Watch Party**: Synchronized video playback to watch content together in real-time.
 
-### Backend
-- **Node.js** + **Express**
-- **Socket.IO** - WebSocket server
-- **TypeScript** - Type safety
-- **In-memory storage** - Room and chat data (MVP)
+### 🌐 Powerful Multiplayer System
+- **Real-Time Interaction**: Instant updates for moves, chat, and room status using **Socket.IO**.
+- **Room Management**:
+  - Create **Public** rooms to meet new players.
+  - Create **Private** password-protected rooms for friends.
+- **Live Chat**: Integrated lobby and in-room chat systems with typing indicators and presence detection.
+- **Smart Hosting**: Automatic host assignment and transfer ensure the game always goes on.
 
-## 📦 Project Structure
+### 🎨 Premium User Experience
+- **Glassmorphism Design**: A stunning, translucent UI with blur effects and neon accents.
+- **OLED Dark Mode**: Deep blacks and vibrant purples designed for prolonged gaming sessions.
+- **Responsive & Adaptive**: Flawless experience across desktop, tablet, and mobile devices.
+- **Global Alerts**: Beautiful, non-intrusive notification system for game events and errors.
 
-```
-gamehub/
-├── client/                     # React frontend
-│   ├── src/
-│   │   ├──components/
-│   │   │   ├── chat/           # Chat components
-│   │   │   ├── common/         # Reusable components
-│   │   │   ├── lobby/          # Lobby components
-│   │   │   └── room/           # Room components
-│   │   ├── games/              # Game modules (to be implemented)
-│   │   ├── pages/
-│   │   │   ├── Lobby.tsx       # Main lobby page
-│   │   │   └── Room.tsx        # Game room page
-│   │   ├── stores/             # Zustand stores
-│   │   │   ├── userStore.ts    # User session
-│   │   │   ├── roomStore.ts    # Room state
-│   │   │   ├── chatStore.ts    # Chat messages
-│   │   │   └── gameStore.ts    # Game instance
-│   │   ├── services/
-│   │   │   └── socket.ts       # Socket.IO client
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── .env                    # Environment variables
-│   ├── tailwind.config.ts      # Tailwind configuration
-│   └── vite.config.ts          # Vite configuration
-│
-└── server/                     # Node.js backend
-    ├── src/
-    │   ├── managers/
-    │   │   └── RoomManager.ts  # Room lifecycle management
-    │   ├── types/
-    │   │   └── index.ts        # Shared types
-    │   └── server.ts           # Main server file
-    ├── .env                    # Environment variables
-    └── tsconfig.json           # TypeScript configuration
-```
+---
+
+## 🛠️ Technology Stack
+
+GameHub is engineered for performance and scalability using the latest industry standards.
+
+| Component | Tech Stack |
+| :--- | :--- |
+| **Frontend** | **React 19**, **TypeScript**, **Vite** |
+| **Styling** | **Tailwind CSS 4** (Utility-first), **Lucide React** (Icons) |
+| **State Management** | **Zustand** (Global State) |
+| **Real-Time** | **Socket.IO Client** & **Server** |
+| **Engine** | **Stockfish.js** (Chess Engine) |
+| **Routing** | **React Router** (HashRouter for broad compatibility) |
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ installed
+- Node.js (v18 or higher)
 - npm or yarn
 
-### Installation
+### Quick Install
 
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd gamehub
-   ```
+```bash
+# 1. Clone the repository
+git clone https://github.com/yourusername/gamehub.git
+cd gamehub
 
-2. **Install server dependencies**
-   ```bash
-   cd server
-   npm install
-   ```
-
-3. **Install client dependencies**
-   ```bash
-   cd ../client
-   npm install
-   ```
-
-### Running Locally
-
-1. **Start the server** (Terminal 1)
-   ```bash
-   cd server
-   npm run dev
-   ```
-   Server will run on `http://localhost:3001`
-
-2. **Start the client** (Terminal 2)
-   ```bash
-   cd client
-   npm run dev
-   ```
-   Client will run on `http://localhost:5173`
-
-3. **Open your browser**
-   Navigate to `http://localhost:5173`
-
-## 🌐 Deployment
-
-### Deploy Frontend (GitHub Pages)
-
-1. **Build the client**
-   ```bash
-   cd client
-   npm run build
-   ```
-
-2. **Deploy to GitHub Pages**
-   - Push the `dist` folder to `gh-pages` branch, or
-   - Use GitHub Actions (workflow template included in implementation plan)
-
-3. **Configure server URL**
-   - Set `VITE_SOCKET_URL` in `.env` to your production server URL
-   - Or use the Settings modal in the app to configure it dynamically
-
-### Deploy Backend
-
-**Recommended hosting options:**
-- [Railway](https://railway.app/) - One-click deploy
-- [Render](https://render.com/) - Free tier available
-- [Fly.io](https://fly.io/) - Global edge network
-- AWS/DigitalOcean/Heroku - Traditional hosting
-
-**Environment variables:**
-```env
-PORT=3001
-CLIENT_URL=https://your-github-pages-url
-NODE_ENV=production
+# 2. Install Client + Server
+cd client && npm i && cd .. && cd server && npm i
 ```
 
-## 🎨 Design System
+### Running the Application
 
-Full design system documentation available in `.gemini/antigravity/brain/*/design_system.md`
+**1. Start the Backend Server**
+```bash
+cd server
+npm run dev
+# Server runs on http://localhost:3001
+```
 
-### Color Palette
-- **Primary**: `#7C3AED` (Purple 600)
-- **Accent**: `#F43F5E` (Rose 500)
-- **Neon Green**: `#00FF00`
-- **Neon Cyan**: `#00FFFF`
-- **Background**: `#0F0F23` (Deep dark)
-- **Text**: `#E2E8F0` (Slate 200)
-
-### Typography
-- **Display**: Russo One (headings)
-- **Body**: Chakra Petch (text)
-
-## 📝 Next Steps (Phase 2+)
-
-### Game Modules
-- [x] Implement Caro (Gomoku) game
-- [x] Implement Chess game
-- [x] Create BaseGame abstract class
-- [x] Create game registry system
-- [ ] Implement host-client synchronization
-
-### Features
-- [ ] Spectator mode
-- [ ] Game history/replays
-- [ ] Player statistics
-- [ ] Room persistence (database)
-- [ ] User profiles and avatars
-- [ ] Friend system
-- [ ] Game invitations
-
-### Polish
-- [ ] Add sounds/music
-- [ ] Leaderboards
-- [ ] Achievements/badges
-- [ ] Tutorial/onboarding
-- [ ] Internationalization (i18n)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- Design inspired by modern gaming platforms
-- UI/UX research powered by UI Pro Max workflow
-- Built with ❤️ using React and Socket.IO
+**2. Start the Frontend Client**
+```bash
+cd client
+npm run dev
+# Client runs on http://localhost:5173
+```
 
 ---
 
-**Live Demo**: Coming soon!
-**Status**: Phase 1 (MVP) Complete ✅
+## 📦 Deployment
 
+### Frontend (GitHub Pages / Vercel)
+The client is optimized for static hosting.
+```bash
+cd client
+npm run build
+# Deploy the 'built/' folder + file 'index.html'
+```
+*Note: The app uses `HashRouter` and relative paths (`./`) to ensure compatibility with subdirectory deployments like GitHub Pages.*
+
+### Backend (Railway / Render / Fly.io)
+Deploy the Node.js server to any platform supporting WebSockets.
+- set `CLIENT_URL` environment variable to your frontend domain (CORS).
+- set `PORT` (defaults to 3001).
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+<div align="center">
+  <p>Built with ❤️ by Hoang Tran</p>
+</div>

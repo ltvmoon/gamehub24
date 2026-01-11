@@ -10,16 +10,10 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const { generateNewId, userId, username } = useUserStore();
   const { show: showAlert, confirm: confirmAction } = useAlertStore();
 
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(getServerUrl());
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   const waitReConnectRef = useRef(false);
-
-  useEffect(() => {
-    // Load current URL
-    const currentUrl = getServerUrl();
-    setUrl(currentUrl);
-  }, []);
 
   useEffect(() => {
     if (waitReConnectRef.current && isConnected) {
