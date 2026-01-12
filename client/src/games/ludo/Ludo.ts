@@ -160,8 +160,14 @@ export default class Ludo extends BaseGame {
     if (currentPlayer.id !== playerId) return;
     if (this.state.hasRolled && !this.state.canRollAgain) return;
 
-    // Roll the dice
-    const dice = Math.floor(Math.random() * 6) + 1;
+    // Roll the dice - increase chance of 6 when no tokens are on board for faster start
+    let dice: number;
+    if (!this.hasAnyTokenOnBoard(currentPlayer)) {
+      // 50% chance to get 6, 50% chance for normal roll (1-6)
+      dice = Math.random() < 0.5 ? 6 : Math.floor(Math.random() * 6) + 1;
+    } else {
+      dice = Math.floor(Math.random() * 6) + 1;
+    }
     this.state.diceValue = dice;
     this.state.hasRolled = true;
     this.state.canRollAgain = false;
@@ -169,21 +175,21 @@ export default class Ludo extends BaseGame {
     // Track consecutive 6s
     if (dice === 6) {
       this.state.consecutiveSixes++;
-      if (this.state.consecutiveSixes >= 3) {
-        // Three 6s in a row = lose turn, but show dice first
-        this.state.consecutiveSixes = 0;
-        this.broadcastState();
-        this.setState({ ...this.state });
+      // if (this.state.consecutiveSixes >= 3) {
+      //   // Three 6s in a row = lose turn, but show dice first
+      //   this.state.consecutiveSixes = 0;
+      //   this.broadcastState();
+      //   this.setState({ ...this.state });
 
-        // Delay turn change so animation can play (3 seconds total)
-        setTimeout(() => {
-          this.nextTurn();
-          this.broadcastState();
-          this.setState({ ...this.state });
-          this.checkBotTurn();
-        }, 3000);
-        return;
-      }
+      //   // Delay turn change so animation can play (3 seconds total)
+      //   setTimeout(() => {
+      //     this.nextTurn();
+      //     this.broadcastState();
+      //     this.setState({ ...this.state });
+      //     this.checkBotTurn();
+      //   }, 3000);
+      //   return;
+      // }
     } else {
       this.state.consecutiveSixes = 0;
     }
@@ -203,6 +209,11 @@ export default class Ludo extends BaseGame {
         this.setState({ ...this.state });
         this.checkBotTurn();
       }, 3000);
+    } else if (movableTokens.length === 1 && !currentPlayer.isBot) {
+      // Only 1 movable token - auto move after a short delay for dice animation
+      setTimeout(() => {
+        this.handleMoveToken(playerId, movableTokens[0].id);
+      }, 800);
     } else {
       this.checkBotTurn();
     }
@@ -379,6 +390,20 @@ export default class Ludo extends BaseGame {
     );
 
     this.state.currentPlayerIndex = nextIndex;
+  }
+
+  /**
+   * Check if any player has at least one token on the board (not in home)
+   * Used to determine if we should boost the chance of rolling 6 for faster starts
+   */
+  private hasAnyTokenOnBoard(player: LudoPlayer): boolean {
+    if (player.id === null) return false;
+    for (const token of player.tokens) {
+      if (token.position.type === "board" || token.position.type === "finish") {
+        return true;
+      }
+    }
+    return false;
   }
 
   // ============== Bot AI ==============

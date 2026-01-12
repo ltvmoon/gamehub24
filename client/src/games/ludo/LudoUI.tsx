@@ -5,6 +5,8 @@ import { SAFE_POSITIONS } from "./types";
 import { Play, RefreshCw, Dices } from "lucide-react";
 import { useAlertStore } from "../../stores/alertStore";
 
+const debugMode = false;
+
 // Color mappings for CSS
 const COLOR_CLASSES: Record<
   PlayerColor,
@@ -40,6 +42,16 @@ const COLOR_CLASSES: Record<
   },
 };
 
+const COLORS = {
+  red: "#ef444444",
+  blue: "#3b82f644",
+  green: "#22c55e44",
+  yellow: "#eab30844",
+  stroke: "#0002",
+  base: "#fff1",
+  cell: "#4b5563",
+};
+
 // CSS animations
 const animationStyles = `
 @keyframes bounce-dice {
@@ -70,6 +82,7 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
   const [rolling, setRolling] = useState(false);
   const [displayDice, setDisplayDice] = useState<number>(1);
   const [showingResult, setShowingResult] = useState(false);
+  const [debugPosition, setDebugPosition] = useState<number>(0); // Debug slider position
   const prevDiceValue = useRef<number | null>(null);
   const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null
@@ -167,27 +180,26 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
     game.requestMoveToken(tokenId);
   };
 
-  // Calculate token screen positions
+  // Calculate token screen positions (15x15 grid, each cell = 1 unit)
   const getTokenScreenPosition = (
     pos: TokenPosition,
     color: PlayerColor,
     tokenIndex: number
   ): { x: number; y: number } | null => {
     if (pos.type === "home") {
-      // Home tokens centered in a 2x2 grid, positioned lower to not overlap name
+      // Home tokens in 4 corners, 2x2 grid inside the home base
       const homeOffsets: Record<PlayerColor, { x: number; y: number }> = {
-        red: { x: 2.5, y: 2.5 },
-        blue: { x: 10.5, y: 2.5 },
-        green: { x: 10.5, y: 10.5 },
-        yellow: { x: 2.5, y: 10.5 },
+        red: { x: 3, y: 3 }, // Top-left corner
+        green: { x: 12, y: 3 }, // Top-right corner
+        yellow: { x: 12, y: 12 }, // Bottom-right corner
+        blue: { x: 3, y: 12 }, // Bottom-left corner
       };
       const base = homeOffsets[color];
-      // Tighter 2x2 grid
       const offset = [
-        { dx: -0.6, dy: -0.6 },
-        { dx: 0.6, dy: -0.6 },
-        { dx: -0.6, dy: 0.6 },
-        { dx: 0.6, dy: 0.6 },
+        { dx: -1, dy: -1 },
+        { dx: 1, dy: -1 },
+        { dx: -1, dy: 1 },
+        { dx: 1, dy: 1 },
       ][tokenIndex];
       return { x: base.x + offset.dx, y: base.y + offset.dy };
     }
@@ -197,109 +209,115 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
     }
 
     if (pos.type === "finish") {
+      // Finish lanes (home run) - 5 cells leading to center
       const finishPaths: Record<PlayerColor, { x: number; y: number }[]> = {
         red: [
-          { x: 1.5, y: 6.5 },
-          { x: 2.5, y: 6.5 },
-          { x: 3.5, y: 6.5 },
-          { x: 4.5, y: 6.5 },
-          { x: 5.5, y: 6.5 },
-        ],
-        blue: [
-          { x: 6.5, y: 1.5 },
-          { x: 6.5, y: 2.5 },
-          { x: 6.5, y: 3.5 },
-          { x: 6.5, y: 4.5 },
-          { x: 6.5, y: 5.5 },
+          { x: 1.5, y: 7.5 },
+          { x: 2.5, y: 7.5 },
+          { x: 3.5, y: 7.5 },
+          { x: 4.5, y: 7.5 },
+          { x: 5.5, y: 7.5 },
         ],
         green: [
-          { x: 11.5, y: 6.5 },
-          { x: 10.5, y: 6.5 },
-          { x: 9.5, y: 6.5 },
-          { x: 8.5, y: 6.5 },
-          { x: 7.5, y: 6.5 },
+          { x: 7.5, y: 1.5 },
+          { x: 7.5, y: 2.5 },
+          { x: 7.5, y: 3.5 },
+          { x: 7.5, y: 4.5 },
+          { x: 7.5, y: 5.5 },
         ],
         yellow: [
-          { x: 6.5, y: 11.5 },
-          { x: 6.5, y: 10.5 },
-          { x: 6.5, y: 9.5 },
-          { x: 6.5, y: 8.5 },
-          { x: 6.5, y: 7.5 },
+          { x: 13.5, y: 7.5 },
+          { x: 12.5, y: 7.5 },
+          { x: 11.5, y: 7.5 },
+          { x: 10.5, y: 7.5 },
+          { x: 9.5, y: 7.5 },
+        ],
+        blue: [
+          { x: 7.5, y: 13.5 },
+          { x: 7.5, y: 12.5 },
+          { x: 7.5, y: 11.5 },
+          { x: 7.5, y: 10.5 },
+          { x: 7.5, y: 9.5 },
         ],
       };
-      return finishPaths[color][pos.position] || { x: 6.5, y: 6.5 };
+      return finishPaths[color][pos.position] || { x: 7.5, y: 7.5 };
     }
 
     if (pos.type === "finished") {
-      return { x: 6.5, y: 6.5 };
+      return { x: 7.5, y: 7.5 }; // Center of board
     }
 
     return null;
   };
 
-  // Get board position from index (0-51)
+  // Get board position from index (0-51) on 15x15 grid
+  // Standard Ludo clockwise path starting from Red's entry
+  // SAFE_POSITIONS = [0, 8, 13, 21, 26, 34, 39, 47]
   const getBoardPosition = (index: number): { x: number; y: number } => {
+    // 52-position path forming a closed clockwise loop on 15x15 grid
     const path: { x: number; y: number }[] = [
-      // Red start area
-      { x: 0.5, y: 6.5 },
-      { x: 1.5, y: 5.5 },
-      { x: 2.5, y: 5.5 },
-      { x: 3.5, y: 5.5 },
-      { x: 4.5, y: 5.5 },
-      { x: 5.5, y: 5.5 },
-      // Up to blue
-      { x: 5.5, y: 4.5 },
-      { x: 5.5, y: 3.5 },
-      { x: 5.5, y: 2.5 },
-      { x: 5.5, y: 1.5 },
-      { x: 5.5, y: 0.5 },
-      // Blue corner
-      { x: 6.5, y: 0.5 },
-      { x: 7.5, y: 0.5 },
-      // Blue start going right
-      { x: 7.5, y: 1.5 },
-      { x: 7.5, y: 2.5 },
-      { x: 7.5, y: 3.5 },
-      { x: 7.5, y: 4.5 },
-      { x: 7.5, y: 5.5 },
-      // Right to green
-      { x: 8.5, y: 5.5 },
-      { x: 9.5, y: 5.5 },
-      { x: 10.5, y: 5.5 },
-      { x: 11.5, y: 5.5 },
-      { x: 12.5, y: 5.5 },
-      // Green corner
-      { x: 12.5, y: 6.5 },
-      { x: 12.5, y: 7.5 },
-      // Green start going left
-      { x: 11.5, y: 7.5 },
-      { x: 10.5, y: 7.5 },
-      { x: 9.5, y: 7.5 },
-      { x: 8.5, y: 7.5 },
-      { x: 7.5, y: 7.5 },
-      // Down to yellow
-      { x: 7.5, y: 8.5 },
-      { x: 7.5, y: 9.5 },
-      { x: 7.5, y: 10.5 },
-      { x: 7.5, y: 11.5 },
-      { x: 7.5, y: 12.5 },
-      // Yellow corner
-      { x: 6.5, y: 12.5 },
-      { x: 5.5, y: 12.5 },
-      // Yellow start going up
-      { x: 5.5, y: 11.5 },
-      { x: 5.5, y: 10.5 },
-      { x: 5.5, y: 9.5 },
-      { x: 5.5, y: 8.5 },
-      { x: 5.5, y: 7.5 },
-      // Left back to red
-      { x: 4.5, y: 7.5 },
-      { x: 3.5, y: 7.5 },
-      { x: 2.5, y: 7.5 },
-      { x: 1.5, y: 7.5 },
-      { x: 0.5, y: 7.5 },
+      // === RED START (position 0-12): Bottom of left arm, going up then right ===
+      { x: 1.5, y: 6.5 }, // 0  - Red start (SAFE)
+      { x: 2.5, y: 6.5 }, // 1
+      { x: 3.5, y: 6.5 }, // 2
+      { x: 4.5, y: 6.5 }, // 3
+      { x: 5.5, y: 6.5 }, // 4
+      { x: 6.5, y: 5.5 }, // 5  - Corner turn up
+      { x: 6.5, y: 4.5 }, // 6
+      { x: 6.5, y: 3.5 }, // 7
+      { x: 6.5, y: 2.5 }, // 8  - SAFE
+      { x: 6.5, y: 1.5 }, // 9
+      { x: 6.5, y: 0.5 }, // 10
+      { x: 7.5, y: 0.5 }, // 11 - Top center
+      { x: 8.5, y: 0.5 }, // 12
+
+      // === GREEN START (position 13-25): Left of top arm, going right then down ===
+      { x: 8.5, y: 1.5 }, // 13 - Green start (SAFE)
+      { x: 8.5, y: 2.5 }, // 14
+      { x: 8.5, y: 3.5 }, // 15
+      { x: 8.5, y: 4.5 }, // 16
+      { x: 8.5, y: 5.5 }, // 17
+      { x: 9.5, y: 6.5 }, // 18 - Corner turn right
+      { x: 10.5, y: 6.5 }, // 19
+      { x: 11.5, y: 6.5 }, // 20
+      { x: 12.5, y: 6.5 }, // 21 - SAFE
+      { x: 13.5, y: 6.5 }, // 22
+      { x: 14.5, y: 6.5 }, // 23
+      { x: 14.5, y: 7.5 }, // 24 - Right center
+      { x: 14.5, y: 8.5 }, // 25
+
+      // === YELLOW START (position 26-38): Top of right arm, going down then left ===
+      { x: 13.5, y: 8.5 }, // 26 - Yellow start (SAFE)
+      { x: 12.5, y: 8.5 }, // 27
+      { x: 11.5, y: 8.5 }, // 28
+      { x: 10.5, y: 8.5 }, // 29
+      { x: 9.5, y: 8.5 }, // 30
+      { x: 8.5, y: 9.5 }, // 31 - Corner turn down
+      { x: 8.5, y: 10.5 }, // 32
+      { x: 8.5, y: 11.5 }, // 33
+      { x: 8.5, y: 12.5 }, // 34 - SAFE
+      { x: 8.5, y: 13.5 }, // 35
+      { x: 8.5, y: 14.5 }, // 36
+      { x: 7.5, y: 14.5 }, // 37 - Bottom center
+      { x: 6.5, y: 14.5 }, // 38
+
+      // === BLUE START (position 39-51): Right of bottom arm, going left then up ===
+      { x: 6.5, y: 13.5 }, // 39 - Blue start (SAFE)
+      { x: 6.5, y: 12.5 }, // 40
+      { x: 6.5, y: 11.5 }, // 41
+      { x: 6.5, y: 10.5 }, // 42
+      { x: 6.5, y: 9.5 }, // 43
+      { x: 5.5, y: 8.5 }, // 44 - Corner turn left
+      { x: 4.5, y: 8.5 }, // 45
+      { x: 3.5, y: 8.5 }, // 46
+      { x: 2.5, y: 8.5 }, // 47 - SAFE
+      { x: 1.5, y: 8.5 }, // 48
+      { x: 0.5, y: 8.5 }, // 49
+      { x: 0.5, y: 7.5 }, // 50 - Left center
+      { x: 0.5, y: 6.5 }, // 51 - Back near Red start
     ];
-    return path[index % path.length] || { x: 6.5, y: 6.5 };
+
+    return path[index % 52] || { x: 7.5, y: 7.5 };
   };
 
   const renderToken = (
@@ -329,8 +347,8 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
           ${isCurrentPlayer && !isMovable ? "opacity-90" : ""}
         `}
         style={{
-          left: `${(pos.x / 13) * 100}%`,
-          top: `${(pos.y / 13) * 100}%`,
+          left: `${(pos.x / 15) * 100}%`,
+          top: `${(pos.y / 15) * 100}%`,
           transform: isMovable
             ? "translate(-50%, -50%) scale(1.25)"
             : "translate(-50%, -50%)",
@@ -379,7 +397,7 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
     };
 
     return (
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-row items-center gap-2">
         <div
           className={`
             relative w-16 h-16 bg-white rounded-xl shadow-lg border-2 border-gray-300
@@ -412,19 +430,19 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
     );
   };
 
-  // Get player name position on board - centered in each corner
+  // Get player name position on board - centered in each corner (15x15 grid)
   const getPlayerNamePosition = (
     color: PlayerColor
   ): { x: string; y: string } => {
     switch (color) {
       case "red":
-        return { x: "19.2%", y: "3%" }; // Center of red corner (0-5 grid = 2.5 center)
-      case "blue":
-        return { x: "80.8%", y: "3%" }; // Center of blue corner
+        return { x: "20%", y: "3%" }; // Top-left corner
       case "green":
-        return { x: "80.8%", y: "97%" }; // Center of green corner
+        return { x: "80%", y: "3%" }; // Top-right corner
       case "yellow":
-        return { x: "19.2%", y: "97%" }; // Center of yellow corner
+        return { x: "80%", y: "97%" }; // Bottom-right corner
+      case "blue":
+        return { x: "20%", y: "97%" }; // Bottom-left corner
     }
   };
 
@@ -556,165 +574,414 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
       </div>
 
       {/* Game Board */}
-      <div className="relative w-full max-w-[450px] aspect-square bg-slate-900 rounded-xl overflow-hidden shadow-2xl border-4 border-slate-700">
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 13 13">
-          {/* Home bases with highlighting for current player */}
-          {state.players.map((player, idx) => {
-            const isCurrent =
-              state.currentPlayerIndex === idx && state.gamePhase === "playing";
-            const positions: Record<PlayerColor, { x: number; y: number }> = {
-              red: { x: 0, y: 0 },
-              blue: { x: 8, y: 0 },
-              green: { x: 8, y: 8 },
-              yellow: { x: 0, y: 8 },
-            };
-            const pos = positions[player.color];
-            return (
-              <g key={player.color}>
-                <rect
-                  x={pos.x}
-                  y={pos.y}
-                  width="5"
-                  height="5"
-                  fill={COLOR_CLASSES[player.color].fill}
-                  opacity={isCurrent ? 0.5 : 0.25}
-                  style={
-                    isCurrent
-                      ? { animation: "pulse-corner 1s ease-in-out infinite" }
-                      : undefined
-                  }
-                />
-                <rect
-                  x={pos.x}
-                  y={pos.y}
-                  width="5"
-                  height="5"
-                  fill="none"
-                  stroke={
-                    isCurrent ? COLOR_CLASSES[player.color].fill : "transparent"
-                  }
-                  strokeWidth="0.15"
-                />
-              </g>
-            );
-          })}
+      <div className="relative w-full max-w-[450px] aspect-square bg-slate-900 rounded-xl overflow-hidden shadow-2xl border-4 border-black">
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 15 15">
+          {/* Board background */}
+          {/* <rect x="0" y="0" width="15" height="15" fill="black" /> */}
 
-          {/* Center finish area */}
+          {/* === HOME BASES (6x6 in corners) === */}
+          {/* Red - Top Left */}
           <rect
-            x="5"
-            y="5"
-            width="3"
-            height="3"
-            fill="#374151"
-            stroke="#4b5563"
+            x="0"
+            y="0"
+            width="6"
+            height="6"
+            fill={COLORS.red}
+            stroke={COLORS.stroke}
             strokeWidth="0.05"
           />
-          <polygon points="6.5,5.5 7.5,6.5 6.5,7.5 5.5,6.5" fill="#6b7280" />
+          <rect x="1" y="1" width="4" height="4" fill={COLORS.base} />
+          <circle
+            cx="2"
+            cy="2"
+            r="0.6"
+            fill={COLORS.red}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="4"
+            cy="2"
+            r="0.6"
+            fill={COLORS.red}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="2"
+            cy="4"
+            r="0.6"
+            fill={COLORS.red}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="4"
+            cy="4"
+            r="0.6"
+            fill={COLORS.red}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
 
-          {/* Path grids - Horizontal lanes */}
-          {/* Top path (Blue area) */}
-          {[0, 1, 2, 3, 4].map((i) => (
-            <rect
-              key={`top-${i}`}
-              x={5 + i * 0.6}
-              y="0"
-              width="1"
-              height="5"
-              fill="none"
-              stroke="#374151"
-              strokeWidth="0.03"
-            />
-          ))}
-          {/* Bottom path (Yellow area) */}
-          {[0, 1, 2, 3, 4].map((i) => (
-            <rect
-              key={`bot-${i}`}
-              x={5 + i * 0.6}
-              y="8"
-              width="1"
-              height="5"
-              fill="none"
-              stroke="#374151"
-              strokeWidth="0.03"
-            />
+          {/* Green - Top Right */}
+          <rect
+            x="9"
+            y="0"
+            width="6"
+            height="6"
+            fill={COLORS.green}
+            stroke={COLORS.stroke}
+            strokeWidth="0.05"
+          />
+          <rect x="10" y="1" width="4" height="4" fill={COLORS.base} />
+          <circle
+            cx="11"
+            cy="2"
+            r="0.6"
+            fill={COLORS.green}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="13"
+            cy="2"
+            r="0.6"
+            fill={COLORS.green}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="11"
+            cy="4"
+            r="0.6"
+            fill={COLORS.green}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="13"
+            cy="4"
+            r="0.6"
+            fill={COLORS.green}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+
+          {/* Yellow - Bottom Right */}
+          <rect
+            x="9"
+            y="9"
+            width="6"
+            height="6"
+            fill={COLORS.yellow}
+            stroke={COLORS.stroke}
+            strokeWidth="0.05"
+          />
+          <rect x="10" y="10" width="4" height="4" fill={COLORS.base} />
+          <circle
+            cx="11"
+            cy="11"
+            r="0.6"
+            fill={COLORS.yellow}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="13"
+            cy="11"
+            r="0.6"
+            fill={COLORS.yellow}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="11"
+            cy="13"
+            r="0.6"
+            fill={COLORS.yellow}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="13"
+            cy="13"
+            r="0.6"
+            fill={COLORS.yellow}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+
+          {/* Blue - Bottom Left */}
+          <rect
+            x="0"
+            y="9"
+            width="6"
+            height="6"
+            fill={COLORS.blue}
+            stroke={COLORS.stroke}
+            strokeWidth="0.05"
+          />
+          <rect x="1" y="10" width="4" height="4" fill={COLORS.base} />
+          <circle
+            cx="2"
+            cy="11"
+            r="0.6"
+            fill={COLORS.blue}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="4"
+            cy="11"
+            r="0.6"
+            fill={COLORS.blue}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="2"
+            cy="13"
+            r="0.6"
+            fill={COLORS.blue}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <circle
+            cx="4"
+            cy="13"
+            r="0.6"
+            fill={COLORS.blue}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+
+          {/* === CROSS PATH CELLS === */}
+          {/* Left arm (3 rows x 6 cols) */}
+          {[0, 1, 2, 3, 4, 5].map((col) => (
+            <g key={`left-${col}`}>
+              <rect
+                x={col}
+                y={6}
+                width="1"
+                height="1"
+                fill={col === 1 ? COLORS.red : COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={col}
+                y={7}
+                width="1"
+                height="1"
+                fill={col === 0 ? COLORS.cell : COLORS.red}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={col}
+                y={8}
+                width="1"
+                height="1"
+                fill={COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+            </g>
           ))}
 
-          {/* Vertical paths */}
-          <rect x="5" y="0" width="3" height="5" fill="#4b5563" />
-          <rect x="5" y="8" width="3" height="5" fill="#4b5563" />
-          <rect x="0" y="5" width="5" height="3" fill="#4b5563" />
-          <rect x="8" y="5" width="5" height="3" fill="#4b5563" />
-
-          {/* Grid lines for lanes */}
-          {/* Top vertical lane */}
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <line
-              key={`tv-${i}`}
-              x1="5"
-              y1={i}
-              x2="8"
-              y2={i}
-              stroke="#374151"
-              strokeWidth="0.05"
-            />
-          ))}
-          {/* Bottom vertical lane */}
-          {[8, 9, 10, 11, 12, 13].map((i) => (
-            <line
-              key={`bv-${i}`}
-              x1="5"
-              y1={i}
-              x2="8"
-              y2={i}
-              stroke="#374151"
-              strokeWidth="0.05"
-            />
-          ))}
-          {/* Left horizontal lane */}
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <line
-              key={`lh-${i}`}
-              x1={i}
-              y1="5"
-              x2={i}
-              y2="8"
-              stroke="#374151"
-              strokeWidth="0.05"
-            />
-          ))}
-          {/* Right horizontal lane */}
-          {[8, 9, 10, 11, 12, 13].map((i) => (
-            <line
-              key={`rh-${i}`}
-              x1={i}
-              y1="5"
-              x2={i}
-              y2="8"
-              stroke="#374151"
-              strokeWidth="0.05"
-            />
+          {/* Right arm (3 rows x 6 cols) */}
+          {[0, 1, 2, 3, 4, 5].map((col) => (
+            <g key={`right-${col}`}>
+              <rect
+                x={9 + col}
+                y={6}
+                width="1"
+                height="1"
+                fill={COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={9 + col}
+                y={7}
+                width="1"
+                height="1"
+                fill={col < 5 ? COLORS.yellow : COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={9 + col}
+                y={8}
+                width="1"
+                height="1"
+                fill={col === 4 ? COLORS.yellow : COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+            </g>
           ))}
 
-          {/* Finish lanes colored */}
-          <rect x="1" y="6" width="4" height="1" fill="#ef4444" opacity="0.4" />
-          <rect x="6" y="1" width="1" height="4" fill="#3b82f6" opacity="0.4" />
-          <rect x="8" y="6" width="4" height="1" fill="#22c55e" opacity="0.4" />
-          <rect x="6" y="8" width="1" height="4" fill="#eab308" opacity="0.4" />
+          {/* Top arm (6 rows x 3 cols) */}
+          {[0, 1, 2, 3, 4, 5].map((row) => (
+            <g key={`top-${row}`}>
+              <rect
+                x={6}
+                y={row}
+                width="1"
+                height="1"
+                fill={COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={7}
+                y={row}
+                width="1"
+                height="1"
+                fill={row > 0 ? COLORS.green : COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={8}
+                y={row}
+                width="1"
+                height="1"
+                fill={row === 1 ? COLORS.green : COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+            </g>
+          ))}
 
-          {/* Safe zone markers */}
+          {/* Bottom arm (6 rows x 3 cols) */}
+          {[0, 1, 2, 3, 4, 5].map((row) => (
+            <g key={`bottom-${row}`}>
+              <rect
+                x={6}
+                y={9 + row}
+                width="1"
+                height="1"
+                fill={row === 4 ? COLORS.blue : COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={7}
+                y={9 + row}
+                width="1"
+                height="1"
+                fill={row < 5 ? COLORS.blue : COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+              <rect
+                x={8}
+                y={9 + row}
+                width="1"
+                height="1"
+                fill={COLORS.cell}
+                stroke={COLORS.stroke}
+                strokeWidth="0.02"
+              />
+            </g>
+          ))}
+
+          {/* === CENTER TRIANGLES === */}
+          <polygon
+            points="6,6 9,6 7.5,7.5"
+            fill={COLORS.green}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <polygon
+            points="9,6 9,9 7.5,7.5"
+            fill={COLORS.yellow}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <polygon
+            points="9,9 6,9 7.5,7.5"
+            fill={COLORS.blue}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+          <polygon
+            points="6,9 6,6 7.5,7.5"
+            fill={COLORS.red}
+            stroke={COLORS.stroke}
+            strokeWidth="0.03"
+          />
+
+          {/* === SAFE ZONE MARKERS (stars) === */}
           {SAFE_POSITIONS.map((pos, i) => {
             const gridPos = getBoardPosition(pos);
             return (
-              <circle
+              <polygon
                 key={i}
-                cx={gridPos.x}
-                cy={gridPos.y}
-                r="0.25"
-                // purple
-                fill="#8b5cf655"
+                points={starPoints(gridPos.x, gridPos.y, 0.35)}
+                fill="#fbbf2455"
+                strokeWidth="0.03"
+                opacity="0.9"
               />
             );
           })}
+
+          {/* Debug position highlight */}
+          {debugMode &&
+            (() => {
+              const debugPos = getBoardPosition(debugPosition);
+              return (
+                <g>
+                  <circle
+                    cx={debugPos.x}
+                    cy={debugPos.y}
+                    r="0.4"
+                    fill="#06b6d4"
+                    opacity="0.8"
+                    stroke="#fff"
+                    strokeWidth="0.05"
+                  />
+                  <text
+                    x={debugPos.x}
+                    y={debugPos.y + 0.12}
+                    fill="#fff"
+                    fontSize="0.4"
+                    textAnchor="middle"
+                    fontWeight="bold"
+                  >
+                    {debugPosition}
+                  </text>
+                </g>
+              );
+            })()}
+
+          {/* Highlight current player's corner */}
+          {state.gamePhase === "playing" &&
+            (() => {
+              const current = state.players[state.currentPlayerIndex];
+              const positions: Record<PlayerColor, { x: number; y: number }> = {
+                red: { x: 0, y: 0 },
+                green: { x: 9, y: 0 },
+                yellow: { x: 9, y: 9 },
+                blue: { x: 0, y: 9 },
+              };
+              const pos = positions[current.color];
+              return (
+                <rect
+                  x={pos.x}
+                  y={pos.y}
+                  width="6"
+                  height="6"
+                  // fill="none"
+                  fill={COLOR_CLASSES[current.color].fill}
+                  strokeWidth="0.15"
+                  style={{ animation: "pulse-corner 1s ease-in-out infinite" }}
+                />
+              );
+            })()}
         </svg>
 
         {/* Player names on board corners */}
@@ -778,6 +1045,43 @@ export default function LudoUI({ game, currentUserId }: LudoUIProps) {
           <RefreshCw className="w-4 h-4" /> New Game
         </button>
       )}
+
+      {/* Debug Slider for Board Position */}
+      {debugMode && (
+        <div className="w-full max-w-[450px] bg-slate-800 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Debug Position:</span>
+            <span className="text-cyan-400 font-bold">{debugPosition}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="51"
+            value={debugPosition}
+            onChange={(e) => setDebugPosition(Number(e.target.value))}
+            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>0 (Red start)</span>
+            <span>13 (Blue)</span>
+            <span>26 (Green)</span>
+            <span>39 (Yellow)</span>
+            <span>51</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const starPoints = (cx: number, cy: number, r: number): string => {
+  const points: string[] = [];
+  for (let j = 0; j < 10; j++) {
+    const radius = j % 2 === 0 ? r : r * 0.4;
+    const angle = Math.PI / 2 + (j * Math.PI) / 5;
+    const x = cx + radius * Math.cos(angle);
+    const y = cy - radius * Math.sin(angle);
+    points.push(`${x},${y}`);
+  }
+  return points.join(" ");
+};
