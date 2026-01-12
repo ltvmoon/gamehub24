@@ -4,7 +4,6 @@ import {
   type DotsAndBoxesState,
   type DotsAndBoxesAction,
   type DotsAndBoxesPlayer,
-  type PlayerColor,
 } from "./types";
 
 const GRID_SIZE = 6; // 6x6 dots = 5x5 boxes
@@ -298,7 +297,7 @@ export default class DotsAndBoxes extends BaseGame {
   }
 
   private calculateBestMove(
-    botId: string
+    _botId: string
   ): { lineType: "horizontal" | "vertical"; row: number; col: number } | null {
     // 1. Check for moves that complete a box
     const scoringMove = this.findScoringMove();
