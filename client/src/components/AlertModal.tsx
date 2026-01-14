@@ -36,13 +36,15 @@ export default function AlertModal() {
   const getIcon = () => {
     switch (type) {
       case "error":
-        return <AlertCircle className="w-12 h-12 text-red-500" />;
+        return <AlertCircle className="w-12 h-12 text-red-500 animate-pulse" />;
       case "success":
         return <CheckCircle className="w-12 h-12 text-green-500" />;
       case "warning":
         return <AlertTriangle className="w-12 h-12 text-yellow-500" />;
       case "loading":
-        return <Loader className="w-12 h-12 text-primary" />;
+        return (
+          <Loader className="w-12 h-12 text-primary animate-[spin_2.5s_ease-in-out_infinite]" />
+        );
       default:
         return <Info className="w-12 h-12 text-primary" />;
     }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gamepad, Users, Plus, Trash2, Settings } from "lucide-react";
+import { Gamepad, Users, Plus, Trash2, Settings, Gamepad2 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { useSocketStore } from "../stores/socketStore";
@@ -60,10 +60,10 @@ export default function Lobby() {
       <nav className="fixed top-4 left-4 right-4 z-50">
         <div className="max-w-7xl mx-auto glass-card rounded-2xl px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Gamepad className="w-8 h-8 text-primary" />
-              <span className="text-xl font-display text-text-primary">
-                GameHub
+            <div className="flex items-center gap-1 md:gap-3">
+              <Gamepad2 className="md:w-8 md:h-8 w-6 h-6 text-primary" />
+              <span className="md:text-xl text-lg font-display text-text-primary">
+                GameHub24
               </span>
             </div>
 
@@ -79,7 +79,7 @@ export default function Lobby() {
                   isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
                 }`}
               />
-              <span className="text-sm font-medium text-text-primary">
+              <span className="md:text-sm text-xs font-medium text-text-primary">
                 {username}
               </span>
               <Settings className="w-4 h-4" />
@@ -229,6 +229,21 @@ export default function Lobby() {
       {showSettingsModal && (
         <SettingsModal onClose={() => setShowSettingsModal(false)} />
       )}
+
+      <footer className="p-4">
+        <p className="text-text-muted text-xs">
+          &copy; {new Date().getFullYear()} GameHub24. Made with ❤️ by{" "}
+          <span className="text-primary">
+            <a
+              href="https://github.com/HoangTran0410/gamehub24"
+              target="_blank"
+            >
+              HoangTran
+            </a>
+          </span>
+          .
+        </p>
+      </footer>
     </div>
   );
 }
@@ -350,10 +365,12 @@ function CreateRoomModal({
   const navigate = useNavigate();
   const { setCurrentRoom } = useRoomStore();
   const { show: showAlert } = useAlertStore();
+  const { isConnected } = useSocketStore();
 
   const handleCreate = () => {
     const socket = getSocket();
-    if (!socket) return showAlert("Socket not connected", { type: "error" });
+    if (!socket || !isConnected)
+      return showAlert("Socket not connected", { type: "error" });
 
     const allGames = getAllGames();
     const game = allGames.find((g) => g.id === gameType) || allGames[0];

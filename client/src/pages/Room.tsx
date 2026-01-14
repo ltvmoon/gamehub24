@@ -411,6 +411,21 @@ export default function RoomPage() {
             <ChatPanel />
           </div>
         </main>
+
+        <footer className="p-4">
+          <p className="text-text-muted text-xs">
+            &copy; {new Date().getFullYear()} GameHub24. Made with ❤️ by{" "}
+            <span className="text-primary">
+              <a
+                href="https://github.com/HoangTran0410/gamehub24"
+                target="_blank"
+              >
+                HoangTran
+              </a>
+            </span>
+            .
+          </p>
+        </footer>
       </div>
     </>
   );

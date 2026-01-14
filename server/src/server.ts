@@ -76,6 +76,16 @@ io.on("connection", (socket: Socket) => {
   // Update socket ID if user reconnects
   roomManager.updatePlayerSocketId(userId, socket.id);
 
+  // Get online users count
+  socket.on("stats:online", (callback) => {
+    try {
+      callback({ online: io.engine.clientsCount });
+    } catch (error) {
+      console.error("Error getting online count:", error);
+      callback({ online: 0 });
+    }
+  });
+
   // ROOM EVENTS
 
   // Create room
@@ -193,16 +203,6 @@ io.on("connection", (socket: Socket) => {
     } catch (error) {
       console.error("Error getting room list:", error);
       callback([]);
-    }
-  });
-
-  // Get online users count
-  socket.on("stats:online", (callback) => {
-    try {
-      callback({ online: io.engine.clientsCount });
-    } catch (error) {
-      console.error("Error getting online count:", error);
-      callback({ online: 0 });
     }
   });
 

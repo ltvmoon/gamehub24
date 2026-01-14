@@ -9,8 +9,8 @@ interface DotsAndBoxesUIProps {
 }
 
 const PLAYER_BG_COLORS: Record<PlayerColor, string> = {
-  red: "bg-red-500/30",
-  blue: "bg-blue-500/30",
+  red: "bg-red-500/60",
+  blue: "bg-blue-500/60",
 };
 
 const PLAYER_TEXT_COLORS: Record<PlayerColor, string> = {
@@ -57,7 +57,7 @@ export default function DotsAndBoxesUI({
       <div className="flex flex-col items-center gap-2">
         <h2 className="text-3xl font-bold text-white">Dots & Boxes</h2>
 
-        {!isGameEnded ? (
+        {!isGameEnded && state.gamePhase === "playing" ? (
           <div className="text-lg">
             {isMyTurn ? (
               <span className="text-green-400 font-bold animate-pulse">
@@ -77,7 +77,7 @@ export default function DotsAndBoxesUI({
               </span>
             )}
           </div>
-        ) : (
+        ) : isGameEnded ? (
           <div className="text-2xl font-bold text-white mb-2">
             Game Over!{" "}
             {state.winner === "draw"
@@ -86,7 +86,7 @@ export default function DotsAndBoxesUI({
                   state.players.find((p) => p.id === state.winner)?.username
                 } Wins!`}
           </div>
-        )}
+        ) : null}
 
         {/* Score Board & Player List */}
         <div className="flex gap-4 md:gap-8 bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700 w-full justify-center">
@@ -162,145 +162,38 @@ export default function DotsAndBoxesUI({
         </div>
       </div>
 
-      {/* Game Board */}
-      <div className="relative aspect-square w-full max-w-[400px] bg-slate-900 p-6 rounded-lg shadow-2xl select-none touch-none border-2 border-slate-700">
-        <div className="relative w-full h-full">
-          {/* 1. Render Boxes (Backgrounds) */}
-          {state.boxes.map((rowBoxes, r) =>
-            rowBoxes.map((ownerId, c) => {
-              const owner = state.players.find((p) => p.id === ownerId);
-              if (!owner) return null;
-              return (
-                <div
-                  key={`box-${r}-${c}`}
-                  className={`absolute flex items-center justify-center rounded-sm transition-all duration-500 scale-90 ${
-                    PLAYER_BG_COLORS[owner.color]
-                  }`}
-                  style={{
-                    top: `${r * gridPercentage}%`,
-                    left: `${c * gridPercentage}%`,
-                    width: `${gridPercentage}%`,
-                    height: `${gridPercentage}%`,
-                  }}
-                >
-                  <div
-                    className={`text-2xl font-bold opacity-50 ${
-                      PLAYER_TEXT_COLORS[owner.color]
-                    }`}
-                  >
-                    {owner.username[0].toUpperCase()}
-                  </div>
-                </div>
-              );
-            })
-          )}
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        {!isGameEnded && state.gamePhase === "waiting" && game.isHostUser && (
+          <button
+            onClick={() => game.requestStartGame()}
+            disabled={!game.canStartGame()}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Play className="w-4 h-4" /> Start Game
+          </button>
+        )}
 
-          {/* 2. Render Horizontal Lines */}
-          {state.horizontalLines.map((rowLines, r) =>
-            rowLines.map((isSet, c) => {
-              const isLast =
-                state.lastLine?.type === "horizontal" &&
-                state.lastLine.row === r &&
-                state.lastLine.col === c;
-              return (
-                <div
-                  key={`h-${r}-${c}`}
-                  onClick={() => handleLineClick("horizontal", r, c)}
-                  className={`absolute h-2 -translate-y-1/2 cursor-pointer transition-colors duration-200
-                            ${
-                              isSet
-                                ? isLast
-                                  ? "bg-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.8)] animate-pulse"
-                                  : "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
-                                : state.gamePhase === "playing"
-                                ? "bg-slate-700 hover:bg-slate-500"
-                                : "bg-slate-800 cursor-default"
-                            }
-                             z-10`}
-                  style={{
-                    top: `${r * gridPercentage}%`,
-                    left: `${c * gridPercentage}%`,
-                    width: `${gridPercentage}%`,
-                  }}
-                >
-                  {/* Hitbox for easier clicking */}
-                  {!isSet && state.gamePhase === "playing" && (
-                    <div className="absolute inset-0 -top-2 -bottom-2" />
-                  )}
-                  {isSet && (
-                    <div
-                      className={`absolute inset-0 rounded-full ${
-                        isLast ? "bg-yellow-400" : "bg-cyan-400"
-                      }`}
-                    />
-                  )}
-                </div>
-              );
-            })
-          )}
+        {/* Reset / New Game (Host only) */}
+        {game.isHostUser && state.gamePhase !== "waiting" && (
+          <button
+            onClick={() => game.requestNewGame()}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />{" "}
+            {isGameEnded ? "Play Again" : "New Game"}
+          </button>
+        )}
 
-          {/* 3. Render Vertical Lines */}
-          {state.verticalLines.map((rowLines, r) =>
-            rowLines.map((isSet, c) => {
-              const isLast =
-                state.lastLine?.type === "vertical" &&
-                state.lastLine.row === r &&
-                state.lastLine.col === c;
-              return (
-                <div
-                  key={`v-${r}-${c}`}
-                  onClick={() => handleLineClick("vertical", r, c)}
-                  className={`absolute w-2 -translate-x-1/2 cursor-pointer transition-colors duration-200
-                            ${
-                              isSet
-                                ? isLast
-                                  ? "bg-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.8)] animate-pulse"
-                                  : "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
-                                : state.gamePhase === "playing"
-                                ? "bg-slate-700 hover:bg-slate-500"
-                                : "bg-slate-800 cursor-default"
-                            }
-                             z-10`}
-                  style={{
-                    top: `${r * gridPercentage}%`,
-                    left: `${c * gridPercentage}%`,
-                    height: `${gridPercentage}%`,
-                  }}
-                >
-                  {/* Hitbox for easier clicking */}
-                  {!isSet && state.gamePhase === "playing" && (
-                    <div className="absolute inset-0 -left-2 -right-2" />
-                  )}
-                  {isSet && (
-                    <div
-                      className={`absolute inset-0 rounded-full ${
-                        isLast ? "bg-yellow-400" : "bg-cyan-400"
-                      }`}
-                    />
-                  )}
-                </div>
-              );
-            })
-          )}
-
-          {/* 4. Render Dots */}
-          {Array(gridSize)
-            .fill(0)
-            .map((_, r) =>
-              Array(gridSize)
-                .fill(0)
-                .map((__, c) => (
-                  <div
-                    key={`dot-${r}-${c}`}
-                    className="absolute w-4 h-4 bg-slate-400 rounded-full -translate-x-1/2 -translate-y-1/2 z-20 shadow-sm"
-                    style={{
-                      top: `${r * gridPercentage}%`,
-                      left: `${c * gridPercentage}%`,
-                    }}
-                  />
-                ))
-            )}
-        </div>
+        {/* Undo Button (Visible if active game and made moves) */}
+        {state.gamePhase === "playing" && !isGameEnded && (
+          <button
+            onClick={() => game.requestUndo()}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
+          >
+            Undo
+          </button>
+        )}
       </div>
 
       {/* Undo Request Modal */}
@@ -333,38 +226,112 @@ export default function DotsAndBoxesUI({
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 justify-center">
-        {!isGameEnded && state.gamePhase === "waiting" && game.isHostUser && (
-          <button
-            onClick={() => game.requestStartGame()}
-            disabled={!game.canStartGame()}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Play className="w-4 h-4" /> Start Game
-          </button>
-        )}
+      {/* Game Board */}
+      <div className="relative aspect-square w-full max-w-[400px] bg-slate-900 p-6 rounded-lg shadow-2xl select-none touch-none border-2 border-slate-700">
+        <div className="relative w-full h-full">
+          {/* 1. Render Boxes (Backgrounds) */}
+          {state.boxes.map((rowBoxes, r) =>
+            rowBoxes.map((ownerId, c) => {
+              const owner = state.players.find((p) => p.id === ownerId);
+              if (!owner) return null;
+              return (
+                <div
+                  key={`box-${r}-${c}`}
+                  className={`absolute flex items-center justify-center rounded-sm transition-all duration-500 scale-90 ${
+                    PLAYER_BG_COLORS[owner.color]
+                  }`}
+                  style={{
+                    top: `${r * gridPercentage}%`,
+                    left: `${c * gridPercentage}%`,
+                    width: `${gridPercentage}%`,
+                    height: `${gridPercentage}%`,
+                  }}
+                >
+                  <div
+                    className={`text-2xl font-bold ${
+                      PLAYER_TEXT_COLORS[owner.color]
+                    }`}
+                  >
+                    {owner.username[0].toUpperCase()}
+                  </div>
+                </div>
+              );
+            })
+          )}
 
-        {/* Reset / New Game (Host only) */}
-        {game.isHostUser && state.gamePhase !== "waiting" && (
-          <button
-            onClick={() => game.requestNewGame()}
-            className="flex items-center gap-2 px-4 py-2 bg-yellow-700 hover:bg-yellow-600 text-white rounded-lg transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />{" "}
-            {isGameEnded ? "Play Again" : "Reset Game"}
-          </button>
-        )}
+          {/* 2. Render Lines (Horizontal & Vertical) */}
+          {(["horizontal", "vertical"] as const).map((lineType) => {
+            const lines =
+              lineType === "horizontal"
+                ? state.horizontalLines
+                : state.verticalLines;
+            return lines.map((rowLines, r) =>
+              rowLines.map((isSet, c) => {
+                const isLast =
+                  state.lastLine?.type === lineType &&
+                  state.lastLine.row === r &&
+                  state.lastLine.col === c;
+                const isHorizontal = lineType === "horizontal";
 
-        {/* Undo Button (Visible if active game and made moves) */}
-        {state.gamePhase === "playing" && !isGameEnded && (
-          <button
-            onClick={() => game.requestUndo()}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
-          >
-            Undo
-          </button>
-        )}
+                return (
+                  <div
+                    key={`${lineType[0]}-${r}-${c}`}
+                    onClick={() => handleLineClick(lineType, r, c)}
+                    className={`absolute cursor-pointer transition-all duration-200 rounded-full z-10
+                      ${
+                        isHorizontal
+                          ? "h-2 -translate-y-1/2"
+                          : "w-2 -translate-x-1/2"
+                      }
+                      ${
+                        isSet
+                          ? isLast
+                            ? "bg-yellow-400 shadow-[0_0_12px_4px_rgba(250,204,21,0.7)] animate-pulse"
+                            : "bg-white shadow-[0_0_8px_2px_rgba(255,255,255,0.4)]"
+                          : state.gamePhase === "playing"
+                          ? "bg-slate-700 hover:bg-slate-400"
+                          : "bg-slate-800 cursor-default"
+                      }`}
+                    style={{
+                      top: `${r * gridPercentage}%`,
+                      left: `${c * gridPercentage}%`,
+                      ...(isHorizontal
+                        ? { width: `${gridPercentage}%` }
+                        : { height: `${gridPercentage}%` }),
+                    }}
+                  >
+                    {/* Hitbox for easier clicking */}
+                    {!isSet && state.gamePhase === "playing" && (
+                      <div
+                        className={`absolute inset-0 ${
+                          isHorizontal ? "-top-2 -bottom-2" : "-left-2 -right-2"
+                        }`}
+                      />
+                    )}
+                  </div>
+                );
+              })
+            );
+          })}
+
+          {/* 4. Render Dots */}
+          {/* {Array(gridSize)
+            .fill(0)
+            .map((_, r) =>
+              Array(gridSize)
+                .fill(0)
+                .map((__, c) => (
+                  <div
+                    key={`dot-${r}-${c}`}
+                    className="absolute w-3 h-3 bg-slate-600 rounded-full -translate-x-1/2 -translate-y-1/2 z-20"
+                    style={{
+                      top: `${r * gridPercentage}%`,
+                      left: `${c * gridPercentage}%`,
+                    }}
+                  />
+                ))
+            )} */}
+        </div>
       </div>
     </div>
   );
