@@ -1,22 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import TicTacToe from "./TicTacToe";
 import type { TicTacToeState } from "./types";
-import { RefreshCcw, X, Circle, LogOut, Bot, Play } from "lucide-react";
-import { useRoomStore } from "../../stores/roomStore";
-import { useChatStore } from "../../stores/chatStore";
+import { RefreshCcw, X, Circle, Bot, Play } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
-import { getSocket } from "../../services/socket";
 import type { GameUIProps } from "../types";
 
 export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as TicTacToe;
   const [state, setState] = useState<TicTacToeState>(game.getState());
-  const navigate = useNavigate();
-  const { roomId } = useParams<{ roomId: string }>();
-  // Use stores needed for leave game logic
-  const { setCurrentRoom } = useRoomStore();
-  const { clearMessages } = useChatStore();
   const { username: myUsername } = useUserStore();
 
   const mySymbol = game.getPlayerSymbol();
