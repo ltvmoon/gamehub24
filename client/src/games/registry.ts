@@ -17,11 +17,22 @@ import type { ComponentType } from "react";
 import type { BaseGame } from "./BaseGame";
 import type { GameUIProps } from "./types";
 
+// Game categories
+export type GameCategory =
+  | "board"
+  | "strategy"
+  | "puzzle"
+  | "card"
+  | "party"
+  | "relax"
+  | "classic";
+
 export interface GameModule {
   id: string;
   name: string;
   description: string;
   icon: LucideIcon;
+  categories: GameCategory[];
   minPlayers: number;
   maxPlayers: number;
   isAvailable: boolean;
@@ -44,6 +55,7 @@ games.set("tictactoe", {
   name: "Tic Tac Toe",
   description: "Classic 3x3 grid game. Get three in a row to win!",
   icon: Grid2X2,
+  categories: ["board", "classic", "puzzle"],
   minPlayers: 1,
   maxPlayers: 2,
   isAvailable: true,
@@ -60,6 +72,7 @@ games.set("caro", {
   name: "Caro (Gomoku)",
   description: "Get 5 in a row on a larger board. More strategic!",
   icon: Grid3x3,
+  categories: ["board", "strategy", "puzzle"],
   minPlayers: 1,
   maxPlayers: 2,
   isAvailable: true,
@@ -76,6 +89,7 @@ games.set("connect4", {
   name: "Connect 4",
   description: "Classic 4-in-a-row! Drop discs and connect four to win.",
   icon: Columns3,
+  categories: ["board", "classic", "puzzle"],
   minPlayers: 1,
   maxPlayers: 2,
   isAvailable: true,
@@ -92,6 +106,7 @@ games.set("ludo", {
   name: "Ludo",
   description: "Classic board game! Roll dice and race your tokens home.",
   icon: Dices,
+  categories: ["board", "classic", "party"],
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
@@ -108,6 +123,7 @@ games.set("reversi", {
   name: "Reversi (Othello)",
   description: "Classic strategy game. Flip your opponent's pieces!",
   icon: Circle,
+  categories: ["board", "strategy", "classic"],
   minPlayers: 1,
   maxPlayers: 2,
   isAvailable: true,
@@ -124,6 +140,7 @@ games.set("chess", {
   name: "Chess",
   description: "Strategic board game. Checkmate your opponent!",
   icon: ChessKnight,
+  categories: ["board", "strategy", "classic"],
   minPlayers: 1,
   maxPlayers: 2,
   isAvailable: true,
@@ -139,6 +156,7 @@ games.set("youtube", {
   name: "YouTube Watch Party",
   description: "Watch YouTube videos together with friends!",
   icon: Tv,
+  categories: ["party", "relax"],
   minPlayers: 1,
   maxPlayers: 100,
   isAvailable: true,
@@ -154,6 +172,7 @@ games.set("canvas", {
   name: "Draw Together",
   description: "Collaborative whiteboard to draw with friends!",
   icon: Palette,
+  categories: ["party", "relax"],
   minPlayers: 1,
   maxPlayers: 10,
   isAvailable: true,
@@ -170,6 +189,7 @@ games.set("thirteen", {
   name: "Thirteen",
   description: "Vietnamese card game (Tiến Lên Miền Nam)",
   icon: Spade,
+  categories: ["card", "strategy"],
   minPlayers: 1,
   maxPlayers: 4,
   isAvailable: true,
@@ -186,7 +206,8 @@ games.set("dotsandboxes", {
   name: "Dots & Boxes",
   description: "Classic strategy game. Connect dots to close boxes!",
   icon: LayoutGrid,
-  minPlayers: 2,
+  categories: ["puzzle", "strategy", "classic"],
+  minPlayers: 1,
   maxPlayers: 2,
   isAvailable: true,
   createGame: async (roomId, socket, isHost, userId, players) => {
@@ -205,6 +226,14 @@ export const getGame = (gameType: string): GameModule | undefined => {
 
 export const getAllGames = (): GameModule[] => {
   return Array.from(games.values());
+};
+
+export const getAllCategories = (): GameCategory[] => {
+  const categories = new Set<GameCategory>();
+  games.forEach((game) => {
+    game.categories.forEach((cat) => categories.add(cat));
+  });
+  return Array.from(categories);
 };
 
 export const registerGame = (module: GameModule): void => {

@@ -1,14 +1,59 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gamepad, Users, Plus, Trash2, Settings, Gamepad2 } from "lucide-react";
+import {
+  Gamepad,
+  Users,
+  Plus,
+  Trash2,
+  Settings,
+  Gamepad2,
+  Filter,
+} from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { useSocketStore } from "../stores/socketStore";
 import { useAlertStore } from "../stores/alertStore";
 import { getSocket } from "../services/socket";
-import { getAllGames } from "../games/registry";
+import {
+  getAllGames,
+  getAllCategories,
+  type GameCategory,
+} from "../games/registry";
 import type { Room } from "../stores/roomStore";
 import SettingsModal from "../components/SettingsModal";
+
+// Category display names and colors
+const CATEGORY_CONFIG: Record<GameCategory, { label: string; color: string }> =
+  {
+    board: {
+      label: "Board",
+      color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    },
+    strategy: {
+      label: "Strategy",
+      color: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    },
+    puzzle: {
+      label: "Puzzle",
+      color: "bg-green-500/20 text-green-400 border-green-500/30",
+    },
+    card: {
+      label: "Card",
+      color: "bg-red-500/20 text-red-400 border-red-500/30",
+    },
+    party: {
+      label: "Party",
+      color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+    },
+    relax: {
+      label: "Relax",
+      color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+    },
+    classic: {
+      label: "Classic",
+      color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+    },
+  };
 
 export default function Lobby() {
   const { username } = useUserStore();
@@ -17,6 +62,9 @@ export default function Lobby() {
   const [showCreateModal, setShowCreateModal] = useState<string | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<GameCategory | null>(
+    null
+  );
 
   useEffect(() => {
     const socket = getSocket();
@@ -135,59 +183,106 @@ export default function Lobby() {
 
           {/* Games Gallery */}
           <section className="mb-16">
-            <div className="flex items-center gap-3 mb-6">
-              <Gamepad className="w-6 h-6 text-primary" />
-              <h3 className="text-2xl font-display text-text-primary">
-                Available Games
-              </h3>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <Gamepad className="w-6 h-6 text-primary" />
+                <h3 className="text-2xl font-display text-text-primary">
+                  Available Games
+                </h3>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="w-4 h-4 text-text-muted" />
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+                    selectedCategory === null
+                      ? "bg-primary/20 text-primary border-primary/30"
+                      : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  All
+                </button>
+                {getAllCategories().map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+                      selectedCategory === category
+                        ? CATEGORY_CONFIG[category].color
+                        : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    {CATEGORY_CONFIG[category].label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:gap-6 gap-3">
-              {getAllGames().map((game) => {
-                const Icon = game.icon;
-                return (
-                  <div
-                    key={game.id}
-                    className={`glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-200 ${
-                      !game.isAvailable ? "opacity-50" : ""
-                    }`}
-                  >
-                    {/* align center */}
-                    <div className="mb-4 flex items-center justify-center">
-                      <Icon className="w-12 h-12 text-primary" />
+              {getAllGames()
+                .filter((game) =>
+                  selectedCategory
+                    ? game.categories.includes(selectedCategory)
+                    : true
+                )
+                .map((game) => {
+                  const Icon = game.icon;
+                  return (
+                    <div
+                      key={game.id}
+                      className={`glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-200 ${
+                        !game.isAvailable ? "opacity-50" : ""
+                      }`}
+                    >
+                      {/* align center */}
+                      <div className="mb-4 flex items-center justify-center">
+                        <Icon className="w-12 h-12 text-primary" />
+                      </div>
+                      <h4 className="font-display text-xl text-text-primary mb-2">
+                        {game.name}
+                      </h4>
+                      <p className="text-sm text-text-secondary mb-3">
+                        {game.description}
+                      </p>
+                      {/* Category badges */}
+                      <div className="flex flex-wrap gap-1.5 mb-3 justify-center">
+                        {game.categories.map((cat) => (
+                          <span
+                            key={cat}
+                            className={`px-2 py-0.5 text-[10px] font-medium rounded-full border ${CATEGORY_CONFIG[cat].color}`}
+                          >
+                            {CATEGORY_CONFIG[cat].label}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-text-muted mb-4 justify-center">
+                        <Users className="w-4 h-4" />
+                        <span>
+                          {game.minPlayers === game.maxPlayers
+                            ? `${game.minPlayers} Players`
+                            : `${game.minPlayers}-${game.maxPlayers} Players`}
+                        </span>
+                      </div>
+                      {game.isAvailable ? (
+                        <button
+                          onClick={() => handleSelectGame(game.id)}
+                          className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-white font-semibold rounded-lg transition-colors cursor-pointer"
+                        >
+                          Create Room
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="w-full px-4 py-2 bg-white/5 text-text-muted font-semibold rounded-lg cursor-not-allowed"
+                        >
+                          Coming Soon
+                        </button>
+                      )}
                     </div>
-                    <h4 className="font-display text-xl text-text-primary mb-2">
-                      {game.name}
-                    </h4>
-                    <p className="text-sm text-text-secondary mb-4">
-                      {game.description}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-text-muted mb-4">
-                      <Users className="w-4 h-4" />
-                      <span>
-                        {game.minPlayers === game.maxPlayers
-                          ? `${game.minPlayers} Players`
-                          : `${game.minPlayers}-${game.maxPlayers} Players`}
-                      </span>
-                    </div>
-                    {game.isAvailable ? (
-                      <button
-                        onClick={() => handleSelectGame(game.id)}
-                        className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-white font-semibold rounded-lg transition-colors cursor-pointer"
-                      >
-                        Create Room
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full px-4 py-2 bg-white/5 text-text-muted font-semibold rounded-lg cursor-not-allowed"
-                      >
-                        Coming Soon
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </section>
 
