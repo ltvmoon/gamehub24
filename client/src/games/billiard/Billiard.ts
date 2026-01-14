@@ -23,6 +23,7 @@ export default class Billiard extends BaseGame {
   private onFrameUpdate?: (balls: Ball[]) => void; // For 60fps canvas updates
   private animationFrameId: number | null = null;
   private syncIntervalId: ReturnType<typeof setInterval> | null = null;
+  private pocketedThisShot: Ball[] = []; // Track balls pocketed during current shot
 
   constructor(
     roomId: string,
@@ -153,6 +154,9 @@ export default class Billiard extends BaseGame {
     // Validate it's the player's turn
     const playerSlot = this.getPlayerSlot(playerId);
     if (playerSlot !== this.state.currentTurn) return;
+
+    // Clear balls pocketed from previous shot
+    this.pocketedThisShot = [];
 
     // Record the shot and broadcast
     this.state.lastShot = { angle, power, playerId };
@@ -345,6 +349,9 @@ export default class Billiard extends BaseGame {
           ball.vx = 0;
           ball.vy = 0;
 
+          // Track for continue turn logic
+          this.pocketedThisShot.push(ball);
+
           if (ball.id === 0) {
             // Cue ball pocketed - foul
             this.state.foul = true;
@@ -420,7 +427,38 @@ export default class Billiard extends BaseGame {
   }
 
   private checkContinueTurn(): boolean {
-    // For simplicity, always switch turns (can enhance later)
+    // Player continues if they pocketed at least one of their assigned balls
+    const currentPlayer = this.state.players[this.state.currentTurn];
+    const myBallType = currentPlayer.ballType;
+
+    // If no ball type assigned yet and we pocketed a ball, we get to continue
+    // (the ball type was just assigned in checkPockets/assignBallType)
+    if (myBallType) {
+      // Check if any of the pocketed balls match our assigned type
+      const pocketedOwnBall = this.pocketedThisShot.some(
+        (b) => b.type === myBallType
+      );
+
+      // Also check if we're at the 8-ball stage and pocketed 8
+      const allOwnBallsPocketed =
+        this.state.balls.filter((b) => !b.pocketed && b.type === myBallType)
+          .length === 0;
+
+      const pocketed8Ball = this.pocketedThisShot.some((b) => b.id === 8);
+
+      if (allOwnBallsPocketed && pocketed8Ball) {
+        return true; // Won the game!
+      }
+
+      return pocketedOwnBall;
+    }
+
+    // If we just got assigned a ball type (first pocket), continue
+    if (this.pocketedThisShot.length > 0) {
+      const pocketedNonCue = this.pocketedThisShot.filter((b) => b.id !== 0);
+      return pocketedNonCue.length > 0;
+    }
+
     return false;
   }
 
