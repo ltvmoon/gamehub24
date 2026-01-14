@@ -10,6 +10,7 @@ import {
   Columns3,
   Dices,
   LayoutGrid,
+  Layers,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
@@ -217,6 +218,23 @@ games.set("dotsandboxes", {
     return new DotsAndBoxes(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./dotsandboxes/DotsAndBoxesUI").then((m) => m.default),
+});
+
+// Register UNO
+games.set("uno", {
+  id: "uno",
+  name: "UNO",
+  description: "Classic card game! Match colors or numbers to win.",
+  icon: Layers,
+  categories: ["card", "party", "classic"],
+  minPlayers: 2,
+  maxPlayers: 4,
+  isAvailable: true,
+  createGame: async (roomId, socket, isHost, userId, players) => {
+    const { default: Uno } = await import("./uno/Uno");
+    return new Uno(roomId, socket, isHost, userId, players);
+  },
+  loadUI: () => import("./uno/UnoUI").then((m) => m.default),
 });
 
 // Registry functions
