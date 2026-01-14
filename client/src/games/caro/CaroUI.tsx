@@ -11,15 +11,13 @@ import {
   Bot,
 } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
-
-interface CaroUIProps {
-  game: Caro;
-}
+import type { GameUIProps } from "../types";
 
 const BOARD_SIZE = 50;
 const CELL_SIZE = 40;
 
-export default function CaroUI({ game }: CaroUIProps) {
+export default function CaroUI({ game: baseGame }: GameUIProps) {
+  const game = baseGame as Caro;
   const [state, setState] = useState<CaroState>(game.getState());
   const { userId } = useUserStore();
 

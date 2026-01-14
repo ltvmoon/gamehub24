@@ -10,12 +10,10 @@ import "chessground/assets/chessground.base.css";
 import "chessground/assets/chessground.brown.css";
 import "chessground/assets/chessground.cburnett.css";
 import { useUserStore } from "../../stores/userStore";
+import type { GameUIProps } from "../types";
 
-interface ChessUIProps {
-  game: ChessGame;
-}
-
-export default function ChessUI({ game }: ChessUIProps) {
+export default function ChessUI({ game: baseGame }: GameUIProps) {
+  const game = baseGame as ChessGame;
   const [state, setState] = useState<ChessState>(game.getState());
   const { userId } = useUserStore();
   const boardRef = useRef<HTMLDivElement>(null);

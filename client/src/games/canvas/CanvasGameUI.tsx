@@ -6,11 +6,7 @@ import CanvasGame, {
 } from "./CanvasGame";
 import { Palette, Trash2, Undo2 } from "lucide-react";
 import { useAlertStore } from "../../stores/alertStore";
-
-interface CanvasGameUIProps {
-  game: CanvasGame;
-  currentUserId: string;
-}
+import type { GameUIProps } from "../types";
 
 const COLORS = [
   "#ef4444", // red
@@ -30,9 +26,10 @@ const STROKE_SIZES = [
 ];
 
 export default function CanvasGameUI({
-  game,
+  game: baseGame,
   currentUserId,
-}: CanvasGameUIProps) {
+}: GameUIProps) {
+  const game = baseGame as CanvasGame;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<CanvasState>(game.getState());
   const [isDrawing, setIsDrawing] = useState(false);
@@ -278,8 +275,8 @@ export default function CanvasGameUI({
 
     // Send completed stroke
     const stroke: DrawStroke = {
-      id: `${currentUserId}_${Date.now()}`,
-      playerId: currentUserId,
+      id: `${currentUserId ?? ""}_${Date.now()}`,
+      playerId: currentUserId ?? "",
       points: currentStroke,
       color: currentColor,
       width: currentStrokeWidth,
@@ -356,8 +353,8 @@ export default function CanvasGameUI({
     const duration = performance.now() - strokeStartTimeRef.current;
 
     const stroke: DrawStroke = {
-      id: `${currentUserId}_${Date.now()}`,
-      playerId: currentUserId,
+      id: `${currentUserId ?? ""}_${Date.now()}`,
+      playerId: currentUserId ?? "",
       points: currentStroke,
       color: currentColor,
       width: currentStrokeWidth,

@@ -3,6 +3,7 @@ import Connect4 from "./Connect4";
 import type { Connect4State } from "./types";
 import { ROWS, COLS } from "./types";
 import { Bot, RotateCcw, Play, RefreshCw, Check, X } from "lucide-react";
+import type { GameUIProps } from "../types";
 
 // CSS for drop animation
 const dropStyle = `
@@ -14,12 +15,11 @@ const dropStyle = `
 }
 `;
 
-interface Connect4UIProps {
-  game: Connect4;
-  currentUserId: string;
-}
-
-export default function Connect4UI({ game, currentUserId }: Connect4UIProps) {
+export default function Connect4UI({
+  game: baseGame,
+  currentUserId,
+}: GameUIProps) {
+  const game = baseGame as Connect4;
   const [state, setState] = useState<Connect4State>(game.getState());
   const [hoverCol, setHoverCol] = useState<number | null>(null);
 

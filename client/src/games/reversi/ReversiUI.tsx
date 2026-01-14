@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Reversi from "./Reversi";
 import type { ReversiState, Cell } from "./types";
 import { Bot, RotateCcw, Play, RefreshCw, Check, X } from "lucide-react";
+import type { GameUIProps } from "../types";
 
 // CSS for flip animation
 const flipStyle = `
@@ -12,12 +13,11 @@ const flipStyle = `
 }
 `;
 
-interface ReversiUIProps {
-  game: Reversi;
-  currentUserId: string;
-}
-
-export default function ReversiUI({ game, currentUserId }: ReversiUIProps) {
+export default function ReversiUI({
+  game: baseGame,
+  currentUserId,
+}: GameUIProps) {
+  const game = baseGame as Reversi;
   const [state, setState] = useState<ReversiState>(game.getState());
 
   useEffect(() => {

@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import DotsAndBoxes from "./DotsAndBoxes";
 import type { DotsAndBoxesState, PlayerColor } from "./types";
 import { Play, RefreshCw } from "lucide-react";
-
-interface DotsAndBoxesUIProps {
-  game: DotsAndBoxes;
-  currentUserId: string;
-}
+import type { GameUIProps } from "../types";
 
 const PLAYER_BG_COLORS: Record<PlayerColor, string> = {
   red: "bg-red-500/60",
@@ -19,9 +15,10 @@ const PLAYER_TEXT_COLORS: Record<PlayerColor, string> = {
 };
 
 export default function DotsAndBoxesUI({
-  game,
+  game: baseGame,
   currentUserId,
-}: DotsAndBoxesUIProps) {
+}: GameUIProps) {
+  const game = baseGame as DotsAndBoxes;
   const [state, setState] = useState<DotsAndBoxesState>(game.getState());
 
   useEffect(() => {

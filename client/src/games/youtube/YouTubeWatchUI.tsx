@@ -9,12 +9,10 @@ import {
   Users,
   User,
 } from "lucide-react";
+import type { GameUIProps } from "../types";
 
-interface YouTubeWatchUIProps {
-  game: YouTubeWatch;
-}
-
-export default function YouTubeWatchUI({ game }: YouTubeWatchUIProps) {
+export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
+  const game = baseGame as YouTubeWatch;
   const [state, setState] = useState<YouTubeWatchState>(game.getState());
   const [urlInput, setUrlInput] = useState("");
   const [player, setPlayer] = useState<YouTubePlayer | null>(null);

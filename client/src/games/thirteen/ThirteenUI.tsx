@@ -15,12 +15,10 @@ import {
 } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
 import { useAlertStore } from "../../stores/alertStore";
+import type { GameUIProps } from "../types";
 
-interface ThirteenUIProps {
-  game: Thirteen;
-}
-
-export default function ThirteenUI({ game }: ThirteenUIProps) {
+export default function ThirteenUI({ game: baseGame }: GameUIProps) {
+  const game = baseGame as Thirteen;
   const [state, setState] = useState<ThirteenState>(game.getState());
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [expandPlays, setExpandPlays] = useState(false);

@@ -4,6 +4,7 @@ import type { LudoState, Token, PlayerColor, TokenPosition } from "./types";
 import { SAFE_POSITIONS } from "./types";
 import { Play, RefreshCw, Dices } from "lucide-react";
 import { useAlertStore } from "../../stores/alertStore";
+import type { GameUIProps } from "../types";
 
 // Color mappings for CSS
 const COLOR_CLASSES: Record<
@@ -70,12 +71,8 @@ const animationStyles = `
 }
 `;
 
-interface LudoUIProps {
-  game: Ludo;
-  currentUserId: string;
-}
-
-export default function LudoUI({ game, currentUserId }: LudoUIProps) {
+export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
+  const game = baseGame as Ludo;
   const [state, setState] = useState<LudoState>(game.getState());
   const [rolling, setRolling] = useState(false);
   const [displayDice, setDisplayDice] = useState<number>(1);

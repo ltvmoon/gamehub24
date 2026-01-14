@@ -6,12 +6,10 @@ import { RefreshCcw, X, Circle, LogOut, Bot } from "lucide-react";
 import { useRoomStore } from "../../stores/roomStore";
 import { useChatStore } from "../../stores/chatStore";
 import { getSocket } from "../../services/socket";
+import type { GameUIProps } from "../types";
 
-interface TicTacToeUIProps {
-  game: TicTacToe;
-}
-
-export default function TicTacToeUI({ game }: TicTacToeUIProps) {
+export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
+  const game = baseGame as TicTacToe;
   const [state, setState] = useState<TicTacToeState>(game.getState());
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
