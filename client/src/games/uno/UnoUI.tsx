@@ -33,9 +33,10 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 
   // Flying card animation state
   const [flyingCard, setFlyingCard] = useState<{
-    card: UnoCard;
+    card?: UnoCard;
     fromPlayerIndex: number;
     direction: "toDiscard" | "toHand";
+    hidden?: boolean;
   } | null>(null);
   // Hide the newest card in discard pile while animation is playing
   const [hideTopDiscard, setHideTopDiscard] = useState(false);
@@ -69,14 +70,11 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 
   // Track previous discard pile length to detect new cards
   const prevDiscardLengthRef = useRef(state.discardPile.length);
-  // Track previous hand length to detect drawn cards
-  const prevHandLengthRef = useRef(mySlot?.hand.length ?? 0);
+  // Track previous hand lengths for all players to detect drawn cards
+  const prevHandLengthsRef = useRef(state.players.map((p) => p.hand.length));
 
   useEffect(() => {
     game.onUpdate((newState) => {
-      const myNewSlot = myIndex >= 0 ? newState.players[myIndex] : null;
-      const newHandLength = myNewSlot?.hand.length ?? 0;
-
       // Detect if a card was played (discard pile grew)
       if (
         newState.discardPile.length > prevDiscardLengthRef.current &&
@@ -105,35 +103,43 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         }, 350);
       }
 
-      // Detect if cards were drawn (hand grew) - only for current player
-      if (
-        newHandLength > prevHandLengthRef.current &&
-        newState.gamePhase === "playing" &&
-        myNewSlot
-      ) {
-        const drawnCount = newHandLength - prevHandLengthRef.current;
-        const drawnCard = myNewSlot.hand[myNewSlot.hand.length - 1];
+      // Detect if cards were drawn (hand grew) - for ALL players
+      newState.players.forEach((player, index) => {
+        const prevLength = prevHandLengthsRef.current[index] || 0;
+        const newLength = player.hand.length;
 
-        // Hide drawn cards while animating
-        setHideDrawnCards(drawnCount);
+        if (newLength > prevLength && newState.gamePhase === "playing") {
+          const isMe = index === myIndex;
+          const drawnCount = newLength - prevLength;
+          // If it's me, we know the card. If it's opponent, use hidden card.
+          const drawnCard = isMe
+            ? player.hand[player.hand.length - 1]
+            : undefined;
 
-        // Trigger flying animation for drawn card
-        setFlyingCard({
-          card: drawnCard,
-          fromPlayerIndex: myIndex,
-          direction: "toHand",
-        });
+          // Only hide drawn cards if it's me (since I can't see others' hands anyway)
+          if (isMe) {
+            setHideDrawnCards(drawnCount);
+          }
 
-        // Show drawn cards and clear animation after it completes
-        setTimeout(() => {
-          setHideDrawnCards(0);
-          setFlyingCard(null);
-        }, 350);
-      }
+          // Trigger flying animation for drawn card
+          setFlyingCard({
+            card: drawnCard,
+            fromPlayerIndex: index,
+            direction: "toHand",
+            hidden: !isMe, // Should be hidden for opponents
+          });
+
+          // Show drawn cards and clear animation after it completes
+          setTimeout(() => {
+            if (isMe) setHideDrawnCards(0);
+            setFlyingCard(null);
+          }, 350);
+        }
+      });
 
       // Update refs for next comparison
       prevDiscardLengthRef.current = newState.discardPile.length;
-      prevHandLengthRef.current = newHandLength;
+      prevHandLengthsRef.current = newState.players.map((p) => p.hand.length);
 
       setState(newState);
       setSelectedCard(null);
@@ -611,6 +617,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
       {flyingCard && (
         <FlyingCard
           card={flyingCard.card}
+          hidden={flyingCard.hidden}
           fromPlayerIndex={flyingCard.fromPlayerIndex}
           myIndex={myIndex}
           desktopSlotRefs={desktopSlotRefs}
@@ -632,9 +639,11 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 function UnoCardDisplay({
   card,
   size = "medium",
+  hidden = false,
 }: {
-  card: UnoCard;
+  card?: UnoCard;
   size?: "small" | "medium" | "large";
+  hidden?: boolean;
 }) {
   const sizeClasses = {
     small: "w-10 h-14",
@@ -647,6 +656,28 @@ function UnoCardDisplay({
     medium: "text-xl md:text-2xl",
     large: "text-3xl",
   };
+
+  if (hidden || !card) {
+    return (
+      <div
+        className={`
+        ${sizeClasses[size]}
+        bg-slate-900
+        rounded-lg md:rounded-xl shadow-lg
+        border-2 border-slate-700
+        shrink-0
+        relative
+        overflow-hidden
+      `}
+      >
+        <div className="absolute inset-1 rounded border-2 border-slate-600 flex items-center justify-center bg-gradient-to-br from-slate-800 to-black">
+          <span className="text-slate-700/50 font-bold transform -rotate-45 select-none text-sm md:text-base">
+            UNO
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   const getCardContent = () => {
     if (card.type === CardType.NUMBER) {
@@ -679,6 +710,7 @@ function UnoCardDisplay({
 // Flying Card Animation Component
 function FlyingCard({
   card,
+  hidden = false,
   fromPlayerIndex,
   myIndex,
   myHandRef,
@@ -691,7 +723,8 @@ function FlyingCard({
   containerRef,
   direction = "toDiscard",
 }: {
-  card: UnoCard;
+  card?: UnoCard;
+  hidden?: boolean;
   fromPlayerIndex: number;
   myIndex: number;
   desktopSlotRefs: React.RefObject<(HTMLDivElement | null)[]>;
@@ -816,7 +849,7 @@ function FlyingCard({
         opacity: isAnimating ? 1 : 0.8,
       }}
     >
-      <UnoCardDisplay card={card} size="large" />
+      <UnoCardDisplay card={card} size="large" hidden={hidden} />
     </div>
   );
 }
