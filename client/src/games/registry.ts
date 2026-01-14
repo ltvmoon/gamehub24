@@ -5,14 +5,16 @@ import {
   Circle,
   Palette,
   Spade,
-  ChessKnight,
   Grid2X2,
   Columns3,
   Dices,
   LayoutGrid,
   Layers,
+  CircleDot,
+  ChessRook,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
 import type { ComponentType } from "react";
 
 import type { BaseGame } from "./BaseGame";
@@ -140,7 +142,7 @@ games.set("chess", {
   id: "chess",
   name: "Chess",
   description: "Strategic board game. Checkmate your opponent!",
-  icon: ChessKnight,
+  icon: ChessRook,
   categories: ["board", "strategy", "classic"],
   minPlayers: 2,
   maxPlayers: 2,
@@ -190,7 +192,7 @@ games.set("thirteen", {
   name: "Thirteen",
   description: "Vietnamese card game (Tiến Lên Miền Nam)",
   icon: Spade,
-  categories: ["card", "strategy"],
+  categories: ["card", "party", "strategy"],
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
@@ -237,8 +239,27 @@ games.set("uno", {
   loadUI: () => import("./uno/UnoUI").then((m) => m.default),
 });
 
+// Register Billiard
+games.set("billiard", {
+  id: "billiard",
+  name: "Billiard (8-Ball)",
+  description:
+    "Classic pool game! Pocket your balls and sink the 8-ball to win.",
+  icon: CircleDot,
+  categories: ["board", "classic", "strategy"],
+  minPlayers: 2,
+  maxPlayers: 2,
+  isAvailable: true,
+  createGame: async (roomId, socket, isHost, userId, players) => {
+    const { default: Billiard } = await import("./billiard/Billiard");
+    return new Billiard(roomId, socket, isHost, userId, players);
+  },
+  loadUI: () => import("./billiard/BilliardUI").then((m) => m.default),
+});
+
 // Registry functions
 export const getGame = (gameType: string): GameModule | undefined => {
+  console.log(games, gameType);
   return games.get(gameType);
 };
 
