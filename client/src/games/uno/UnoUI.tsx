@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Uno from "./Uno";
 import type { UnoState, UnoCard, PlayerSlot, CardColor } from "./types";
 import {
@@ -31,18 +31,114 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const [showDiscardHistory, setShowDiscardHistory] = useState(false);
   const { username } = useUserStore();
 
+  // Flying card animation state
+  const [flyingCard, setFlyingCard] = useState<{
+    card: UnoCard;
+    fromPlayerIndex: number;
+    direction: "toDiscard" | "toHand";
+  } | null>(null);
+  // Hide the newest card in discard pile while animation is playing
+  const [hideTopDiscard, setHideTopDiscard] = useState(false);
+  // Hide drawn cards in hand while animation is playing
+  const [hideDrawnCards, setHideDrawnCards] = useState(0);
+
+  const desktopSlotRefs = useRef<(HTMLDivElement | null)[]>([
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const mobileSlotRefs = useRef<(HTMLDivElement | null)[]>([
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const desktopDiscardPileRef = useRef<HTMLDivElement>(null);
+  const mobileDiscardPileRef = useRef<HTMLDivElement>(null);
+  const desktopDrawPileRef = useRef<HTMLButtonElement>(null);
+  const mobileDrawPileRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const myHandRef = useRef<HTMLDivElement>(null);
+
   const isHost = game.isHostUser;
   const myIndex = game.getMyPlayerIndex();
   const mySlot = myIndex >= 0 ? state.players[myIndex] : null;
   const isMyTurn = state.currentTurnIndex === myIndex;
   const canStart = game.canStartGame();
 
+  // Track previous discard pile length to detect new cards
+  const prevDiscardLengthRef = useRef(state.discardPile.length);
+  // Track previous hand length to detect drawn cards
+  const prevHandLengthRef = useRef(mySlot?.hand.length ?? 0);
+
   useEffect(() => {
     game.onUpdate((newState) => {
+      const myNewSlot = myIndex >= 0 ? newState.players[myIndex] : null;
+      const newHandLength = myNewSlot?.hand.length ?? 0;
+
+      // Detect if a card was played (discard pile grew)
+      if (
+        newState.discardPile.length > prevDiscardLengthRef.current &&
+        newState.gamePhase === "playing"
+      ) {
+        const newCard = newState.discardPile[newState.discardPile.length - 1];
+
+        // Find which player played the card
+        const prevTurnIndex =
+          (newState.currentTurnIndex - newState.turnDirection + 4) % 4;
+
+        // Hide the top card while animating
+        setHideTopDiscard(true);
+
+        // Trigger flying animation
+        setFlyingCard({
+          card: newCard,
+          fromPlayerIndex: prevTurnIndex,
+          direction: "toDiscard",
+        });
+
+        // Show the card in pile and clear animation after it completes
+        setTimeout(() => {
+          setHideTopDiscard(false);
+          setFlyingCard(null);
+        }, 350);
+      }
+
+      // Detect if cards were drawn (hand grew) - only for current player
+      if (
+        newHandLength > prevHandLengthRef.current &&
+        newState.gamePhase === "playing" &&
+        myNewSlot
+      ) {
+        const drawnCount = newHandLength - prevHandLengthRef.current;
+        const drawnCard = myNewSlot.hand[myNewSlot.hand.length - 1];
+
+        // Hide drawn cards while animating
+        setHideDrawnCards(drawnCount);
+
+        // Trigger flying animation for drawn card
+        setFlyingCard({
+          card: drawnCard,
+          fromPlayerIndex: myIndex,
+          direction: "toHand",
+        });
+
+        // Show drawn cards and clear animation after it completes
+        setTimeout(() => {
+          setHideDrawnCards(0);
+          setFlyingCard(null);
+        }, 350);
+      }
+
+      // Update refs for next comparison
+      prevDiscardLengthRef.current = newState.discardPile.length;
+      prevHandLengthRef.current = newHandLength;
+
       setState(newState);
       setSelectedCard(null);
     });
-  }, [game]);
+  }, [game, myIndex]);
 
   const handleCardClick = (card: UnoCard) => {
     if (!isMyTurn || state.gamePhase !== "playing") return;
@@ -88,103 +184,131 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 
   const topCard = state.discardPile[state.discardPile.length - 1];
 
-  const renderPlayerSlot = (playerIndex: number, compact = false) => {
+  const renderPlayerSlot = (
+    playerIndex: number,
+    compact = false,
+    targetRefArray?: React.MutableRefObject<(HTMLDivElement | null)[]>
+  ) => {
     const player = arrangedPlayers[playerIndex];
     const isInGame = myIndex >= 0;
     return (
-      <PlayerSlotDisplay
+      <div
         key={player.actualIndex}
-        slot={player.slot}
-        index={player.actualIndex}
-        isCurrentTurn={state.currentTurnIndex === player.actualIndex}
-        isHost={isHost}
-        gamePhase={state.gamePhase}
-        onAddBot={() => game.requestAddBot(player.actualIndex)}
-        onJoinSlot={() => game.requestJoinSlot(player.actualIndex, username)}
-        onRemove={() => game.requestRemovePlayer(player.actualIndex)}
-        compact={compact}
-        isInGame={isInGame}
-      />
+        ref={(el: HTMLDivElement | null) => {
+          if (targetRefArray) {
+            targetRefArray.current[playerIndex] = el;
+          }
+        }}
+      >
+        <PlayerSlotDisplay
+          slot={player.slot}
+          index={player.actualIndex}
+          isCurrentTurn={state.currentTurnIndex === player.actualIndex}
+          isHost={isHost}
+          gamePhase={state.gamePhase}
+          onAddBot={() => game.requestAddBot(player.actualIndex)}
+          onJoinSlot={() => game.requestJoinSlot(player.actualIndex, username)}
+          onRemove={() => game.requestRemovePlayer(player.actualIndex)}
+          compact={compact}
+          isInGame={isInGame}
+        />
+      </div>
     );
   };
 
-  return (
-    <div className="flex flex-col h-full p-2 sm:p-4 gap-2 sm:gap-4 overflow-hidden">
-      {/* Mobile: Top row with 3 opponents */}
-      <div className="flex sm:hidden justify-center gap-2">
-        {renderPlayerSlot(1, true)}
-        {renderPlayerSlot(2, true)}
-        {renderPlayerSlot(3, true)}
-      </div>
+  const renderPlayArea = (
+    isMobile: boolean,
+    pileRef: React.RefObject<HTMLDivElement | null>,
+    drawRef: React.RefObject<HTMLButtonElement | null>
+  ) => {
+    const cardSize = isMobile ? "medium" : "large";
+    const pileDims = isMobile ? "w-14 h-20" : "w-20 h-28";
+    const iconSize = isMobile ? "w-5 h-5" : "w-8 h-8";
+    const containerClass = isMobile
+      ? "flex sm:hidden flex-1 flex-col items-center justify-center gap-2 bg-slate-800/30 rounded-xl p-2 min-h-[120px]"
+      : "hidden sm:flex flex-1 flex-col items-center justify-center gap-4 min-h-[200px] bg-slate-800/30 rounded-2xl p-4";
 
-      {/* Desktop: Top Player */}
-      <div className="hidden sm:flex justify-center">{renderPlayerSlot(2)}</div>
+    return (
+      <div className={containerClass}>
+        {state.gamePhase === "waiting" && (
+          <div
+            className={`flex flex-col items-center ${
+              isMobile ? "gap-2" : "gap-4"
+            }`}
+          >
+            <span
+              className={isMobile ? "text-slate-400 text-sm" : "text-slate-400"}
+            >
+              Waiting for players...
+            </span>
+            {isHost && canStart && (
+              <button
+                onClick={() => game.requestStartGame()}
+                className={`px-6 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2 ${
+                  isMobile ? "text-sm px-4 py-2" : ""
+                }`}
+              >
+                <Play className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
+                {isMobile ? "Start" : "Start Game"}
+              </button>
+            )}
+            {isHost && !canStart && (
+              <span className="text-sm text-slate-500">
+                Need at least 2 players to start
+              </span>
+            )}
+          </div>
+        )}
 
-      {/* Desktop: Middle Row */}
-      <div className="hidden sm:flex flex-1 items-center justify-between gap-4">
-        {renderPlayerSlot(1)}
-
-        {/* Play Area - Desktop */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[200px] bg-slate-800/30 rounded-2xl p-4">
-          {state.gamePhase === "waiting" && (
-            <div className="flex flex-col items-center gap-4">
-              <span className="text-slate-400">Waiting for players...</span>
-              {isHost && canStart && (
-                <button
-                  onClick={() => game.requestStartGame()}
-                  className="px-6 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2"
-                >
-                  <Play className="w-5 h-5" />
-                  Start Game
-                </button>
-              )}
-              {isHost && !canStart && (
-                <span className="text-sm text-slate-500">
-                  Need at least 2 players to start
+        {state.gamePhase === "playing" && (
+          <div
+            className={`flex flex-col items-center ${
+              isMobile ? "gap-2" : "gap-4"
+            }`}
+          >
+            {/* Discard & Draw Piles */}
+            <div
+              className={`flex items-center ${isMobile ? "gap-4" : "gap-6"}`}
+            >
+              {/* Draw Pile */}
+              <button
+                ref={drawRef}
+                onClick={handleDraw}
+                disabled={!isMyTurn}
+                className={`relative ${pileDims} bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl border-2 border-slate-600 flex items-center justify-center hover:border-slate-400 transition-all disabled:opacity-50`}
+              >
+                <Layers className={`${iconSize} text-slate-400`} />
+                <span className="absolute bottom-1 text-xs text-slate-400">
+                  {state.drawPile.length}
                 </span>
-              )}
-            </div>
-          )}
+              </button>
 
-          {state.gamePhase === "playing" && (
-            <div className="flex flex-col items-center gap-4">
-              {/* Discard Pile */}
-              <div className="flex items-center gap-6">
-                {/* Draw Pile */}
-                <button
-                  onClick={handleDraw}
-                  disabled={!isMyTurn}
-                  className="relative w-20 h-28 bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl border-2 border-slate-600 flex items-center justify-center hover:border-slate-400 transition-all disabled:opacity-50"
-                >
-                  <Layers className="w-8 h-8 text-slate-400" />
-                  <span className="absolute bottom-1 text-xs text-slate-400">
-                    {state.drawPile.length}
-                  </span>
-                </button>
-
-                {/* Discard Pile Stack */}
+              {/* Discard Pile Stack */}
+              <div ref={pileRef} className={`relative ${pileDims}`}>
                 <button
                   onClick={() => setShowDiscardHistory(true)}
-                  className="relative w-20 h-28 cursor-pointer hover:scale-105 transition-transform"
+                  className="absolute inset-0 cursor-pointer hover:scale-105 transition-transform"
                   title="Click to view history"
                 >
                   {state.discardPile.slice(-4).map((card, index, arr) => {
                     const isTop = index === arr.length - 1;
-                    const offset = (arr.length - 1 - index) * 3;
-                    const rotation = (index - Math.floor(arr.length / 2)) * 5;
+                    // Hide top card during flying animation
+                    if (isTop && hideTopDiscard) return null;
+                    const offset =
+                      (arr.length - 1 - index) * (isMobile ? 2 : 3);
+                    const rotation =
+                      (index - Math.floor(arr.length / 2)) * (isMobile ? 4 : 5);
                     return (
                       <div
                         key={card.id}
-                        className={`absolute inset-0 ${
-                          isTop ? "animate-[cardPlay_0.3s_ease-out]" : ""
-                        }`}
+                        className="absolute inset-0"
                         style={{
                           transform: `translateX(${offset}px) translateY(${-offset}px) rotate(${rotation}deg)`,
                           zIndex: index,
                           opacity: isTop ? 1 : 0.7,
                         }}
                       >
-                        <UnoCardDisplay card={card} size="large" />
+                        <UnoCardDisplay card={card} size={cardSize} />
                       </div>
                     );
                   })}
@@ -202,164 +326,109 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                   </div>
                 </button>
               </div>
-
-              {/* Pending Draw Indicator */}
-              {state.pendingDraw > 0 && (
-                <div className="text-lg font-bold text-red-400 animate-pulse">
-                  +{state.pendingDraw} cards pending!
-                </div>
-              )}
-
-              {/* Turn Indicator */}
-              <div className="text-sm">
-                {isMyTurn ? (
-                  <span className="text-primary-400 font-medium">
-                    Your Turn
-                    {state.hasDrawn && " - Play drawn card or pass"}
-                  </span>
-                ) : (
-                  <span className="text-slate-400">
-                    {state.players[state.currentTurnIndex]?.username}'s Turn
-                  </span>
-                )}
-              </div>
-
-              {/* Direction indicator */}
-              <div className="text-xs text-slate-500">
-                Direction:{" "}
-                {state.turnDirection === 1
-                  ? "→ Clockwise"
-                  : "← Counter-clockwise"}
-              </div>
-            </div>
-          )}
-
-          {state.gamePhase === "ended" && (
-            <div className="flex flex-col items-center gap-4">
-              <Sparkle className="w-12 h-12 text-yellow-400" />
-              <span className="text-xl font-bold text-yellow-400">
-                {state.players.find((p) => p.id === state.winner)?.username}{" "}
-                Won!
-              </span>
-            </div>
-          )}
-        </div>
-
-        {renderPlayerSlot(3)}
-      </div>
-
-      {/* Mobile: Play Area */}
-      <div className="flex sm:hidden flex-1 flex-col items-center justify-center gap-2 bg-slate-800/30 rounded-xl p-2 min-h-[120px]">
-        {state.gamePhase === "waiting" && (
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-slate-400 text-sm">
-              Waiting for players...
-            </span>
-            {isHost && canStart && (
-              <button
-                onClick={() => game.requestStartGame()}
-                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2 text-sm"
-              >
-                <Play className="w-4 h-4" />
-                Start
-              </button>
-            )}
-          </div>
-        )}
-
-        {state.gamePhase === "playing" && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleDraw}
-                disabled={!isMyTurn}
-                className="relative w-14 h-20 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg border-2 border-slate-600 flex items-center justify-center"
-              >
-                <Layers className="w-5 h-5 text-slate-400" />
-                <span className="absolute bottom-0.5 text-[10px] text-slate-400">
-                  {state.drawPile.length}
-                </span>
-              </button>
-
-              {/* Discard Pile Stack - Mobile */}
-              <button
-                onClick={() => setShowDiscardHistory(true)}
-                className="relative w-14 h-20"
-              >
-                {state.discardPile.slice(-3).map((card, index, arr) => {
-                  const isTop = index === arr.length - 1;
-                  const offset = (arr.length - 1 - index) * 2;
-                  const rotation = (index - Math.floor(arr.length / 2)) * 4;
-                  return (
-                    <div
-                      key={card.id}
-                      className={`absolute inset-0 ${
-                        isTop ? "animate-[cardPlay_0.3s_ease-out]" : ""
-                      }`}
-                      style={{
-                        transform: `translateX(${offset}px) translateY(${-offset}px) rotate(${rotation}deg)`,
-                        zIndex: index,
-                        opacity: isTop ? 1 : 0.6,
-                      }}
-                    >
-                      <UnoCardDisplay card={card} size="medium" />
-                    </div>
-                  );
-                })}
-                {/* Current color indicator */}
-                {topCard && (
-                  <div
-                    className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border border-white z-10 ${
-                      COLOR_BG_CLASSES[state.currentColor]
-                    }`}
-                  />
-                )}
-                {/* Badge showing total count */}
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-slate-600 rounded-full text-[8px] flex items-center justify-center z-20">
-                  {state.discardPile.length}
-                </div>
-              </button>
             </div>
 
+            {/* Pending Draw Indicator */}
             {state.pendingDraw > 0 && (
-              <div className="text-sm font-bold text-red-400">
-                +{state.pendingDraw} pending
+              <div className="text-lg font-bold text-red-400 animate-pulse">
+                +{state.pendingDraw} cards pending!
               </div>
             )}
 
-            <div className="text-xs">
+            {/* Turn & Direction (Desktop Only or Small Mobile?) */}
+            {/* Simplified for mobile to save space, visible on Desktop */}
+            <div className={`text-sm ${isMobile ? "hidden" : "block"}`}>
               {isMyTurn ? (
-                <span className="text-primary-400">Your Turn</span>
+                <span className="text-primary-400 font-medium">
+                  Your Turn
+                  {state.hasDrawn && " - Play drawn card or pass"}
+                </span>
               ) : (
                 <span className="text-slate-400">
                   {state.players[state.currentTurnIndex]?.username}'s Turn
                 </span>
               )}
             </div>
+
+            <div
+              className={`text-xs text-slate-500 ${
+                isMobile ? "hidden" : "block"
+              }`}
+            >
+              Direction:{" "}
+              {state.turnDirection === 1
+                ? "→ Clockwise"
+                : "← Counter-clockwise"}
+            </div>
           </div>
         )}
 
         {state.gamePhase === "ended" && (
-          <div className="flex flex-col items-center gap-2">
-            <Sparkle className="w-8 h-8 text-yellow-400" />
-            <span className="text-base font-bold text-yellow-400">
+          <div className="flex flex-col items-center gap-4">
+            <Sparkle
+              className={`${
+                isMobile ? "w-8 h-8" : "w-12 h-12"
+              } text-yellow-400`}
+            />
+            <span
+              className={`${
+                isMobile ? "text-lg" : "text-xl"
+              } font-bold text-yellow-400`}
+            >
               {state.players.find((p) => p.id === state.winner)?.username} Won!
             </span>
           </div>
         )}
       </div>
+    );
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex flex-col h-full p-2 sm:p-4 gap-2 sm:gap-4 overflow-hidden"
+    >
+      {/* Mobile: Top row with 3 opponents */}
+      <div className="flex sm:hidden justify-center gap-2">
+        {renderPlayerSlot(1, true, mobileSlotRefs)}
+        {renderPlayerSlot(2, true, mobileSlotRefs)}
+        {renderPlayerSlot(3, true, mobileSlotRefs)}
+      </div>
+
+      {/* Desktop: Top Player */}
+      <div className="hidden sm:flex justify-center">
+        {renderPlayerSlot(2, false, desktopSlotRefs)}
+      </div>
+
+      {/* Desktop: Middle Row */}
+      <div className="hidden sm:flex flex-1 items-center justify-between gap-4">
+        {renderPlayerSlot(1, false, desktopSlotRefs)}
+
+        {renderPlayArea(false, desktopDiscardPileRef, desktopDrawPileRef)}
+
+        {renderPlayerSlot(3, false, desktopSlotRefs)}
+      </div>
+
+      {/* Mobile: Play Area */}
+      {renderPlayArea(true, mobileDiscardPileRef, mobileDrawPileRef)}
 
       {/* Bottom: My Slot and Hand */}
       <div className="flex flex-col items-center gap-2 sm:gap-4">
-        <div className="hidden sm:block">{renderPlayerSlot(0)}</div>
-        <div className="flex sm:hidden">{renderPlayerSlot(0, true)}</div>
+        <div className="hidden sm:block">
+          {renderPlayerSlot(0, false, desktopSlotRefs)}
+        </div>
+        <div className="flex sm:hidden">
+          {renderPlayerSlot(0, true, mobileSlotRefs)}
+        </div>
 
         {/* My Hand */}
         {mySlot && state.gamePhase === "playing" && (
           <div className="w-full overflow-x-auto overflow-y-visible pt-4 pb-1">
-            <div className="flex w-fit mx-auto px-4">
+            <div ref={myHandRef} className="flex w-fit mx-auto px-4">
               {mySlot.hand.map((card, index) => {
                 const canPlay = isMyTurn && game.canPlayCardCheck(card);
+                // Hide drawn cards during animation
+                if (index >= mySlot.hand.length - hideDrawnCards) return null;
                 return (
                   <button
                     key={card.id}
@@ -537,6 +606,24 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
           </div>
         </div>
       )}
+
+      {/* Flying Card Animation */}
+      {flyingCard && (
+        <FlyingCard
+          card={flyingCard.card}
+          fromPlayerIndex={flyingCard.fromPlayerIndex}
+          myIndex={myIndex}
+          desktopSlotRefs={desktopSlotRefs}
+          mobileSlotRefs={mobileSlotRefs}
+          myHandRef={myHandRef}
+          desktopDiscardPileRef={desktopDiscardPileRef}
+          mobileDiscardPileRef={mobileDiscardPileRef}
+          desktopDrawPileRef={desktopDrawPileRef}
+          mobileDrawPileRef={mobileDrawPileRef}
+          containerRef={containerRef}
+          direction={flyingCard.direction}
+        />
+      )}
     </div>
   );
 }
@@ -585,6 +672,151 @@ function UnoCardDisplay({
       }}
     >
       <span className="absolute top-0.5 left-1.5">{getCardContent()}</span>
+    </div>
+  );
+}
+
+// Flying Card Animation Component
+function FlyingCard({
+  card,
+  fromPlayerIndex,
+  myIndex,
+  myHandRef,
+  desktopSlotRefs,
+  mobileSlotRefs,
+  desktopDiscardPileRef,
+  mobileDiscardPileRef,
+  desktopDrawPileRef,
+  mobileDrawPileRef,
+  containerRef,
+  direction = "toDiscard",
+}: {
+  card: UnoCard;
+  fromPlayerIndex: number;
+  myIndex: number;
+  desktopSlotRefs: React.RefObject<(HTMLDivElement | null)[]>;
+  mobileSlotRefs: React.RefObject<(HTMLDivElement | null)[]>;
+  myHandRef: React.RefObject<HTMLDivElement | null>;
+  desktopDiscardPileRef: React.RefObject<HTMLDivElement | null>;
+  mobileDiscardPileRef: React.RefObject<HTMLDivElement | null>;
+  desktopDrawPileRef?: React.RefObject<HTMLButtonElement | null>;
+  mobileDrawPileRef?: React.RefObject<HTMLButtonElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  direction?: "toDiscard" | "toHand";
+}) {
+  const [animationState, setAnimationState] = useState<{
+    startPos: { x: number; y: number };
+    endPos: { x: number; y: number };
+  } | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    // Convert actual player index to screen position
+    // Screen positions: 0=me (bottom), 1=left, 2=top, 3=right
+    const baseIndex = myIndex >= 0 ? myIndex : 0;
+    const screenPosition = (fromPlayerIndex - baseIndex + 4) % 4;
+
+    let playerEl: HTMLElement | null | undefined;
+
+    // Helper to check visibility
+    const isVisible = (el: HTMLElement | null | undefined) =>
+      el && el.offsetParent !== null;
+
+    if (screenPosition === 0 && isVisible(myHandRef.current)) {
+      playerEl = myHandRef.current;
+    } else if (isVisible(desktopSlotRefs.current?.[screenPosition])) {
+      playerEl = desktopSlotRefs.current?.[screenPosition];
+    } else if (isVisible(mobileSlotRefs.current?.[screenPosition])) {
+      playerEl = mobileSlotRefs.current?.[screenPosition];
+    } else {
+      // Fallback
+      playerEl =
+        myHandRef.current ||
+        desktopSlotRefs.current?.[screenPosition] ||
+        mobileSlotRefs.current?.[screenPosition];
+    }
+
+    const discardPileEl = isVisible(desktopDiscardPileRef.current)
+      ? desktopDiscardPileRef.current
+      : mobileDiscardPileRef.current ||
+        desktopDiscardPileRef.current ||
+        mobileDiscardPileRef.current;
+
+    const drawPileEl = isVisible(desktopDrawPileRef?.current)
+      ? desktopDrawPileRef?.current
+      : mobileDrawPileRef?.current ||
+        desktopDrawPileRef?.current ||
+        mobileDrawPileRef?.current;
+    const containerEl = containerRef.current;
+
+    if (!playerEl || !discardPileEl || !containerEl) return;
+
+    // Determine source and target based on direction
+    let sourceEl, targetEl;
+
+    if (direction === "toDiscard") {
+      sourceEl = playerEl;
+      targetEl = discardPileEl;
+    } else {
+      // toHand (Draw)
+      if (!drawPileEl) return;
+      sourceEl = drawPileEl;
+      targetEl = playerEl;
+    }
+
+    const containerRect = containerEl.getBoundingClientRect();
+    const sourceRect = sourceEl.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
+
+    // Calculate positions relative to container
+    const startPos = {
+      x: sourceRect.left + sourceRect.width / 2 - containerRect.left - 40,
+      y: sourceRect.top + sourceRect.height / 2 - containerRect.top - 56,
+    };
+    const endPos = {
+      x: targetRect.left + targetRect.width / 2 - containerRect.left - 40,
+      y: targetRect.top + targetRect.height / 2 - containerRect.top - 56,
+    };
+
+    setAnimationState({ startPos, endPos });
+
+    // Trigger animation after a small delay to ensure initial position is set
+    const animationTimer = setTimeout(() => {
+      setIsAnimating(true);
+    }, 10);
+
+    return () => clearTimeout(animationTimer);
+  }, [
+    fromPlayerIndex,
+    myIndex,
+    desktopSlotRefs,
+    mobileSlotRefs,
+    myHandRef,
+    desktopDiscardPileRef,
+    mobileDiscardPileRef,
+    desktopDrawPileRef,
+    mobileDrawPileRef,
+    containerRef,
+    direction,
+  ]);
+
+  if (!animationState) return null;
+
+  const { startPos, endPos } = animationState;
+  const currentPos = isAnimating ? endPos : startPos;
+
+  return (
+    <div
+      className="absolute pointer-events-none z-50"
+      style={{
+        left: currentPos.x,
+        top: currentPos.y,
+        transition: isAnimating ? "all 300ms ease-out" : "none",
+        transform: isAnimating ? "scale(1.1) rotate(5deg)" : "scale(0.8)",
+        opacity: isAnimating ? 1 : 0.8,
+      }}
+    >
+      <UnoCardDisplay card={card} size="large" />
     </div>
   );
 }

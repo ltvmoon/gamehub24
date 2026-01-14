@@ -65,6 +65,7 @@ export default function Lobby() {
   const [selectedCategory, setSelectedCategory] = useState<GameCategory | null>(
     null
   );
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     const socket = getSocket();
@@ -100,6 +101,15 @@ export default function Lobby() {
   const handleSelectGame = (gameId: string) => {
     // Open create room modal
     setShowCreateModal(gameId);
+  };
+
+  const handleCategoryChange = (category: GameCategory | null) => {
+    if (selectedCategory === category) return;
+    setIsAnimating(true);
+    setTimeout(() => {
+      setSelectedCategory(category);
+      setIsAnimating(false);
+    }, 300);
   };
 
   return (
@@ -141,7 +151,7 @@ export default function Lobby() {
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-16">
-            <h2 className="text-5xl font-display text-text-primary mb-4 neon-glow">
+            <h2 className="text-5xl font-display text-text-primary mb-4">
               Play Together, Anywhere
             </h2>
             <p className="text-xl text-text-secondary mb-8">
@@ -195,32 +205,41 @@ export default function Lobby() {
               <div className="flex items-center gap-2 flex-wrap">
                 <Filter className="w-4 h-4 text-text-muted" />
                 <button
-                  onClick={() => setSelectedCategory(null)}
+                  onClick={() => handleCategoryChange(null)}
                   className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
                     selectedCategory === null
                       ? "bg-primary/20 text-primary border-primary/30"
                       : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
                   }`}
                 >
-                  All
+                  All ({getAllGames().length})
                 </button>
-                {getAllCategories().map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
-                      selectedCategory === category
-                        ? CATEGORY_CONFIG[category].color
-                        : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
-                    }`}
-                  >
-                    {CATEGORY_CONFIG[category].label}
-                  </button>
-                ))}
+                {getAllCategories().map((category) => {
+                  const count = getAllGames().filter((g) =>
+                    g.categories.includes(category)
+                  ).length;
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => handleCategoryChange(category)}
+                      className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+                        selectedCategory === category
+                          ? CATEGORY_CONFIG[category].color
+                          : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
+                      }`}
+                    >
+                      {CATEGORY_CONFIG[category].label} ({count})
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:gap-6 gap-3">
+            <div
+              className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:gap-6 gap-3 transition-opacity duration-300 ${
+                isAnimating ? "opacity-0" : "opacity-100"
+              }`}
+            >
               {getAllGames()
                 .filter((game) =>
                   selectedCategory
@@ -520,7 +539,7 @@ function CreateRoomModal({
           {/* Game Type */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Game Type
+              Game
             </label>
             <select
               value={gameType}

@@ -637,11 +637,18 @@ export default class Uno extends BaseGame {
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
-    for (let i = 0; i < Math.min(players.length, 4); i++) {
+    let playerIdx = 0;
+    for (let i = 0; i < 4; i++) {
       const slot = this.state.players[i];
       if (!slot.isBot && !slot.isGuest) {
-        slot.id = players[i]?.id || null;
-        slot.username = players[i]?.username || `Slot ${i + 1}`;
+        if (playerIdx < players.length) {
+          slot.id = players[playerIdx].id;
+          slot.username = players[playerIdx].username;
+          playerIdx++;
+        } else {
+          slot.id = null;
+          slot.username = `Slot ${i + 1}`;
+        }
       }
     }
     this.broadcastState();
