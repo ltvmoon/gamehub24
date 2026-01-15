@@ -21,7 +21,7 @@ export default function DotsAndBoxesUI({
 }: GameUIProps) {
   const game = baseGame as DotsAndBoxes;
   const [state, setState] = useState<DotsAndBoxesState>(game.getState());
-  const { ti, ts } = useLanguage();
+  const { ti } = useLanguage();
 
   useEffect(() => {
     game.onUpdate(setState);
