@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Crown,
@@ -184,6 +184,63 @@ export default function RoomPage() {
     }
   };
 
+  // Resize state
+  const [chatPanelWidth, setChatPanelWidth] = useState(() => {
+    const storedWidth = localStorage.getItem("chatPanelWidth");
+    return storedWidth ? parseInt(storedWidth) : 400;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Helper to check for desktop view
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+    isDragging.current = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }, []);
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isDragging.current && containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      // Calculate difference from the right edge of the container
+      const newWidth = containerRect.right - e.clientX;
+
+      if (newWidth >= 200 && newWidth <= 800) {
+        setChatPanelWidth(newWidth);
+        localStorage.setItem("chatPanelWidth", newWidth.toString());
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    // Only add listeners if we're resizing to avoid overhead
+    if (isResizing) {
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+    }
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, [isResizing, resize, stopResizing]);
+
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
   const [showChangeGameModal, setShowChangeGameModal] = useState(false);
@@ -249,10 +306,10 @@ export default function RoomPage() {
         />
       )}
 
-      <div className="min-h-screen bg-background-primary">
+      <div className="min-h-screen bg-background-primary flex flex-col">
         {/* Room Header */}
-        <header className="z-40 glass-card border-b border-white/10">
-          <div className="max-w-7xl mx-auto px-3 md:px-4 py-3 md:py-4">
+        <header className="z-40 glass-card border-b border-white/10 flex-shrink-0">
+          <div className="w-full px-3 md:px-4 py-3 md:py-4">
             <div className="flex items-center justify-between gap-2">
               {/* Left side: Back button + Room info */}
               <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
@@ -339,19 +396,40 @@ export default function RoomPage() {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-2 md:px-4 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
+        <main className="flex-1 w-full px-2 py-6 overflow-hidden">
+          <div
+            className="flex flex-col lg:flex-row gap-1 h-full"
+            ref={containerRef}
+          >
             {/* Game Container */}
-            <div className="glass-card rounded-2xl p-2 md:p-4">
+            <div className="flex-1 min-w-0 glass-card rounded-2xl p-2 md:p-4 overflow-hidden flex flex-col">
               <GameContainer />
             </div>
 
+            {/* Resize Handle (Desktop Only) */}
+            <div
+              className={`hidden lg:flex w-4 cursor-col-resize items-center justify-center hover:bg-white/10 rounded transition-colors flex-shrink-0 ${
+                isResizing ? "bg-white/10" : ""
+              }`}
+              onMouseDown={startResizing}
+            >
+              <div className="w-1 h-8 bg-white/20 rounded-full" />
+            </div>
+
             {/* Chat Panel */}
-            <ChatPanel />
+            <div
+              className="flex-shrink-0 glass-card rounded-2xl flex flex-col"
+              style={{
+                width: isDesktop ? chatPanelWidth : "100%",
+                height: isDesktop ? "auto" : "600px",
+              }}
+            >
+              <ChatPanel />
+            </div>
           </div>
         </main>
 
-        <footer className="p-4">
+        <footer className="p-4 flex-shrink-0">
           <p className="text-text-muted text-xs">
             &copy; {new Date().getFullYear()} GameHub24. Made with ❤️ by{" "}
             <span className="text-primary">

@@ -63,7 +63,7 @@ export default function ChatPanel() {
   };
 
   return (
-    <div className="glass-card rounded-2xl flex flex-col h-[600px]">
+    <div className="flex flex-col h-full w-full">
       {/* Player List */}
       <div className="p-4 border-b border-white/10">
         <h3 className="text-sm font-semibold text-text-secondary mb-3">

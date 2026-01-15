@@ -81,6 +81,14 @@ export type CardAction =
   | { type: "COLLECT_FROM_EACH"; amount: number }
   | { type: "REPAIRS"; perHouse: number; perHotel: number };
 
+// Game Log interface
+export interface GameLog {
+  id: string;
+  message: string | { en: string; vi: string };
+  type: "info" | "action" | "alert";
+  timestamp: number;
+}
+
 // Main game state
 export interface MonopolyState {
   players: MonopolyPlayer[];
@@ -98,7 +106,18 @@ export interface MonopolyState {
     | { type: "PAY_RENT"; amount: number; toPlayerId: string }
     | { type: "PAY_TAX"; amount: number }
     | { type: "CARD"; card: Card };
-  lastAction: string | null; // Description of last action for UI
+  lastAction: string | { en: string; vi: string } | null; // Description of last action for UI
+  logs: GameLog[];
+  tradeOffers: TradeOffer[];
+}
+
+export interface TradeOffer {
+  id: string;
+  fromPlayerId: string;
+  toPlayerId: string;
+  propertyId: number; // Space ID
+  price: number;
+  status: "pending" | "accepted" | "declined" | "cancelled";
 }
 
 // === Actions ===
@@ -185,6 +204,25 @@ export interface RequestSyncAction {
   type: "REQUEST_SYNC";
 }
 
+export interface OfferTradeAction {
+  type: "OFFER_TRADE";
+  fromPlayerId: string;
+  toPlayerId: string;
+  spaceId: number;
+  price: number;
+}
+
+export interface RespondTradeAction {
+  type: "RESPOND_TRADE";
+  offerId: string;
+  accepted: boolean;
+}
+
+export interface CancelTradeAction {
+  type: "CANCEL_TRADE";
+  offerId: string;
+}
+
 export type MonopolyAction =
   | RollDiceAction
   | BuyPropertyAction
@@ -201,7 +239,10 @@ export type MonopolyAction =
   | StartGameAction
   | AddBotAction
   | RemoveBotAction
-  | RequestSyncAction;
+  | RequestSyncAction
+  | OfferTradeAction
+  | RespondTradeAction
+  | CancelTradeAction;
 
 // === Constants ===
 export const START_MONEY = 15000; // 15,000đ

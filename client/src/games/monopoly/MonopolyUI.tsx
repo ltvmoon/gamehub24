@@ -4,6 +4,7 @@ import {
   type MonopolyState,
   type BoardSpace,
   type PropertyColor,
+  type GameLog,
   BOARD_SPACES,
   PROPERTY_COLORS,
 } from "./types";
@@ -54,12 +55,16 @@ export default function MonopolyUI({
 }: GameUIProps) {
   const game = baseGame as Monopoly;
   const [state, setState] = useState<MonopolyState>(game.getState());
+  const [historyLogs, setHistoryLogs] = useState<GameLog[]>(
+    game.getState().logs || []
+  );
   const { ti } = useLanguage();
   const [rolling, setRolling] = useState(false);
   const [displayDice, setDisplayDice] = useState<[number, number]>([1, 1]);
   const [selectedProperty, setSelectedProperty] = useState<BoardSpace | null>(
     null
   );
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
 
   const isRollingRef = useRef(false);
   const lastDiceRef = useRef<number[] | undefined>(game.getState().diceValues);
@@ -128,6 +133,15 @@ export default function MonopolyUI({
         });
         lastPositionsRef.current = posMap;
       }
+
+      // Update local history logs (accumulate unique logs)
+      setHistoryLogs((prevLogs) => {
+        const newLogs = newState.logs || [];
+        const existingIds = new Set(prevLogs.map((l) => l.id));
+        const uniqueNewLogs = newLogs.filter((l) => !existingIds.has(l.id));
+        if (uniqueNewLogs.length === 0) return prevLogs;
+        return [...prevLogs, ...uniqueNewLogs];
+      });
     });
 
     setState(game.getState());
@@ -588,7 +602,7 @@ export default function MonopolyUI({
         {/* Last action */}
         {state.lastAction && (
           <p className="text-gray-400 text-sm text-center">
-            {state.lastAction}
+            {ti(state.lastAction)}
           </p>
         )}
       </div>
@@ -605,8 +619,6 @@ export default function MonopolyUI({
       ? state.players.find((p) => p.id === ownership.ownerId)
       : null;
     const isMyProperty = ownership?.ownerId === currentUserId;
-    const canBuild =
-      isMyProperty && selectedProperty.color && selectedProperty.houseCost;
 
     return (
       <div
@@ -694,19 +706,178 @@ export default function MonopolyUI({
             </div>
           )}
 
+          {/* Economy Actions */}
+          {isMyProperty && (
+            <div className="mt-4 pt-3 border-t border-slate-600 flex flex-col gap-2">
+              <h4 className="text-white text-xs font-bold uppercase mb-1">
+                {ti({ en: "Manage Property", vi: "Quản lý tài sản" })}
+              </h4>
+
+              {/* Sell House */}
+              {ownership &&
+                ownership.houses > 0 &&
+                selectedProperty.houseCost && (
+                  <button
+                    onClick={() => game.requestSellHouse(selectedProperty.id)}
+                    className="w-full px-3 py-1.5 bg-orange-700 hover:bg-orange-600 text-white rounded text-xs"
+                  >
+                    {ti({ en: "Sell House", vi: "Bán nhà" })} (+
+                    {(selectedProperty.houseCost / 2).toLocaleString()}đ)
+                  </button>
+                )}
+
+              {/* Mortgage / Unmortgage */}
+              {ownership &&
+                !ownership.mortgaged &&
+                ownership.houses === 0 &&
+                selectedProperty.price && (
+                  <button
+                    onClick={() => game.requestMortgage(selectedProperty.id)}
+                    className="w-full px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded text-xs"
+                  >
+                    {ti({ en: "Mortgage", vi: "Thế chấp" })} (+
+                    {(selectedProperty.price / 2).toLocaleString()}đ)
+                  </button>
+                )}
+
+              {ownership && ownership.mortgaged && selectedProperty.price && (
+                <button
+                  onClick={() => game.requestUnmortgage(selectedProperty.id)}
+                  className="w-full px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded text-xs"
+                >
+                  {ti({ en: "Unmortgage", vi: "Chuộc lại" })} (-
+                  {((selectedProperty.price / 2) * 1.1).toLocaleString()}đ)
+                </button>
+              )}
+
+              {/* Trade With Player */}
+              <div className="pt-2">
+                <p className="text-gray-400 text-xs mb-1">
+                  {ti({ en: "Sell to Player", vi: "Bán cho người khác" })}
+                </p>
+                <div className="flex gap-1">
+                  <select
+                    className="flex-1 bg-slate-700 text-white text-xs rounded p-1 outline-none"
+                    id="trade-player-select"
+                  >
+                    {state.players
+                      .filter((p) => p.id && p.id !== currentUserId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id!}>
+                          {p.username}
+                        </option>
+                      ))}
+                  </select>
+                  <input
+                    type="number"
+                    placeholder="Price"
+                    className="w-16 bg-slate-700 text-white text-xs rounded p-1 outline-none"
+                    id="trade-price-input"
+                  />
+                  <button
+                    onClick={() => {
+                      const select = document.getElementById(
+                        "trade-player-select"
+                      ) as HTMLSelectElement;
+                      const input = document.getElementById(
+                        "trade-price-input"
+                      ) as HTMLInputElement;
+                      const targetId = select.value;
+                      const price = parseInt(input.value);
+                      if (targetId && !isNaN(price) && price > 0) {
+                        game.requestOfferTrade(
+                          targetId,
+                          selectedProperty.id,
+                          price
+                        );
+                        setSelectedProperty(null);
+                      }
+                    }}
+                    className="px-2 py-1 bg-green-700 hover:bg-green-600 text-white rounded text-xs"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Buy From Player (If owned by someone else) */}
+          {!isMyProperty && ownership && ownership.ownerId !== "bank" && (
+            <div className="mt-4 pt-3 border-t border-slate-600 flex flex-col gap-2">
+              <p className="text-gray-400 text-xs mb-1">
+                {ti({ en: "Offer to Buy", vi: "Đề nghị mua lại" })}
+              </p>
+              <div className="flex gap-1">
+                <input
+                  type="number"
+                  placeholder="Price"
+                  className="flex-1 bg-slate-700 text-white text-xs rounded p-1 outline-none"
+                  id="buy-price-input"
+                />
+                <button
+                  onClick={() => {
+                    const input = document.getElementById(
+                      "buy-price-input"
+                    ) as HTMLInputElement;
+                    const price = parseInt(input.value);
+                    if (!isNaN(price) && price > 0) {
+                      // Target is the current owner
+                      game.requestOfferTrade(
+                        ownership.ownerId,
+                        selectedProperty.id,
+                        price
+                      );
+                      setSelectedProperty(null);
+                    }
+                  }}
+                  className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded text-xs"
+                >
+                  {ti({ en: "Send Offer", vi: "Gửi đề nghị" })}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 mt-4">
-            {canBuild && isMyTurn && ownership && ownership.houses < 5 && (
-              <button
-                onClick={() => {
-                  game.requestBuildHouse(selectedProperty.id);
-                  setSelectedProperty(null);
-                }}
-                className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm"
-              >
-                {ti({ en: "Build House", vi: "Xây nhà" })} (
-                {selectedProperty.houseCost?.toLocaleString()}đ)
-              </button>
-            )}
+            {isMyProperty &&
+              selectedProperty.color &&
+              selectedProperty.houseCost && (
+                <div className="flex-1">
+                  {(() => {
+                    const validation = game.canBuildHouse(
+                      currentUserId!,
+                      selectedProperty.id
+                    );
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <button
+                          disabled={!validation.allowed || !isMyTurn}
+                          onClick={() => {
+                            if (validation.allowed && isMyTurn) {
+                              game.requestBuildHouse(selectedProperty.id);
+                              setSelectedProperty(null);
+                            }
+                          }}
+                          className={`w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+                            validation.allowed && isMyTurn
+                              ? "bg-green-600 hover:bg-green-500 text-white"
+                              : "bg-green-900/50 text-gray-400 cursor-not-allowed"
+                          }`}
+                        >
+                          {ti({ en: "Build House", vi: "Xây nhà" })} (
+                          {selectedProperty.houseCost?.toLocaleString()}đ)
+                        </button>
+                        {!validation.allowed && (
+                          <p className="text-[10px] text-red-400 text-center leading-tight">
+                            {ti(validation.reason)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             <button
               onClick={() => setSelectedProperty(null)}
               className="flex-1 px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm"
@@ -719,8 +890,236 @@ export default function MonopolyUI({
     );
   };
 
+  const renderMyProperties = () => {
+    return (
+      state.gamePhase === "playing" &&
+      myIndex >= 0 &&
+      currentUserId && (
+        <div className="bg-slate-800 rounded-lg p-3">
+          <h3 className="text-white font-bold mb-2 text-sm">
+            {ti({ en: "My Properties", vi: "Tài sản của tôi" })}
+          </h3>
+          <div className="flex flex-wrap gap-1">
+            {game.getPlayerProperties(currentUserId).map((prop) => {
+              const space = BOARD_SPACES[prop.spaceId];
+              return (
+                <div
+                  key={prop.spaceId}
+                  className="px-2 py-1 rounded text-xs text-white cursor-pointer hover:brightness-110 transition-all"
+                  style={{
+                    backgroundColor: space?.color
+                      ? getPropertyColorStyle(space.color)
+                      : "#4B5563",
+                  }}
+                  onClick={() => setSelectedProperty(space || null)}
+                  title={
+                    (ti({
+                      en: space?.name || "",
+                      vi: space?.nameVi || "",
+                    }) as string) || ""
+                  }
+                >
+                  {(
+                    (ti({
+                      en: space?.name || "",
+                      vi: space?.nameVi || "",
+                    }) as string) || ""
+                  ).substring(0, 8)}
+                  {prop.houses > 0 && (
+                    <span className="ml-1">
+                      {prop.houses === 5 ? "🏨" : "🏠".repeat(prop.houses)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            {game.getPlayerProperties(currentUserId).length === 0 && (
+              <p className="text-gray-400 text-xs">
+                {ti({
+                  en: "No properties yet",
+                  vi: "Chưa có tài sản nào",
+                })}
+              </p>
+            )}
+          </div>
+        </div>
+      )
+    );
+  };
+
+  const renderHistoryLog = () => {
+    return (
+      <div
+        className={`bg-slate-800 rounded-lg p-2 w-full flex flex-col transition-all duration-300 ${
+          isHistoryExpanded ? "h-40 lg:h-56" : "h-auto"
+        }`}
+      >
+        <h3
+          onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+          className="text-white font-bold text-xs sticky top-0 bg-slate-800 z-10 flex items-center justify-between cursor-pointer hover:text-gray-200"
+        >
+          <div className="flex items-center gap-1">
+            <span>{isHistoryExpanded ? "▼" : "▶"}</span>
+            <span>{ti({ en: "History", vi: "Lịch sử" })}</span>
+          </div>
+          <span className="text-[10px] font-normal text-gray-400">
+            {historyLogs?.length || 0}
+          </span>
+        </h3>
+        {isHistoryExpanded && (
+          <div className="flex-1 overflow-y-auto space-y-0.5 pr-1 font-mono custom-scrollbar mt-1">
+            {(historyLogs || [])
+              .slice()
+              .reverse()
+              .map((log) => (
+                <div
+                  key={log.id}
+                  className={`px-1.5 py-0.5 rounded-sm border-l-2 text-[10px] leading-tight flex items-baseline ${
+                    log.type === "alert"
+                      ? "bg-red-900/20 border-red-500 text-red-200"
+                      : log.type === "action"
+                      ? "bg-blue-900/20 border-blue-500 text-blue-200"
+                      : "bg-slate-700/30 border-gray-500 text-gray-400"
+                  }`}
+                >
+                  <span className="opacity-40 mr-1.5 min-w-[38px] flex-shrink-0">
+                    {new Date(log.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: false,
+                    })}
+                  </span>
+                  <span className="break-words text-left">
+                    {ti(log.message)}
+                  </span>
+                </div>
+              ))}
+            {(!historyLogs || historyLogs.length === 0) && (
+              <p className="text-gray-600 text-[10px] text-center italic mt-2">
+                {ti({ en: "No history yet", vi: "Chưa có lịch sử" })}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderTradeOffers = () => {
+    // Show offers TO me or FROM me (pending)
+    const myOffers = state.tradeOffers?.filter(
+      (o) => o.toPlayerId === currentUserId || o.fromPlayerId === currentUserId
+    );
+
+    if (!myOffers || myOffers.length === 0) return null;
+
+    return (
+      <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-sm px-4">
+        {myOffers.map((offer) => {
+          const fromMe = offer.fromPlayerId === currentUserId;
+          const otherPlayer = state.players.find(
+            (p) => p.id === (fromMe ? offer.toPlayerId : offer.fromPlayerId)
+          );
+          const space = BOARD_SPACES[offer.propertyId];
+
+          // Determine if it was a Buy or Sell offer
+          // We need state to know who owns it, but we can infer from "fromMyself" and intent?
+          // Actually, we can check property ownership in state
+          const property = state.properties.find(
+            (p) => p.spaceId === offer.propertyId
+          );
+          const isSellOffer = property?.ownerId === offer.fromPlayerId;
+          const isBuyOffer = property?.ownerId === offer.toPlayerId;
+
+          let title = ti({ en: "TRADE OFFER", vi: "LỜI MỜI GIAO DỊCH" });
+          let description = "";
+
+          if (fromMe) {
+            if (isSellOffer) {
+              description = `${ti({
+                en: "You offered to sell",
+                vi: "Bạn đề nghị bán",
+              })} ${ti({ en: space?.name, vi: space?.nameVi })} ${ti({
+                en: "to",
+                vi: "cho",
+              })} ${otherPlayer?.username}`;
+            } else {
+              description = `${ti({
+                en: "You offered to buy",
+                vi: "Bạn đề nghị mua",
+              })} ${ti({ en: space?.name, vi: space?.nameVi })} ${ti({
+                en: "from",
+                vi: "từ",
+              })} ${otherPlayer?.username}`;
+            }
+          } else {
+            if (isSellOffer) {
+              description = `${otherPlayer?.username} ${ti({
+                en: "offers to sell",
+                vi: "muốn bán",
+              })} ${ti({ en: space?.name, vi: space?.nameVi })} ${ti({
+                en: "to you",
+                vi: "cho bạn",
+              })}`;
+            } else {
+              description = `${otherPlayer?.username} ${ti({
+                en: "offers to buy",
+                vi: "muốn mua",
+              })} ${ti({ en: space?.name, vi: space?.nameVi })} ${ti({
+                en: "from you",
+                vi: "từ bạn",
+              })}`;
+            }
+          }
+
+          return (
+            <div
+              key={offer.id}
+              className="bg-slate-800 border-2 border-yellow-500 rounded-lg p-3 shadow-xl animate-in slide-in-from-top duration-300"
+            >
+              <h4 className="text-yellow-400 font-bold text-sm text-center mb-1">
+                {title}
+              </h4>
+              <p className="text-white text-xs text-center mb-2">
+                {description}
+              </p>
+              <p className="text-center text-green-400 font-mono font-bold mb-3">
+                {offer.price.toLocaleString()}đ
+              </p>
+
+              <div className="flex gap-2 justify-center">
+                {!fromMe && (
+                  <button
+                    onClick={() => game.requestRespondTrade(offer.id, true)}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold shadow-md hover:scale-105 transition-transform"
+                  >
+                    {ti({ en: "ACCEPT", vi: "ĐỒNG Ý" })}
+                  </button>
+                )}
+                <button
+                  onClick={() =>
+                    fromMe
+                      ? game.requestCancelTrade(offer.id)
+                      : game.requestRespondTrade(offer.id, false)
+                  }
+                  className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-medium shadow-sm hover:opacity-90 transition-opacity"
+                >
+                  {fromMe
+                    ? ti({ en: "Cancel", vi: "Hủy" })
+                    : ti({ en: "DECLINE", vi: "TỪ CHỐI" })}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-2 p-0 w-full max-w-6xl mx-auto">
+      {renderTradeOffers()}
       <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
 
       {/* Main Board */}
@@ -820,58 +1219,8 @@ export default function MonopolyUI({
       {/* Side Panel */}
       <div className="flex flex-col gap-4 flex-shrink-0 lg:w-64 w-full">
         {renderPlayerPanel()}
-
-        {/* My Properties */}
-        {state.gamePhase === "playing" && myIndex >= 0 && currentUserId && (
-          <div className="bg-slate-800 rounded-lg p-3">
-            <h3 className="text-white font-bold mb-2 text-sm">
-              {ti({ en: "My Properties", vi: "Tài sản của tôi" })}
-            </h3>
-            <div className="flex flex-wrap gap-1">
-              {game.getPlayerProperties(currentUserId).map((prop) => {
-                const space = BOARD_SPACES[prop.spaceId];
-                return (
-                  <div
-                    key={prop.spaceId}
-                    className="px-2 py-1 rounded text-xs text-white cursor-pointer hover:brightness-110 transition-all"
-                    style={{
-                      backgroundColor: space?.color
-                        ? getPropertyColorStyle(space.color)
-                        : "#4B5563",
-                    }}
-                    onClick={() => setSelectedProperty(space || null)}
-                    title={
-                      (ti({
-                        en: space?.name || "",
-                        vi: space?.nameVi || "",
-                      }) as string) || ""
-                    }
-                  >
-                    {(
-                      (ti({
-                        en: space?.name || "",
-                        vi: space?.nameVi || "",
-                      }) as string) || ""
-                    ).substring(0, 8)}
-                    {prop.houses > 0 && (
-                      <span className="ml-1">
-                        {prop.houses === 5 ? "🏨" : "🏠".repeat(prop.houses)}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-              {game.getPlayerProperties(currentUserId).length === 0 && (
-                <p className="text-gray-400 text-xs">
-                  {ti({
-                    en: "No properties yet",
-                    vi: "Chưa có tài sản nào",
-                  })}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        {renderMyProperties()}
+        {renderHistoryLog()}
       </div>
 
       {/* Property Detail Modal */}
