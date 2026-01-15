@@ -3,6 +3,7 @@ import Connect4 from "./Connect4";
 import type { Connect4State } from "./types";
 import { ROWS, COLS } from "./types";
 import { Bot, RotateCcw, Play, RefreshCw, Check, X } from "lucide-react";
+import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 // CSS for drop animation
@@ -22,6 +23,7 @@ export default function Connect4UI({
   const game = baseGame as Connect4;
   const [state, setState] = useState<Connect4State>(game.getState());
   const [hoverCol, setHoverCol] = useState<number | null>(null);
+  const { ti } = useLanguage();
 
   useEffect(() => {
     game.onUpdate(setState);
@@ -141,9 +143,12 @@ export default function Connect4UI({
                 `}
               />
               <span className="text-white">
-                {player.id ? player.username : "(waiting...)"}
+                {player.id
+                  ? player.username
+                  : ti({ en: "(waiting...)", vi: "(đang chờ...)" })}
                 {player.isBot && " 🤖"}
-                {player.id === currentUserId && " (You)"}
+                {player.id === currentUserId &&
+                  ti({ en: " (You)", vi: " (Bạn)" })}
               </span>
             </div>
             {player.isBot && isHost && state.gamePhase === "waiting" && (
@@ -151,7 +156,7 @@ export default function Connect4UI({
                 onClick={() => game.requestRemoveBot()}
                 className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
               >
-                Remove
+                {ti({ en: "Remove", vi: "Xóa" })}
               </button>
             )}
           </div>
@@ -162,9 +167,17 @@ export default function Connect4UI({
       {state.gamePhase === "playing" && (
         <div className="text-lg text-gray-400">
           {isMyTurn ? (
-            <span className="text-green-400">Your turn! Click a column.</span>
+            <span className="text-green-400">
+              {ti({
+                en: "Your turn! Click a column.",
+                vi: "Lượt của bạn! Chọn một cột.",
+              })}
+            </span>
           ) : (
-            <span>Waiting for {currentPlayer?.username}...</span>
+            <span>
+              {ti({ en: "Waiting for", vi: "Đang chờ" })}{" "}
+              {currentPlayer?.username}...
+            </span>
           )}
         </div>
       )}
@@ -174,23 +187,28 @@ export default function Connect4UI({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm mx-4">
             <h3 className="text-lg font-semibold text-white mb-2">
-              Undo Request
+              {ti({ en: "Undo Request", vi: "Yêu cầu hoàn tác" })}
             </h3>
             <p className="text-gray-400 mb-4">
-              {state.undoRequest.fromName} wants to undo their last move.
+              {state.undoRequest.fromName}{" "}
+              {ti({
+                en: "wants to undo their last move.",
+                vi: "muốn hoàn tác nước đi cuối.",
+              })}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => game.acceptUndo()}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
               >
-                <Check className="w-4 h-4" /> Accept
+                <Check className="w-4 h-4" />{" "}
+                {ti({ en: "Accept", vi: "Đồng ý" })}
               </button>
               <button
                 onClick={() => game.declineUndo()}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
               >
-                <X className="w-4 h-4" /> Decline
+                <X className="w-4 h-4" /> {ti({ en: "Decline", vi: "Từ chối" })}
               </button>
             </div>
           </div>
@@ -200,22 +218,27 @@ export default function Connect4UI({
       {/* Waiting for undo response */}
       {state.undoRequest && state.undoRequest.fromId === currentUserId && (
         <div className="text-yellow-400 text-sm">
-          Waiting for opponent to accept undo...
+          {ti({
+            en: "Waiting for opponent to accept undo...",
+            vi: "Đang chờ đối thủ chấp nhận hoàn tác...",
+          })}
         </div>
       )}
 
       {/* Game Over */}
       {state.gamePhase === "ended" && (
         <div className="text-center p-4 bg-slate-800 rounded-lg">
-          <h3 className="text-xl font-bold text-white mb-2">Game Over!</h3>
+          <h3 className="text-xl font-bold text-white mb-2">
+            {ti({ en: "Game Over!", vi: "Kết thúc!" })}
+          </h3>
           <p className="text-gray-300">
             {state.winner === "draw"
-              ? "It's a draw!"
+              ? ti({ en: "It's a draw!", vi: "Hòa!" })
               : state.winner === currentUserId
-              ? "🎉 You won!"
+              ? ti({ en: "🎉 You won!", vi: "🎉 Bạn thắng!" })
               : `${
                   state.players.find((p) => p.id === state.winner)?.username
-                } wins!`}
+                } ${ti({ en: "wins!", vi: "thắng!" })}`}
           </p>
         </div>
       )}
@@ -230,7 +253,8 @@ export default function Connect4UI({
                 onClick={() => game.requestAddBot()}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
               >
-                <Bot className="w-4 h-4" /> Add Bot
+                <Bot className="w-4 h-4" />{" "}
+                {ti({ en: "Add Bot", vi: "Thêm Bot" })}
               </button>
             )}
             {isHost && game.canStartGame() && (
@@ -238,7 +262,8 @@ export default function Connect4UI({
                 onClick={() => game.requestStartGame()}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
               >
-                <Play className="w-4 h-4" /> Start Game
+                <Play className="w-4 h-4" />{" "}
+                {ti({ en: "Start Game", vi: "Bắt đầu" })}
               </button>
             )}
           </>
@@ -254,7 +279,8 @@ export default function Connect4UI({
                   onClick={() => game.requestUndo()}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
                 >
-                  <RotateCcw className="w-4 h-4" /> Undo
+                  <RotateCcw className="w-4 h-4" />{" "}
+                  {ti({ en: "Undo", vi: "Hoàn tác" })}
                 </button>
               )}
           </>
@@ -266,7 +292,8 @@ export default function Connect4UI({
             onClick={() => game.requestNewGame()}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
           >
-            <RefreshCw className="w-4 h-4" /> Play Again
+            <RefreshCw className="w-4 h-4" />{" "}
+            {ti({ en: "Play Again", vi: "Chơi lại" })}
           </button>
         )}
       </div>

@@ -15,6 +15,7 @@ import { useRoomStore } from "../stores/roomStore";
 import { useChatStore } from "../stores/chatStore";
 import { useUserStore } from "../stores/userStore";
 import { useAlertStore } from "../stores/alertStore";
+import useLanguage from "../stores/languageStore";
 import { getSocket } from "../services/socket";
 import { getAllGames } from "../games/registry";
 import { type Room } from "../stores/roomStore";
@@ -29,6 +30,7 @@ export default function RoomPage() {
   const { userId, username } = useUserStore();
 
   const { show: showAlert, confirm: showConfirm } = useAlertStore();
+  const { ti, ts } = useLanguage();
   const socket = getSocket();
 
   // Effect for joining room via direct URL
@@ -115,10 +117,14 @@ export default function RoomPage() {
     });
 
     socket.on("room:deleted", (data) => {
-      showAlert(data.reason || "Room deleted by host", {
-        type: "info",
-        title: "Room Closed",
-      });
+      showAlert(
+        data.reason ||
+          ts({ en: "Room deleted by host", vi: "Phòng đã bị chủ xóa" }),
+        {
+          type: "info",
+          title: ts({ en: "Room Closed", vi: "Phòng đã đóng" }),
+        }
+      );
       setCurrentRoom(null);
       clearMessages();
       navigate("/");
@@ -158,9 +164,17 @@ export default function RoomPage() {
   const handleLeaveRoom = async () => {
     const confirmed = await showConfirm(
       isHost
-        ? "Room will be deleted if you (host) leave"
-        : "Are you sure want to leave this room",
-      isHost ? "Close room?" : "Leave room?"
+        ? ts({
+            en: "Room will be deleted if you (host) leave",
+            vi: "Phòng sẽ bị xóa nếu bạn (chủ) rời đi",
+          })
+        : ts({
+            en: "Are you sure want to leave this room",
+            vi: "Bạn có chắc muốn rời phòng này",
+          }),
+      isHost
+        ? ts({ en: "Close room?", vi: "Đóng phòng?" })
+        : ts({ en: "Leave room?", vi: "Rời phòng?" })
     );
     if (confirmed) {
       socket.emit("room:leave", { roomId });
@@ -211,7 +225,9 @@ export default function RoomPage() {
     return (
       <div className="min-h-screen bg-background-primary flex items-center justify-center">
         <div className="text-center">
-          <p className="text-text-secondary">Loading room...</p>
+          <p className="text-text-secondary">
+            {ti({ en: "Loading room...", vi: "Đang tải phòng..." })}
+          </p>
         </div>
       </div>
     );
@@ -266,7 +282,8 @@ export default function RoomPage() {
                     <div className="hidden md:flex items-center gap-2 text-sm">
                       <Crown className="w-4 h-4 text-text-muted" />
                       <span className="text-text-muted">
-                        {hostUser?.username} {isHost ? "(You)" : ""}
+                        {hostUser?.username}{" "}
+                        {isHost ? ti({ en: "(You)", vi: "(Bạn)" }) : ""}
                       </span>
                     </div>
                   )}
@@ -281,7 +298,9 @@ export default function RoomPage() {
                           ? "bg-white/5 hover:bg-white/10 cursor-pointer px-2 py-0.5 rounded transition-colors text-primary"
                           : "text-text-muted cursor-default"
                       }`}
-                      title={isHost ? "Change game" : ""}
+                      title={
+                        isHost ? ts({ en: "Change game", vi: "Đổi game" }) : ""
+                      }
                     >
                       <Gamepad className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       <p className="capitalize font-medium">
@@ -310,7 +329,8 @@ export default function RoomPage() {
                 {/* Tooltip */}
                 {showUserTooltip && (
                   <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-slate-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-50 animate-fadeIn">
-                    Your ID: <span className="font-semibold">{username}</span>
+                    {ti({ en: "Your ID:", vi: "ID của bạn:" })}{" "}
+                    <span className="font-semibold">{username}</span>
                   </div>
                 )}
               </div>
@@ -365,6 +385,7 @@ function PasswordPromptModal({
 }) {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { ti, ts } = useLanguage();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -397,10 +418,13 @@ function PasswordPromptModal({
             <Lock className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-display text-text-primary">
-            Password Required
+            {ti({ en: "Password Required", vi: "Yêu cầu mật khẩu" })}
           </h2>
           <p className="text-text-secondary mt-2">
-            This room is private. Please enter the password to join.
+            {ti({
+              en: "This room is private. Please enter the password to join.",
+              vi: "Phòng này riêng tư. Vui lòng nhập mật khẩu để tham gia.",
+            })}
           </p>
         </div>
 
@@ -409,7 +433,10 @@ function PasswordPromptModal({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter room password"
+            placeholder={ts({
+              en: "Enter room password",
+              vi: "Nhập mật khẩu phòng",
+            })}
             autoFocus
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-center text-lg dating-tighter"
           />
@@ -420,14 +447,16 @@ function PasswordPromptModal({
               onClick={onCancel}
               className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-text-secondary font-medium rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              {ti({ en: "Cancel", vi: "Hủy" })}
             </button>
             <button
               type="submit"
               disabled={!password || isSubmitting}
               className="flex-1 px-4 py-3 bg-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all cursor-pointer"
             >
-              {isSubmitting ? "Joining..." : "Join Room"}
+              {isSubmitting
+                ? ti({ en: "Joining...", vi: "Đang vào..." })
+                : ti({ en: "Join Room", vi: "Vào phòng" })}
             </button>
           </div>
         </form>
@@ -444,6 +473,7 @@ function ShareModal({
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const { ti } = useLanguage();
 
   const handleCopyLink = async () => {
     try {
@@ -472,10 +502,13 @@ function ShareModal({
 
           <div className="space-y-2">
             <h3 className="text-xl font-display text-text-primary">
-              Share Room
+              {ti({ en: "Share Room", vi: "Chia sẻ phòng" })}
             </h3>
             <p className="text-text-secondary text-sm">
-              Invite friends to join by sharing this link
+              {ti({
+                en: "Invite friends to join by sharing this link",
+                vi: "Mời bạn bè tham gia bằng cách chia sẻ link này",
+              })}
             </p>
           </div>
 
@@ -500,12 +533,12 @@ function ShareModal({
               {copied ? (
                 <>
                   <Check className="w-5 h-5" />
-                  Copied!
+                  {ti({ en: "Copied!", vi: "Đã copy!" })}
                 </>
               ) : (
                 <>
                   <Copy className="w-5 h-5" />
-                  Copy Link
+                  {ti({ en: "Copy Link", vi: "Copy link" })}
                 </>
               )}
             </button>
@@ -525,6 +558,7 @@ function ChangeGameModal({
   onClose: () => void;
   onChangeGame: (gameId: string) => void;
 }) {
+  const { ti } = useLanguage();
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] animate-fadeIn">
       <div className="bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl mx-4 animate-scaleIn relative">
@@ -536,7 +570,7 @@ function ChangeGameModal({
         </button>
 
         <h3 className="text-2xl font-display text-text-primary mb-6">
-          Change Game
+          {ti({ en: "Change Game", vi: "Đổi game" })}
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -571,10 +605,10 @@ function ChangeGameModal({
                       isSelected ? "text-primary" : "text-text-primary"
                     }`}
                   >
-                    {game.name}
+                    {ti(game.name)}
                   </h4>
                   <p className="text-xs text-text-secondary line-clamp-1">
-                    {game.description}
+                    {ti(game.description)}
                   </p>
                 </div>
               </button>

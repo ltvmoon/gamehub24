@@ -10,12 +10,14 @@ import "chessground/assets/chessground.base.css";
 import "chessground/assets/chessground.brown.css";
 import "chessground/assets/chessground.cburnett.css";
 import { useUserStore } from "../../stores/userStore";
+import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 export default function ChessUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as ChessGame;
   const [state, setState] = useState<ChessState>(game.getState());
   const { userId } = useUserStore();
+  const { ti } = useLanguage();
   const boardRef = useRef<HTMLDivElement>(null);
   const chessgroundRef = useRef<Api | null>(null);
 
@@ -129,11 +131,13 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
                   {/* Adjust winner logic carefully. winner is 'white' or 'black' string */}
                   {state.winner ===
                   (userId === state.players.white ? "white" : "black")
-                    ? "You Won!"
-                    : "Opponent Won!"}
+                    ? ti({ en: "You Won!", vi: "Bạn thắng!" })
+                    : ti({ en: "Opponent Won!", vi: "Đối thủ thắng!" })}
                 </span>
               ) : (
-                <span className="text-yellow-400">Draw!</span>
+                <span className="text-yellow-400">
+                  {ti({ en: "Draw!", vi: "Hòa!" })}
+                </span>
               )}
             </div>
           ) : (
@@ -143,17 +147,22 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
                   isMyTurn ? "text-primary-400" : "text-slate-400"
                 }`}
               >
-                {isMyTurn ? "Your Turn" : "Opponent's Turn"}
+                {isMyTurn
+                  ? ti({ en: "Your Turn", vi: "Lượt của bạn" })
+                  : ti({ en: "Opponent's Turn", vi: "Lượt đối thủ" })}
               </div>
               {inCheck && state.turn === (myColor === "white" ? "w" : "b") && (
                 <div className="text-sm text-red-400 font-semibold">
-                  You are in check!
+                  {ti({ en: "You are in check!", vi: "Bạn bị chiếu!" })}
                 </div>
               )}
             </>
           )}
           <div className="text-xs text-slate-500">
-            Playing as {myColor === "white" ? "White" : "Black"}
+            {ti({ en: "Playing as", vi: "Đang chơi với quân" })}{" "}
+            {myColor === "white"
+              ? ti({ en: "White", vi: "Trắng" })
+              : ti({ en: "Black", vi: "Đen" })}
           </div>
         </div>
 
@@ -164,7 +173,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
               className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
-              New Game
+              {ti({ en: "New Game", vi: "Ván mới" })}
             </button>
           )}
 
@@ -174,7 +183,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
               className="px-3 py-2 bg-primary-600 hover:bg-primary-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
-              Play Again
+              {ti({ en: "Play Again", vi: "Chơi lại" })}
             </button>
           )}
 
@@ -191,7 +200,9 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
               ) : (
                 <Bot className="w-4 h-4" />
               )}
-              {state.isBotLoading ? "Loading Bot..." : "Play vs Bot"}
+              {state.isBotLoading
+                ? ti({ en: "Loading Bot...", vi: "Đang tải Bot..." })
+                : ti({ en: "Play vs Bot", vi: "Chơi với Bot" })}
             </button>
           )}
         </div>
@@ -201,7 +212,10 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
           state.pendingNewGameRequest !== userId && (
             <div className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700 absolute top-20 left-1/2 -translate-x-1/2 z-10 shadow-xl">
               <div className="text-sm text-white font-medium whitespace-nowrap">
-                Opponent wants New Game
+                {ti({
+                  en: "Opponent wants New Game",
+                  vi: "Đối thủ muốn chơi ván mới",
+                })}
               </div>
               <div className="flex gap-2">
                 <button
@@ -212,7 +226,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
                   }
                   className="flex-1 bg-green-600 hover:bg-green-500 text-xs py-1 px-2 rounded text-white"
                 >
-                  Accept
+                  {ti({ en: "Accept", vi: "Đồng ý" })}
                 </button>
                 <button
                   onClick={() =>
@@ -222,7 +236,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
                   }
                   className="flex-1 bg-red-600 hover:bg-red-500 text-xs py-1 px-2 rounded text-white"
                 >
-                  Decline
+                  {ti({ en: "Decline", vi: "Từ chối" })}
                 </button>
               </div>
             </div>
@@ -231,7 +245,10 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
         {state.pendingNewGameRequest &&
           state.pendingNewGameRequest === userId && (
             <div className="text-sm text-yellow-400 animate-pulse flex items-center">
-              Requesting New Game...
+              {ti({
+                en: "Requesting New Game...",
+                vi: "Đang yêu cầu ván mới...",
+              })}
             </div>
           )}
       </div>
@@ -248,7 +265,9 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
       {/* Captured Pieces */}
       <div className="w-full flex justify-between gap-4 text-sm">
         <div className="bg-slate-800 rounded-lg p-2 flex-1">
-          <div className="text-xs text-slate-400 mb-1">White captured:</div>
+          <div className="text-xs text-slate-400 mb-1">
+            {ti({ en: "White captured:", vi: "Trắng bắt:" })}{" "}
+          </div>
           <div className="flex flex-wrap gap-1">
             {state.capturedPieces.white.map((p, i) => (
               <div
@@ -265,7 +284,9 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
           </div>
         </div>
         <div className="bg-slate-800 rounded-lg p-2 flex-1">
-          <div className="text-xs text-slate-400 mb-1">Black captured:</div>
+          <div className="text-xs text-slate-400 mb-1">
+            {ti({ en: "Black captured:", vi: "Đen bắt:" })}
+          </div>
           <div className="flex flex-wrap gap-1">
             {state.capturedPieces.black.map((p, i) => (
               <div

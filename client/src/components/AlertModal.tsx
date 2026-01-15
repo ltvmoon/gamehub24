@@ -7,8 +7,10 @@ import {
   Loader,
 } from "lucide-react";
 import { useAlertStore } from "../stores/alertStore";
+import useLanguage from "../stores/languageStore";
 
 export default function AlertModal() {
+  const { ti } = useLanguage();
   const {
     isOpen,
     message,
@@ -94,7 +96,7 @@ export default function AlertModal() {
                 onClick={handleClose}
                 className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary font-medium rounded-xl transition-colors"
               >
-                Cancel
+                {ti({ en: "Cancel", vi: "Hủy" })}
               </button>
             )}
             <button
@@ -103,7 +105,9 @@ export default function AlertModal() {
                 !showCancelButton ? "w-full" : ""
               }`}
             >
-              {showCancelButton ? "Confirm" : "Okay"}
+              {showCancelButton
+                ? ti({ en: "Confirm", vi: "Xác nhận" })
+                : ti({ en: "Okay", vi: "Okay" })}
             </button>
           </div>
         </div>

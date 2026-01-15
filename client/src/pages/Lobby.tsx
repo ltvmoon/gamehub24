@@ -14,6 +14,7 @@ import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { useSocketStore } from "../stores/socketStore";
 import { useAlertStore } from "../stores/alertStore";
+import useLanguage from "../stores/languageStore";
 import { getSocket } from "../services/socket";
 import {
   getAllGames,
@@ -24,42 +25,45 @@ import type { Room } from "../stores/roomStore";
 import SettingsModal from "../components/SettingsModal";
 
 // Category display names and colors
-const CATEGORY_CONFIG: Record<GameCategory, { label: string; color: string }> =
-  {
-    board: {
-      label: "Board",
-      color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    },
-    strategy: {
-      label: "Strategy",
-      color: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-    },
-    puzzle: {
-      label: "Puzzle",
-      color: "bg-green-500/20 text-green-400 border-green-500/30",
-    },
-    card: {
-      label: "Card",
-      color: "bg-red-500/20 text-red-400 border-red-500/30",
-    },
-    party: {
-      label: "Party",
-      color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    },
-    relax: {
-      label: "Relax",
-      color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
-    },
-    classic: {
-      label: "Classic",
-      color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-    },
-  };
+const CATEGORY_CONFIG: Record<
+  GameCategory,
+  { label: { en: string; vi: string }; color: string }
+> = {
+  board: {
+    label: { en: "Board", vi: "Bàn cờ" },
+    color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  },
+  strategy: {
+    label: { en: "Strategy", vi: "Chiến thuật" },
+    color: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  },
+  puzzle: {
+    label: { en: "Puzzle", vi: "Giải đố" },
+    color: "bg-green-500/20 text-green-400 border-green-500/30",
+  },
+  card: {
+    label: { en: "Card", vi: "Bài" },
+    color: "bg-red-500/20 text-red-400 border-red-500/30",
+  },
+  party: {
+    label: { en: "Party", vi: "Tiệc tùng" },
+    color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  },
+  relax: {
+    label: { en: "Relax", vi: "Thư giãn" },
+    color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+  },
+  classic: {
+    label: { en: "Classic", vi: "Cổ điển" },
+    color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  },
+};
 
 export default function Lobby() {
   const { username } = useUserStore();
   const { isConnected } = useSocketStore();
   const { publicRooms, setPublicRooms } = useRoomStore();
+  const { ti } = useLanguage();
   const [showCreateModal, setShowCreateModal] = useState<string | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -154,10 +158,16 @@ export default function Lobby() {
           {/* Hero Section */}
           <div className="text-center mb-16">
             <h2 className="text-5xl font-display text-text-primary mb-4">
-              Play Together, Anywhere
+              {ti({
+                en: "Play Together, Anywhere",
+                vi: "Chơi Cùng Nhau, Mọi Nơi",
+              })}
             </h2>
             <p className="text-xl text-text-secondary mb-8">
-              Join multiplayer games with friends in real-time
+              {ti({
+                en: "Join multiplayer games with friends in real-time",
+                vi: "Tham gia các trò chơi nhiều người với bạn bè trong thời gian thực",
+              })}
             </p>
             <div className="flex items-center justify-center gap-2 md:gap-4 flex-col md:flex-row">
               <button
@@ -165,7 +175,7 @@ export default function Lobby() {
                 className="px-8 py-3 bg-primary hover:bg-primary-light text-white font-display rounded-xl shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/70 transition-all duration-200 cursor-pointer flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" />
-                Create Room
+                {ti({ en: "Create Room", vi: "Tạo Phòng" })}
               </button>
 
               <button
@@ -173,7 +183,7 @@ export default function Lobby() {
                 className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 backdrop-blur-sm"
               >
                 <LogIn className="w-5 h-5" />
-                Join Room
+                {ti({ en: "Join Room", vi: "Vào Phòng" })}
               </button>
 
               <button
@@ -188,7 +198,8 @@ export default function Lobby() {
                 className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 backdrop-blur-sm"
               >
                 <Users className="w-5 h-5" />
-                Public Rooms ({publicRooms.length})
+                {ti({ en: "Public Rooms", vi: "Phòng Công Khai" })} (
+                {publicRooms.length})
               </button>
             </div>
 
@@ -196,7 +207,11 @@ export default function Lobby() {
             <div className="mt-6 flex items-center justify-center">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-500/10 border border-green-500/30 rounded-full text-green-400 text-sm font-medium">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                {onlineCount} player{onlineCount !== 1 ? "s" : ""} online
+                {onlineCount}{" "}
+                {ti({
+                  en: onlineCount !== 1 ? "players online" : "player online",
+                  vi: "người chơi online",
+                })}
               </div>
             </div>
           </div>
@@ -207,7 +222,7 @@ export default function Lobby() {
               <div className="flex items-center gap-3">
                 <Gamepad className="w-6 h-6 text-primary" />
                 <h3 className="text-2xl font-display text-text-primary">
-                  Available Games
+                  {ti({ en: "Available Games", vi: "Trò Chơi" })}
                 </h3>
               </div>
 
@@ -222,7 +237,7 @@ export default function Lobby() {
                       : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
                   }`}
                 >
-                  All ({getAllGames().length})
+                  {ti({ en: "All", vi: "Tất cả" })} ({getAllGames().length})
                 </button>
                 {getAllCategories().map((category) => {
                   const count = getAllGames().filter((g) =>
@@ -238,7 +253,7 @@ export default function Lobby() {
                           : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
                       }`}
                     >
-                      {CATEGORY_CONFIG[category].label} ({count})
+                      {ti(CATEGORY_CONFIG[category].label)} ({count})
                     </button>
                   );
                 })}
@@ -270,10 +285,10 @@ export default function Lobby() {
                         <Icon className="w-12 h-12 text-primary" />
                       </div>
                       <h4 className="font-display text-xl text-text-primary mb-2">
-                        {game.name}
+                        {ti(game.name)}
                       </h4>
                       <p className="text-sm text-text-secondary mb-3">
-                        {game.description}
+                        {ti(game.description)}
                       </p>
                       {/* Category badges */}
                       <div className="flex flex-wrap gap-1.5 mb-3 justify-center">
@@ -282,7 +297,7 @@ export default function Lobby() {
                             key={cat}
                             className={`px-2 py-0.5 text-[10px] font-medium rounded-full border ${CATEGORY_CONFIG[cat].color}`}
                           >
-                            {CATEGORY_CONFIG[cat].label}
+                            {ti(CATEGORY_CONFIG[cat].label)}
                           </span>
                         ))}
                       </div>
@@ -290,8 +305,14 @@ export default function Lobby() {
                         <Users className="w-4 h-4" />
                         <span>
                           {game.minPlayers === game.maxPlayers
-                            ? `${game.minPlayers} Players`
-                            : `${game.minPlayers}-${game.maxPlayers} Players`}
+                            ? `${game.minPlayers} ${ti({
+                                en: "Players",
+                                vi: "Người chơi",
+                              })}`
+                            : `${game.minPlayers}-${game.maxPlayers} ${ti({
+                                en: "Players",
+                                vi: "Người chơi",
+                              })}`}
                         </span>
                       </div>
                       {game.isAvailable ? (
@@ -299,14 +320,14 @@ export default function Lobby() {
                           onClick={() => handleSelectGame(game.id)}
                           className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-white font-semibold rounded-lg transition-colors cursor-pointer"
                         >
-                          Create Room
+                          {ti({ en: "Create Room", vi: "Tạo Phòng" })}
                         </button>
                       ) : (
                         <button
                           disabled
                           className="w-full px-4 py-2 bg-white/5 text-text-muted font-semibold rounded-lg cursor-not-allowed"
                         >
-                          Coming Soon
+                          {ti({ en: "Coming Soon", vi: "Sắp Ra Mắt" })}
                         </button>
                       )}
                     </div>
@@ -320,14 +341,18 @@ export default function Lobby() {
             <div className="flex items-center gap-3 mb-6">
               <Users className="w-6 h-6 text-primary" />
               <h3 className="text-2xl font-display text-text-primary">
-                Public Rooms ({publicRooms.length})
+                {ti({ en: "Public Rooms", vi: "Phòng Công Khai" })} (
+                {publicRooms.length})
               </h3>
             </div>
 
             {publicRooms.length === 0 ? (
               <div className="glass-card rounded-2xl p-12 text-center">
                 <p className="text-text-muted">
-                  No public rooms available. Create one to get started!
+                  {ti({
+                    en: "No public rooms available. Create one to get started!",
+                    vi: "Chưa có phòng công khai. Tạo một phòng để bắt đầu!",
+                  })}
                 </p>
               </div>
             ) : (
@@ -383,6 +408,7 @@ function RoomListItem({ room }: { room: Room }) {
   const { username } = useUserStore();
   const { setCurrentRoom } = useRoomStore();
   const { show: showAlert, confirm: confirmAction } = useAlertStore();
+  const { ti, ts } = useLanguage();
 
   const handleJoin = () => {
     const socket = getSocket();
@@ -403,7 +429,14 @@ function RoomListItem({ room }: { room: Room }) {
 
   const handleCloseRoom = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!(await confirmAction("Are you sure you want to close this room?")))
+    if (
+      !(await confirmAction(
+        ts({
+          en: "Are you sure you want to close this room?",
+          vi: "Bạn có chắc muốn đóng phòng này không?",
+        })
+      ))
+    )
       return;
 
     const socket = getSocket();
@@ -431,7 +464,7 @@ function RoomListItem({ room }: { room: Room }) {
           </h4>
           {room.password && (
             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 uppercase tracking-wider">
-              Private
+              {ti({ en: "Private", vi: "Riêng tư" })}
             </span>
           )}
         </div>
@@ -440,12 +473,14 @@ function RoomListItem({ room }: { room: Room }) {
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
             <span className="capitalize truncate max-w-[100px]">
-              {game?.name || room.gameType}
+              {ti(game?.name) || room.gameType}
             </span>
           </div>
           <div className="flex items-center gap-1.5 min-w-0">
             <Users className="w-3.5 h-3.5 text-text-muted" />
-            <span className="truncate max-w-[120px]">Host: {hostName}</span>
+            <span className="truncate max-w-[120px]">
+              {ti({ en: "Host", vi: "Chủ" })}: {hostName}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-text-muted">•</span>
@@ -471,7 +506,7 @@ function RoomListItem({ room }: { room: Room }) {
           onClick={handleJoin}
           className="flex-1 sm:flex-initial px-6 py-2.5 bg-primary hover:bg-primary-light text-white font-semibold rounded-lg shadow-lg shadow-primary/30 transition-all duration-200"
         >
-          Join
+          {ti({ en: "Join", vi: "Vào" })}
         </button>
       </div>
     </div>
@@ -495,6 +530,7 @@ function CreateRoomModal({
   const { setCurrentRoom } = useRoomStore();
   const { show: showAlert } = useAlertStore();
   const { isConnected } = useSocketStore();
+  const { ti, ts } = useLanguage();
 
   const handleCreate = () => {
     const socket = getSocket();
@@ -533,20 +569,23 @@ function CreateRoomModal({
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
       <div className="bg-background-secondary border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl mx-4">
         <h2 className="font-display text-2xl text-text-primary mb-6">
-          Create Room
+          {ti({ en: "Create Room", vi: "Tạo Phòng" })}
         </h2>
 
         <div className="space-y-4 mb-6">
           {/* Room Name */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Room Name
+              {ti({ en: "Room Name", vi: "Tên Phòng" })}
             </label>
             <input
               type="text"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
-              placeholder={"Enter room name (default: " + username + ")"}
+              placeholder={ts({
+                en: `Enter room name (default: ${username})`,
+                vi: `Nhập tên phòng (mặc định: ${username})`,
+              })}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
@@ -554,7 +593,7 @@ function CreateRoomModal({
           {/* Game Type */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Game
+              {ti({ en: "Game", vi: "Trò chơi" })}
             </label>
             <select
               value={gameType}
@@ -563,9 +602,9 @@ function CreateRoomModal({
             >
               {getAllGames().map((game) => (
                 <option key={game.id} value={game.id}>
-                  {game.name}
+                  {ts(game.name)}
                 </option>
-              ))}
+              ))}{" "}
             </select>
           </div>
 
@@ -578,7 +617,9 @@ function CreateRoomModal({
                 onChange={(e) => setIsPublic(e.target.checked)}
                 className="w-4 h-4 text-primary bg-white/5 border-white/10 rounded focus:ring-2 focus:ring-primary cursor-pointer"
               />
-              <span className="text-sm text-text-secondary">Public Room</span>
+              <span className="text-sm text-text-secondary">
+                {ti({ en: "Public Room", vi: "Phòng công khai" })}
+              </span>
             </label>
           </div>
 
@@ -586,13 +627,13 @@ function CreateRoomModal({
           {!isPublic && (
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
-                Password
+                {ti({ en: "Password", vi: "Mật khẩu" })}
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
+                placeholder={ts({ en: "Enter password", vi: "Nhập mật khẩu" })}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
@@ -604,13 +645,13 @@ function CreateRoomModal({
             onClick={onClose}
             className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg transition-colors cursor-pointer"
           >
-            Cancel
+            {ti({ en: "Cancel", vi: "Hủy" })}
           </button>
           <button
             onClick={handleCreate}
             className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary-light text-white rounded-lg shadow-lg shadow-primary/30 transition-all cursor-pointer"
           >
-            Create
+            {ti({ en: "Create", vi: "Tạo" })}
           </button>
         </div>
       </div>
@@ -628,6 +669,7 @@ function JoinRoomModal({ onClose }: { onClose: () => void }) {
   const { setCurrentRoom } = useRoomStore();
   const { show: showAlert } = useAlertStore();
   const { isConnected } = useSocketStore();
+  const { ti, ts } = useLanguage();
 
   const handleJoin = () => {
     const socket = getSocket();
@@ -657,32 +699,35 @@ function JoinRoomModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
       <div className="bg-background-secondary border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl mx-4">
         <h2 className="font-display text-2xl text-text-primary mb-6">
-          Join Room
+          {ti({ en: "Join Room", vi: "Vào Phòng" })}
         </h2>
 
         <div className="space-y-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Room ID
+              {ti({ en: "Room ID", vi: "ID Phòng" })}
             </label>
             <input
               type="text"
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
-              placeholder="Enter room ID"
+              placeholder={ts({ en: "Enter room ID", vi: "Nhập ID phòng" })}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Password (Optional)
+              {ti({ en: "Password (Optional)", vi: "Mật khẩu (Tùy chọn)" })}
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password if required"
+              placeholder={ts({
+                en: "Enter password if required",
+                vi: "Nhập mật khẩu nếu cần",
+              })}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
@@ -693,14 +738,14 @@ function JoinRoomModal({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg transition-colors cursor-pointer"
           >
-            Cancel
+            {ti({ en: "Cancel", vi: "Hủy" })}
           </button>
           <button
             onClick={handleJoin}
             disabled={!roomId.trim()}
             className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg shadow-lg shadow-primary/30 transition-all cursor-pointer"
           >
-            Join
+            {ti({ en: "Join", vi: "Vào" })}
           </button>
         </div>
       </div>

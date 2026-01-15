@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import DotsAndBoxes from "./DotsAndBoxes";
 import type { DotsAndBoxesState, PlayerColor } from "./types";
 import { Play, RefreshCw } from "lucide-react";
+import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 const PLAYER_BG_COLORS: Record<PlayerColor, string> = {
@@ -20,6 +21,7 @@ export default function DotsAndBoxesUI({
 }: GameUIProps) {
   const game = baseGame as DotsAndBoxes;
   const [state, setState] = useState<DotsAndBoxesState>(game.getState());
+  const { ti, ts } = useLanguage();
 
   useEffect(() => {
     game.onUpdate(setState);
@@ -58,11 +60,11 @@ export default function DotsAndBoxesUI({
           <div className="text-lg">
             {isMyTurn ? (
               <span className="text-green-400 font-bold animate-pulse">
-                Your Turn!
+                {ti({ en: "Your Turn!", vi: "Lượt của bạn!" })}
               </span>
             ) : (
               <span className="text-gray-300">
-                Waiting for{" "}
+                {ti({ en: "Waiting for", vi: "Đang chờ" })}{" "}
                 <span
                   className={`${
                     PLAYER_TEXT_COLORS[currentPlayer.color]
@@ -78,10 +80,10 @@ export default function DotsAndBoxesUI({
           <div className="text-2xl font-bold text-white mb-2">
             Game Over!{" "}
             {state.winner === "draw"
-              ? "It's a Draw!"
+              ? ti({ en: "It's a Draw!", vi: "Hòa!" })
               : `${
                   state.players.find((p) => p.id === state.winner)?.username
-                } Wins!`}
+                } ${ti({ en: "Wins!", vi: "Thắng!" })}`}
           </div>
         ) : null}
 
@@ -108,7 +110,7 @@ export default function DotsAndBoxesUI({
                     p.color === "red" ? "text-red-500" : "text-blue-500"
                   }`}
                 >
-                  {p.id ? p.username : "Empty"}
+                  {p.id ? p.username : ti({ en: "Empty", vi: "Trống" })}
                 </div>
               </div>
 
@@ -125,7 +127,7 @@ export default function DotsAndBoxesUI({
               ) : (
                 <div className="h-9 flex items-center">
                   <span className="text-gray-500 text-xs italic">
-                    Waiting...
+                    {ti({ en: "Waiting...", vi: "Đang chờ..." })}
                   </span>
                 </div>
               )}
@@ -140,7 +142,7 @@ export default function DotsAndBoxesUI({
                         onClick={() => game.requestRemoveBot(index)}
                         className="text-xs bg-red-900 hover:bg-red-800 text-red-100 px-2 py-1 rounded"
                       >
-                        Remove Bot
+                        {ti({ en: "Remove Bot", vi: "Xóa Bot" })}
                       </button>
                     ) : (
                       !p.id && (
@@ -148,7 +150,7 @@ export default function DotsAndBoxesUI({
                           onClick={() => game.requestAddBot(index)}
                           className="text-xs bg-cyan-900 hover:bg-cyan-800 text-cyan-100 px-2 py-1 rounded"
                         >
-                          + Add Bot
+                          {ti({ en: "+ Add Bot", vi: "+ Thêm Bot" })}
                         </button>
                       )
                     )}
@@ -167,7 +169,8 @@ export default function DotsAndBoxesUI({
             disabled={!game.canStartGame()}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Play className="w-4 h-4" /> Start Game
+            <Play className="w-4 h-4" />{" "}
+            {ti({ en: "Start Game", vi: "Bắt đầu" })}
           </button>
         )}
 
@@ -178,7 +181,9 @@ export default function DotsAndBoxesUI({
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
           >
             <RefreshCw className="w-4 h-4" />{" "}
-            {isGameEnded ? "Play Again" : "New Game"}
+            {isGameEnded
+              ? ti({ en: "Play Again", vi: "Chơi lại" })
+              : ti({ en: "New Game", vi: "Ván mới" })}
           </button>
         )}
 
@@ -188,7 +193,7 @@ export default function DotsAndBoxesUI({
             onClick={() => game.requestUndo()}
             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
           >
-            Undo
+            {ti({ en: "Undo", vi: "Hoàn tác" })}
           </button>
         )}
       </div>
@@ -203,20 +208,23 @@ export default function DotsAndBoxesUI({
                   (p) => p.id === state.undoRequest?.requesterId
                 )?.username
               }{" "}
-              requested to undo the last move.
+              {ti({
+                en: "requested to undo the last move.",
+                vi: "muốn hoàn tác nước đi vừa rồi.",
+              })}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => game.rejectUndo()}
                 className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded"
               >
-                Reject
+                {ti({ en: "Reject", vi: "Từ chối" })}
               </button>
               <button
                 onClick={() => game.approveUndo()}
                 className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded"
               >
-                Approve
+                {ti({ en: "Approve", vi: "Đồng ý" })}
               </button>
             </div>
           </div>

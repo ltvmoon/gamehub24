@@ -12,6 +12,7 @@ import {
   Layers,
   CircleDot,
   ChessRook,
+  Landmark,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -19,6 +20,9 @@ import type { ComponentType } from "react";
 
 import type { BaseGame } from "./BaseGame";
 import type { GameUIProps } from "./types";
+
+// Localized string type
+export type LocalizedString = { en: string; vi: string };
 
 // Game categories
 export type GameCategory =
@@ -32,8 +36,8 @@ export type GameCategory =
 
 export interface GameModule {
   id: string;
-  name: string;
-  description: string;
+  name: LocalizedString;
+  description: LocalizedString;
   icon: LucideIcon;
   categories: GameCategory[];
   minPlayers: number;
@@ -55,8 +59,11 @@ const games: Map<string, GameModule> = new Map();
 // Register Tic Tac Toe
 games.set("tictactoe", {
   id: "tictactoe",
-  name: "Tic Tac Toe",
-  description: "Classic 3x3 grid game. Get three in a row to win!",
+  name: { en: "Tic Tac Toe", vi: "Cờ Ca-rô 3x3" },
+  description: {
+    en: "Classic 3x3 grid game. Get three in a row to win!",
+    vi: "Trò chơi lưới 3x3 cổ điển. Xếp 3 ô liên tiếp để thắng!",
+  },
   icon: Grid2X2,
   categories: ["board", "classic", "puzzle"],
   minPlayers: 2,
@@ -72,8 +79,11 @@ games.set("tictactoe", {
 // Register Caro (Gomoku)
 games.set("caro", {
   id: "caro",
-  name: "Caro (Gomoku)",
-  description: "Get 5 in a row on a larger board. More strategic!",
+  name: { en: "Caro (Gomoku)", vi: "Cờ Ca-rô" },
+  description: {
+    en: "Get 5 in a row on a larger board. More strategic!",
+    vi: "Xếp 5 ô liên tiếp trên bàn cờ lớn. Chiến thuật hơn!",
+  },
   icon: Grid3x3,
   categories: ["board", "strategy", "puzzle"],
   minPlayers: 2,
@@ -89,8 +99,11 @@ games.set("caro", {
 // Register Connect 4
 games.set("connect4", {
   id: "connect4",
-  name: "Connect 4",
-  description: "Classic 4-in-a-row! Drop discs and connect four to win.",
+  name: { en: "Connect 4", vi: "Nối 4" },
+  description: {
+    en: "Classic 4-in-a-row! Drop discs and connect four to win.",
+    vi: "Thả đĩa và nối 4 ô liên tiếp để thắng!",
+  },
   icon: Columns3,
   categories: ["board", "classic", "puzzle"],
   minPlayers: 2,
@@ -106,8 +119,11 @@ games.set("connect4", {
 // Register Ludo
 games.set("ludo", {
   id: "ludo",
-  name: "Ludo",
-  description: "Classic board game! Roll dice and race your tokens home.",
+  name: { en: "Ludo", vi: "Cờ Cá Ngựa" },
+  description: {
+    en: "Classic board game! Roll dice and race your tokens home.",
+    vi: "Lắc xúc xắc và đua các quân cờ về đích!",
+  },
   icon: Dices,
   categories: ["board", "classic", "party"],
   minPlayers: 2,
@@ -123,8 +139,11 @@ games.set("ludo", {
 // Register Reversi
 games.set("reversi", {
   id: "reversi",
-  name: "Reversi (Othello)",
-  description: "Classic strategy game. Flip your opponent's pieces!",
+  name: { en: "Reversi (Othello)", vi: "Cờ Lật" },
+  description: {
+    en: "Classic strategy game. Flip your opponent's pieces!",
+    vi: "Trò chơi chiến thuật cổ điển. Lật quân của đối thủ!",
+  },
   icon: Circle,
   categories: ["board", "strategy", "classic"],
   minPlayers: 2,
@@ -140,8 +159,11 @@ games.set("reversi", {
 // Register Chess
 games.set("chess", {
   id: "chess",
-  name: "Chess",
-  description: "Strategic board game. Checkmate your opponent!",
+  name: { en: "Chess", vi: "Cờ Vua" },
+  description: {
+    en: "Strategic board game. Checkmate your opponent!",
+    vi: "Trò chơi chiến thuật. Chiếu hết đối thủ!",
+  },
   icon: ChessRook,
   categories: ["board", "strategy", "classic"],
   minPlayers: 2,
@@ -156,8 +178,11 @@ games.set("chess", {
 
 games.set("youtube", {
   id: "youtube",
-  name: "YouTube Watch Party",
-  description: "Watch YouTube videos together with friends!",
+  name: { en: "YouTube Watch Party", vi: "Xem YouTube Cùng Nhau" },
+  description: {
+    en: "Watch YouTube videos together with friends!",
+    vi: "Xem video YouTube cùng bạn bè!",
+  },
   icon: Tv,
   categories: ["party", "relax"],
   minPlayers: 1,
@@ -172,8 +197,11 @@ games.set("youtube", {
 
 games.set("canvas", {
   id: "canvas",
-  name: "Draw Together",
-  description: "Collaborative whiteboard to draw with friends!",
+  name: { en: "Draw Together", vi: "Vẽ Cùng Nhau" },
+  description: {
+    en: "Collaborative whiteboard to draw with friends!",
+    vi: "Bảng vẽ cộng tác để vẽ cùng bạn bè!",
+  },
   icon: Palette,
   categories: ["party", "relax"],
   minPlayers: 1,
@@ -189,8 +217,11 @@ games.set("canvas", {
 // Register Thirteen
 games.set("thirteen", {
   id: "thirteen",
-  name: "Thirteen",
-  description: "Vietnamese card game (Tiến Lên Miền Nam)",
+  name: { en: "Thirteen", vi: "Tiến Lên Miền Nam" },
+  description: {
+    en: "Vietnamese card game (Tiến Lên Miền Nam)",
+    vi: "Trò chơi bài phổ biến tại Việt Nam!",
+  },
   icon: Spade,
   categories: ["card", "party", "strategy"],
   minPlayers: 2,
@@ -206,8 +237,11 @@ games.set("thirteen", {
 // Register Dots and Boxes
 games.set("dotsandboxes", {
   id: "dotsandboxes",
-  name: "Dots & Boxes",
-  description: "Classic strategy game. Connect dots to close boxes!",
+  name: { en: "Dots & Boxes", vi: "Nối Điểm" },
+  description: {
+    en: "Classic strategy game. Connect dots to close boxes!",
+    vi: "Nối các điểm để đóng ô vuông!",
+  },
   icon: LayoutGrid,
   categories: ["puzzle", "strategy", "classic"],
   minPlayers: 2,
@@ -225,8 +259,11 @@ games.set("dotsandboxes", {
 // Register UNO
 games.set("uno", {
   id: "uno",
-  name: "UNO",
-  description: "Classic card game! Match colors or numbers to win.",
+  name: { en: "UNO", vi: "UNO" },
+  description: {
+    en: "Classic card game! Match colors or numbers to win.",
+    vi: "Trò chơi bài cổ điển! Ghép màu hoặc số để thắng.",
+  },
   icon: Layers,
   categories: ["card", "party", "classic"],
   minPlayers: 2,
@@ -242,9 +279,11 @@ games.set("uno", {
 // Register Billiard
 games.set("billiard", {
   id: "billiard",
-  name: "Billiard (8-Ball)",
-  description:
-    "Classic pool game! Pocket your balls and sink the 8-ball to win.",
+  name: { en: "Billiard (8-Ball)", vi: "Bi-a (8 Bóng)" },
+  description: {
+    en: "Classic pool game! Pocket your balls and sink the 8-ball to win.",
+    vi: "Đánh bóng vào lỗ và ghi bàn bóng 8 để thắng!",
+  },
   icon: CircleDot,
   categories: ["board", "classic", "strategy"],
   minPlayers: 2,
@@ -255,6 +294,26 @@ games.set("billiard", {
     return new Billiard(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./billiard/BilliardUI").then((m) => m.default),
+});
+
+// Register Monopoly (Cờ Tỷ Phú)
+games.set("monopoly", {
+  id: "monopoly",
+  name: { en: "Monopoly", vi: "Cờ Tỷ Phú" },
+  description: {
+    en: "Buy properties, build houses, bankrupt your opponents!",
+    vi: "Mua bất động sản, xây nhà, phá sản đối thủ!",
+  },
+  icon: Landmark,
+  categories: ["board", "strategy", "classic", "party"],
+  minPlayers: 2,
+  maxPlayers: 4,
+  isAvailable: true,
+  createGame: async (roomId, socket, isHost, userId, players) => {
+    const { default: Monopoly } = await import("./monopoly/Monopoly");
+    return new Monopoly(roomId, socket, isHost, userId, players);
+  },
+  loadUI: () => import("./monopoly/MonopolyUI").then((m) => m.default),
 });
 
 // Registry functions

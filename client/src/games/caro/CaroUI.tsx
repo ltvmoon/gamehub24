@@ -12,6 +12,7 @@ import {
   Play,
 } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
+import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 const BOARD_SIZE = 50;
@@ -21,6 +22,7 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Caro;
   const [state, setState] = useState<CaroState>(game.getState());
   const { userId, username: myUsername } = useUserStore();
+  const { ti } = useLanguage();
 
   const { board, winningLine, pendingUndoRequest } = state;
   const mySymbol = game.getPlayerSymbol();
@@ -408,7 +410,7 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
             : isMe
             ? myUsername
             : player
-            ? "Opponent"
+            ? ti({ en: "Opponent", vi: "Đối thủ" })
             : null;
 
           return (
@@ -435,9 +437,11 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
                   )}
                 </div>
                 <span className="text-white">
-                  {playerName ? playerName : "(waiting...)"}
+                  {playerName
+                    ? playerName
+                    : ti({ en: "(waiting...)", vi: "(đang chờ...)" })}
                   {isBot && " 🤖"}
-                  {isMe && player && " (You)"}
+                  {isMe && player && ti({ en: " (You)", vi: " (Bạn)" })}
                 </span>
               </div>
               {isBot && game.isHostUser && !state.gameOver && (
@@ -445,7 +449,7 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
                   onClick={() => game.removeBot()}
                   className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
                 >
-                  Remove
+                  {ti({ en: "Remove", vi: "Xóa" })}
                 </button>
               )}
               {!player &&
@@ -456,7 +460,8 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
                     onClick={() => game.addBot()}
                     className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
                   >
-                    <Bot className="w-3 h-3" /> Add Bot
+                    <Bot className="w-3 h-3" />{" "}
+                    {ti({ en: "Add Bot", vi: "Thêm Bot" })}
                   </button>
                 )}
             </div>
@@ -473,11 +478,14 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
               className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
-              Start Game
+              {ti({ en: "Start Game", vi: "Bắt đầu" })}
             </button>
           ) : (
             <span className="text-sm text-slate-400">
-              Waiting for opponent to join...
+              {ti({
+                en: "Waiting for opponent to join...",
+                vi: "Đang chờ đối thủ tham gia...",
+              })}
             </span>
           )}
         </div>
@@ -486,7 +494,10 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
       {/* Start Game message for non-host */}
       {state.gamePhase === "waiting" && !game.isHostUser && (
         <div className="text-sm text-slate-400">
-          Waiting for host to start the game...
+          {ti({
+            en: "Waiting for host to start the game...",
+            vi: "Đang chờ chủ phòng bắt đầu...",
+          })}
         </div>
       )}
 
@@ -504,16 +515,22 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
                         : "text-red-400"
                     }
                   >
-                    {state.winner === mySymbol ? "You Won!" : "Opponent Won!"}
+                    {state.winner === mySymbol
+                      ? ti({ en: "You Won!", vi: "Bạn thắng!" })
+                      : ti({ en: "Opponent Won!", vi: "Đối thủ thắng!" })}
                   </span>
                 ) : (
-                  <span className="text-yellow-400">Draw!</span>
+                  <span className="text-yellow-400">
+                    {ti({ en: "Draw!", vi: "Hòa!" })}
+                  </span>
                 )
               ) : (
                 <span
                   className={isMyTurn ? "text-primary-400" : "text-slate-400"}
                 >
-                  {isMyTurn ? "Your Turn" : "Opponent's Turn"}
+                  {isMyTurn
+                    ? ti({ en: "Your Turn", vi: "Lượt của bạn" })
+                    : ti({ en: "Opponent's Turn", vi: "Lượt đối thủ" })}
                 </span>
               )}
             </div>
@@ -525,20 +542,25 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
               <button
                 onClick={() => game.requestReset()}
                 className="px-2 py-1 bg-primary-600 hover:bg-primary-500 rounded text-white flex items-center gap-1"
-                title="New game"
+                title={ti({ en: "New game", vi: "Ván mới" }) as string}
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>New Game</span>
+                <span>{ti({ en: "New Game", vi: "Ván mới" })}</span>
               </button>
             ) : Object.keys(board).length > 0 ? (
               <button
                 onClick={focusLastMove}
                 disabled={Object.keys(board).length === 0}
                 className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Focus to last move"
+                title={
+                  ti({
+                    en: "Focus to last move",
+                    vi: "Xem nước đi cuối",
+                  }) as string
+                }
               >
                 <Target className="w-3 h-3" />
-                <span>Last</span>
+                <span>{ti({ en: "Last", vi: "Cuối" })}</span>
               </button>
             ) : null}
 
@@ -550,10 +572,15 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
                 <button
                   onClick={() => game.requestUndo()}
                   className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 flex items-center gap-1"
-                  title="Request undo from opponent"
+                  title={
+                    ti({
+                      en: "Request undo from opponent",
+                      vi: "Yêu cầu đối thủ hoàn tác",
+                    }) as string
+                  }
                 >
                   <Undo className="w-3 h-3" />
-                  <span>Undo</span>
+                  <span>{ti({ en: "Undo", vi: "Hoàn tác" })}</span>
                 </button>
               )}
 
@@ -562,10 +589,17 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
               <button
                 onClick={() => game.switchTurn()}
                 className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 flex items-center gap-1"
-                title="Give first move to opponent"
+                title={
+                  ti({
+                    en: "Give first move to opponent",
+                    vi: "Nhường nước đi đầu cho đối thủ",
+                  }) as string
+                }
               >
                 <RefreshCcw className="w-3 h-3" />
-                <span>Give First Move</span>
+                <span>
+                  {ti({ en: "Give First Move", vi: "Nhường đi trước" })}
+                </span>
               </button>
             )}
           </div>
@@ -579,7 +613,12 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
           {pendingUndoRequest === userId && (
             <div className="flex items-center justify-center gap-2 text-sm text-amber-400">
               <Undo className="w-4 h-4 animate-pulse" />
-              <span>Waiting for opponent to respond to undo request...</span>
+              <span>
+                {ti({
+                  en: "Waiting for opponent to respond to undo request...",
+                  vi: "Đang chờ đối thủ phản hồi yêu cầu hoàn tác...",
+                })}
+              </span>
             </div>
           )}
 
@@ -588,22 +627,31 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 <Undo className="w-4 h-4 text-amber-400" />
-                <span>Opponent is requesting to undo their last move</span>
+                <span>
+                  {ti({
+                    en: "Opponent is requesting to undo their last move",
+                    vi: "Đối thủ yêu cầu hoàn tác nước đi cuối",
+                  })}
+                </span>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => game.responseUndo(true)}
                   className="px-3 py-1.5 bg-green-600 hover:bg-green-500 rounded text-white text-sm font-medium flex items-center gap-1.5"
-                  title="Allow undo"
+                  title={
+                    ti({ en: "Allow undo", vi: "Cho phép hoàn tác" }) as string
+                  }
                 >
-                  <span>Allow</span>
+                  <span>{ti({ en: "Allow", vi: "Đồng ý" })}</span>
                 </button>
                 <button
                   onClick={() => game.responseUndo(false)}
                   className="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded text-white text-sm font-medium flex items-center gap-1.5"
-                  title="Deny undo"
+                  title={
+                    ti({ en: "Deny undo", vi: "Từ chối hoàn tác" }) as string
+                  }
                 >
-                  <span>Deny</span>
+                  <span>{ti({ en: "Deny", vi: "Từ chối" })}</span>
                 </button>
               </div>
             </div>
@@ -636,7 +684,10 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
 
       {/* Helper text */}
       <div className="text-xs text-slate-500 text-center">
-        Drag to pan • Click to place
+        {ti({
+          en: "Drag to pan • Click to place",
+          vi: "Kéo để di chuyển • Nhấp để đặt quân",
+        })}
       </div>
     </div>
   );

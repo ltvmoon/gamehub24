@@ -3,12 +3,14 @@ import TicTacToe from "./TicTacToe";
 import type { TicTacToeState } from "./types";
 import { RefreshCcw, X, Circle, Bot, Play } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
+import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as TicTacToe;
   const [state, setState] = useState<TicTacToeState>(game.getState());
   const { username: myUsername } = useUserStore();
+  const { ti } = useLanguage();
 
   const mySymbol = game.getPlayerSymbol();
   const isMyTurn = state.currentTurn === mySymbol;
@@ -39,7 +41,9 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
     <div className="flex flex-col items-center gap-3 md:p-4 w-full max-w-sm mx-auto">
       {/* Player List */}
       <div className="flex flex-col gap-2 p-4 bg-slate-800 rounded-lg w-full max-w-[400px] mx-auto">
-        <h3 className="text-sm font-medium text-gray-400 mb-1">Players</h3>
+        <h3 className="text-sm font-medium text-gray-400 mb-1">
+          {ti({ en: "Players", vi: "Người chơi" })}
+        </h3>
         {(["X", "O"] as const).map((symbol) => {
           const player = state.players[symbol];
           const isCurrentTurn = state.currentTurn === symbol && !state.gameOver;
@@ -50,7 +54,7 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
             : isMe
             ? myUsername
             : player
-            ? "Opponent"
+            ? ti({ en: "Opponent", vi: "Đối thủ" })
             : null;
 
           return (
@@ -77,9 +81,11 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
                   )}
                 </div>
                 <span className="text-white">
-                  {playerName ? playerName : "(waiting...)"}
+                  {playerName
+                    ? playerName
+                    : ti({ en: "(waiting...)", vi: "(đang chờ...)" })}
                   {isBot && " 🤖"}
-                  {isMe && player && " (You)"}
+                  {isMe && player && ti({ en: " (You)", vi: " (Bạn)" })}
                 </span>
               </div>
               {isBot && game.isHostUser && !state.gameOver && (
@@ -87,7 +93,7 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
                   onClick={() => game.removeBot()}
                   className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
                 >
-                  Remove
+                  {ti({ en: "Remove", vi: "Xóa" })}
                 </button>
               )}
               {!player &&
@@ -98,7 +104,8 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
                     onClick={() => game.addBot()}
                     className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
                   >
-                    <Bot className="w-3 h-3" /> Add Bot
+                    <Bot className="w-3 h-3" />{" "}
+                    {ti({ en: "Add Bot", vi: "Thêm Bot" })}
                   </button>
                 )}
             </div>
@@ -115,11 +122,14 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
               className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
             >
               <Play className="w-5 h-5" />
-              Start Game
+              {ti({ en: "Start Game", vi: "Bắt đầu" })}
             </button>
           ) : (
             <span className="text-sm text-slate-400">
-              Waiting for opponent to join...
+              {ti({
+                en: "Waiting for opponent to join...",
+                vi: "Đang chờ đối thủ tham gia...",
+              })}
             </span>
           )}
         </div>
@@ -128,7 +138,10 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
       {/* Start Game message for non-host */}
       {state.gamePhase === "waiting" && !game.isHostUser && (
         <div className="text-sm text-slate-400">
-          Waiting for host to start the game...
+          {ti({
+            en: "Waiting for host to start the game...",
+            vi: "Đang chờ chủ phòng bắt đầu...",
+          })}
         </div>
       )}
 
@@ -136,9 +149,16 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
       {state.gamePhase === "playing" && !state.gameOver && (
         <div className="text-lg text-gray-400">
           {isMyTurn ? (
-            <span className="text-green-400">Your turn! Click a cell.</span>
+            <span className="text-green-400">
+              {ti({
+                en: "Your turn! Click a cell.",
+                vi: "Lượt của bạn! Chọn một ô.",
+              })}
+            </span>
           ) : (
-            <span>Waiting for opponent...</span>
+            <span>
+              {ti({ en: "Waiting for opponent...", vi: "Đang chờ đối thủ..." })}
+            </span>
           )}
         </div>
       )}
@@ -151,10 +171,15 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
           <button
             onClick={onSwitchTurn}
             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors flex items-center gap-2"
-            title="Give first move to opponent"
+            title={
+              ti({
+                en: "Give first move to opponent",
+                vi: "Nhường nước đi đầu cho đối thủ",
+              }) as string
+            }
           >
             <RefreshCcw className="w-4 h-4" />
-            Give First Move
+            {ti({ en: "Give First Move", vi: "Nhường đi trước" })}
           </button>
         )}
 
@@ -219,7 +244,7 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
             onClick={() => game.requestReset()}
             className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 font-medium transition-colors flex items-center justify-center gap-2"
           >
-            Play Again
+            {ti({ en: "Play Again", vi: "Chơi lại" })}
           </button>
         </div>
       )}

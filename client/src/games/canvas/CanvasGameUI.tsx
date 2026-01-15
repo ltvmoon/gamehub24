@@ -6,6 +6,7 @@ import CanvasGame, {
 } from "./CanvasGame";
 import { Palette, Trash2, Undo2 } from "lucide-react";
 import { useAlertStore } from "../../stores/alertStore";
+import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 const COLORS = [
@@ -39,6 +40,7 @@ export default function CanvasGameUI({
   const [showColorModal, setShowColorModal] = useState(false);
 
   const { confirm: showConfirm } = useAlertStore();
+  const { ti, ts } = useLanguage();
 
   // Track strokes we've already drawn (for animation detection)
   const drawnStrokeIdsRef = useRef<Set<string>>(new Set());
@@ -371,7 +373,12 @@ export default function CanvasGameUI({
   };
 
   const handleClear = async () => {
-    if (await showConfirm("Clear canvas for everyone", "Clear canvas?")) {
+    if (
+      await showConfirm(
+        ts({ en: "Clear canvas for everyone", vi: "Xóa canvas cho tất cả" }),
+        ts({ en: "Clear canvas?", vi: "Xóa canvas?" })
+      )
+    ) {
       game.clear();
     }
   };
@@ -385,7 +392,7 @@ export default function CanvasGameUI({
           onClick={() => setShowColorModal(true)}
           className="md:hidden w-8 h-8 rounded-full border-2 border-white"
           style={{ backgroundColor: currentColor }}
-          title="Pick color"
+          title={ts({ en: "Pick color", vi: "Chọn màu" })}
         />
         {/* Desktop: Inline color palette */}
         <Palette className="w-4 h-4 text-slate-400 hidden md:block" />
@@ -424,14 +431,14 @@ export default function CanvasGameUI({
         <button
           onClick={() => game.undo()}
           className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-yellow-400"
-          title="Undo last stroke"
+          title={ts({ en: "Undo last stroke", vi: "Hoàn tác nét vẽ" })}
         >
           <Undo2 className="w-4 h-4" />
         </button>
         <button
           onClick={handleClear}
           className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-red-400"
-          title="Clear canvas"
+          title={ts({ en: "Clear canvas", vi: "Xóa canvas" })}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -455,7 +462,7 @@ export default function CanvasGameUI({
 
       {/* Stats */}
       <div className="text-xs text-slate-500">
-        {state.strokes.length} strokes
+        {state.strokes.length} {ti({ en: "strokes", vi: "nét vẽ" })}
       </div>
 
       {/* Color Picker Modal (Mobile) */}
@@ -469,7 +476,7 @@ export default function CanvasGameUI({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-sm font-medium text-slate-300 mb-3 text-center">
-              Pick a color
+              {ti({ en: "Pick a color", vi: "Chọn màu" })}
             </h3>
             <div className="grid grid-cols-4 gap-3">
               {COLORS.map((color) => (

@@ -11,12 +11,14 @@ import {
 } from "./types";
 import { Bot, Play, RefreshCcw, Target } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
+import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 export default function BilliardUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Billiard;
   const [state, setState] = useState<BilliardState>(game.getState());
   const { username: myUsername } = useUserStore();
+  const { ti } = useLanguage();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -490,17 +492,23 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
   const getPlayerName = (slot: 1 | 2): string => {
     const player = state.players[slot];
-    if (!player.id) return "(waiting...)";
+    if (!player.id)
+      return ti({ en: "(waiting...)", vi: "(đang chờ...)" }) as string;
     if (player.id === "BOT") return "Bot 🤖";
-    // Use stored username, or fallback to "You" for current user
-    if (player.id === game["userId"]) return myUsername || "You";
-    return player.username || "Player " + slot;
+    if (player.id === game["userId"])
+      return myUsername || (ti({ en: "You", vi: "Bạn" }) as string);
+    return (
+      player.username ||
+      (ti({ en: "Player", vi: "Người chơi" }) as string) + " " + slot
+    );
   };
 
   const getBallTypeLabel = (slot: 1 | 2): string => {
     const ballType = state.players[slot].ballType;
     if (!ballType) return "";
-    return ballType === "solid" ? "(Solids 1-7)" : "(Stripes 9-15)";
+    return ballType === "solid"
+      ? (ti({ en: "(Solids 1-7)", vi: "(Trơn 1-7)" }) as string)
+      : (ti({ en: "(Stripes 9-15)", vi: "(Sọc 9-15)" }) as string);
   };
 
   return (
@@ -539,7 +547,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
                 <div>
                   <span className="text-white font-medium">
                     {getPlayerName(slot)}
-                    {isMe && player.id && " (You)"}
+                    {isMe && player.id && ti({ en: " (You)", vi: " (Bạn)" })}
                   </span>
                   <span className="text-gray-400 text-sm ml-2">
                     {getBallTypeLabel(slot)}
@@ -551,7 +559,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
                   onClick={() => game.removeBot()}
                   className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
                 >
-                  Remove
+                  {ti({ en: "Remove", vi: "Xóa" })}
                 </button>
               )}
               {!player.id &&
@@ -562,7 +570,8 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
                     onClick={() => game.addBot()}
                     className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
                   >
-                    <Bot className="w-3 h-3" /> Add Bot
+                    <Bot className="w-3 h-3" />{" "}
+                    {ti({ en: "Add Bot", vi: "Thêm Bot" })}
                   </button>
                 )}
             </div>
@@ -579,11 +588,14 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
               className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
             >
               <Play className="w-5 h-5" />
-              Start Game
+              {ti({ en: "Start Game", vi: "Bắt đầu" })}
             </button>
           ) : (
             <span className="text-sm text-slate-400">
-              Waiting for opponent to join...
+              {ti({
+                en: "Waiting for opponent to join...",
+                vi: "Đang chờ đối thủ tham gia...",
+              })}
             </span>
           )}
         </div>
@@ -598,14 +610,17 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors flex items-center gap-2"
           >
             <RefreshCcw className="w-4 h-4" />
-            New Game
+            {ti({ en: "New Game", vi: "Ván mới" })}
           </button>
         )}
 
       {/* Waiting message for non-host */}
       {state.gamePhase === "waiting" && !game.isHostUser && (
         <div className="text-sm text-slate-400">
-          Waiting for host to start the game...
+          {ti({
+            en: "Waiting for host to start the game...",
+            vi: "Đang chờ chủ phòng bắt đầu...",
+          })}
         </div>
       )}
 
@@ -613,14 +628,21 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       {state.gamePhase === "playing" && !state.winner && (
         <div className="text-lg text-gray-400">
           {state.isSimulating ? (
-            <span className="text-yellow-400">Balls in motion...</span>
+            <span className="text-yellow-400">
+              {ti({ en: "Balls in motion...", vi: "Bóng đang lăn..." })}
+            </span>
           ) : isMyTurn ? (
             <span className="text-green-400 flex items-center gap-2">
               <Target className="w-5 h-5" />
-              Your turn! Click near the cue ball and drag to aim.
+              {ti({
+                en: "Your turn! Click near the cue ball and drag to aim.",
+                vi: "Lượt của bạn! Nhấp vào bóng trắng và kéo để ngắm.",
+              })}
             </span>
           ) : (
-            <span>Waiting for opponent...</span>
+            <span>
+              {ti({ en: "Waiting for opponent...", vi: "Đang chờ đối thủ..." })}
+            </span>
           )}
         </div>
       )}
@@ -649,7 +671,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       {isAiming && (
         <div className="w-full max-w-xs">
           <div className="text-sm text-gray-400 mb-1">
-            Power: {Math.round(aimPower * 100)}%
+            {ti({ en: "Power", vi: "Lực" })}: {Math.round(aimPower * 100)}%
           </div>
           <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
             <div
@@ -667,14 +689,14 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       {state.winner && (
         <div className="text-center">
           <div className="text-2xl font-bold text-green-400 mb-4">
-            🏆 {getPlayerName(state.winner)} wins!
+            🏆 {getPlayerName(state.winner)} {ti({ en: "wins!", vi: "thắng!" })}
           </div>
           <button
             onClick={() => game.requestReset()}
             className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2 mx-auto"
           >
             <RefreshCcw className="w-5 h-5" />
-            Play Again
+            {ti({ en: "Play Again", vi: "Chơi lại" })}
           </button>
         </div>
       )}
@@ -682,15 +704,16 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       {/* Ball Legend */}
       <div className="flex flex-wrap gap-2 justify-center text-xs text-gray-400">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-yellow-500" /> Solids (1-7)
+          <span className="w-3 h-3 rounded-full bg-yellow-500" />{" "}
+          {ti({ en: "Solids (1-7)", vi: "Trơn (1-7)" })}
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full border-2 border-yellow-500 bg-white" />{" "}
-          Stripes (9-15)
+          {ti({ en: "Stripes (9-15)", vi: "Sọc (9-15)" })}
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full bg-black border border-gray-600" />{" "}
-          8-Ball
+          {ti({ en: "8-Ball", vi: "Bóng 8" })}
         </span>
       </div>
     </div>
