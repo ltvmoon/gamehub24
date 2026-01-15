@@ -6,10 +6,9 @@ import {
   Gamepad,
   User,
   Share2,
-  Copy,
-  Check,
   X,
   Lock,
+  Languages,
 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useChatStore } from "../stores/chatStore";
@@ -19,18 +18,20 @@ import useLanguage from "../stores/languageStore";
 import { getSocket } from "../services/socket";
 import { getAllGames } from "../games/registry";
 import { type Room } from "../stores/roomStore";
-import ChatPanel from "../components/ChatPanel";
+import SidePanel from "../components/SidePanel";
 import GameContainer from "../games/GameContainer";
+import ShareModal from "../components/ShareModal";
 
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const { currentRoom, setCurrentRoom, updatePlayers } = useRoomStore();
+  const { currentRoom, setCurrentRoom, updatePlayers, updateSpectators } =
+    useRoomStore();
   const { clearMessages } = useChatStore();
   const { userId, username } = useUserStore();
 
   const { show: showAlert, confirm: showConfirm } = useAlertStore();
-  const { ti, ts } = useLanguage();
+  const { ti, ts, language, setLanguage } = useLanguage();
   const socket = getSocket();
 
   // Effect for joining room via direct URL
@@ -112,6 +113,10 @@ export default function RoomPage() {
       updatePlayers(players);
     });
 
+    socket.on("room:spectators", (spectators) => {
+      updateSpectators(spectators);
+    });
+
     socket.on("room:update", (room) => {
       setCurrentRoom(room);
     });
@@ -130,10 +135,29 @@ export default function RoomPage() {
       navigate("/");
     });
 
+    socket.on("room:kicked", (data) => {
+      showAlert(
+        data.reason ||
+          ts({
+            en: "You have been kicked from the room",
+            vi: "Bạn đã bị đuổi khỏi phòng",
+          }),
+        {
+          type: "error",
+          title: ts({ en: "Kicked", vi: "Bị đuổi" }),
+        }
+      );
+      setCurrentRoom(null);
+      clearMessages();
+      navigate("/");
+    });
+
     return () => {
       socket.off("room:players");
+      socket.off("room:spectators");
       socket.off("room:update");
       socket.off("room:deleted");
+      socket.off("room:kicked");
     };
   }, [roomId, socket, updatePlayers, setCurrentRoom, navigate, clearMessages]);
 
@@ -142,6 +166,8 @@ export default function RoomPage() {
   const hostUser = currentRoom?.players.find(
     (p) => p.id === currentRoom.ownerId
   );
+
+  const isSpectator = currentRoom?.spectators?.some((p) => p.id === userId);
 
   // Warning before unload (browser back/refresh/close) for host
   useEffect(() => {
@@ -243,12 +269,10 @@ export default function RoomPage() {
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showChangeGameModal, setShowChangeGameModal] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [showUserTooltip, setShowUserTooltip] = useState(false);
-  const roomLink = window.location.hash.includes("#")
-    ? `${window.location.origin}/${window.location.hash}`
-    : `${window.location.origin}/#/room/${roomId}`;
 
   const handleChangeGame = (gameId: string) => {
     socket.emit("room:update", { roomId, gameType: gameId });
@@ -294,7 +318,7 @@ export default function RoomPage() {
     <>
       {showShareModal && (
         <ShareModal
-          roomLink={roomLink}
+          roomId={roomId || ""}
           onClose={() => setShowShareModal(false)}
         />
       )}
@@ -372,23 +396,74 @@ export default function RoomPage() {
               </div>
 
               {/* Right side: User info */}
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="relative">
+                  <button
+                    onClick={handleUserTouch}
+                    onMouseEnter={handleUserTouch}
+                    className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm flex-shrink-0 cursor-pointer hover:bg-white/10 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-muted" />
+                    <span className="max-w-[80px] sm:max-w-none truncate">
+                      {username}
+                    </span>
+                  </button>
+                  {/* Tooltip */}
+                  {showUserTooltip && (
+                    <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-slate-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-50 animate-fadeIn">
+                      {ti({ en: "Your ID:", vi: "ID của bạn:" })}{" "}
+                      <span className="font-semibold">{username}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="relative">
                 <button
-                  onClick={handleUserTouch}
-                  onMouseEnter={handleUserTouch}
-                  className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm flex-shrink-0 cursor-pointer hover:bg-white/10 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-text-secondary hover:text-primary"
+                  // title={ti({ en: "Change Language", vi: "Đổi ngôn ngữ" })}
                 >
-                  <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-muted" />
-                  <span className="max-w-[80px] sm:max-w-none truncate">
-                    {username}
-                  </span>
+                  <Languages className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
-                {/* Tooltip */}
-                {showUserTooltip && (
-                  <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-slate-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-50 animate-fadeIn">
-                    {ti({ en: "Your ID:", vi: "ID của bạn:" })}{" "}
-                    <span className="font-semibold">{username}</span>
-                  </div>
+
+                {/* Language Dropdown */}
+                {showLanguageDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowLanguageDropdown(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-40 bg-slate-800 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-fadeIn">
+                      <button
+                        onClick={() => {
+                          setLanguage("en");
+                          setShowLanguageDropdown(false);
+                        }}
+                        className={`w-full px-4 py-3 text-left hover:bg-white/5 transition-colors flex items-center gap-2 ${
+                          language === "en"
+                            ? "text-primary font-medium"
+                            : "text-text-secondary"
+                        }`}
+                      >
+                        <span className="text-lg">🇺🇸</span>
+                        English
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLanguage("vi");
+                          setShowLanguageDropdown(false);
+                        }}
+                        className={`w-full px-4 py-3 text-left hover:bg-white/5 transition-colors flex items-center gap-2 ${
+                          language === "vi"
+                            ? "text-primary font-medium"
+                            : "text-text-secondary"
+                        }`}
+                      >
+                        <span className="text-lg">🇻🇳</span>
+                        Tiếng Việt
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -398,11 +473,19 @@ export default function RoomPage() {
         {/* Main Content */}
         <main className="flex-1 w-full px-2 py-6 overflow-hidden">
           <div
-            className="flex flex-col lg:flex-row gap-1 h-full"
+            className="flex flex-col lg:flex-row md:gap-1 gap-4 h-full"
             ref={containerRef}
           >
             {/* Game Container */}
-            <div className="flex-1 min-w-0 glass-card rounded-2xl p-2 md:p-4 overflow-hidden flex flex-col">
+            <div className="flex-1 min-w-0 glass-card rounded-2xl p-2 md:p-4 overflow-hidden flex flex-col relative">
+              {isSpectator && (
+                <div className="absolute top-0 left-0 right-0 bg-blue-500/80 text-white text-xs py-1 px-4 text-center z-50 backdrop-blur-sm">
+                  {ti({
+                    en: "You are spectating. Wait for host to add you to the game.",
+                    vi: "Bạn đang xem. Chờ chủ phòng thêm vào game.",
+                  })}
+                </div>
+              )}
               <GameContainer />
             </div>
 
@@ -416,15 +499,15 @@ export default function RoomPage() {
               <div className="w-1 h-8 bg-white/20 rounded-full" />
             </div>
 
-            {/* Chat Panel */}
+            {/* Chat Panel & Spectators */}
             <div
-              className="flex-shrink-0 glass-card rounded-2xl flex flex-col"
+              className="flex-shrink-0 glass-card rounded-2xl flex flex-col overflow-hidden"
               style={{
                 width: isDesktop ? chatPanelWidth : "100%",
                 height: isDesktop ? "auto" : "600px",
               }}
             >
-              <ChatPanel />
+              <SidePanel />
             </div>
           </div>
         </main>
@@ -538,90 +621,6 @@ function PasswordPromptModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
-  );
-}
-
-function ShareModal({
-  roomLink,
-  onClose,
-}: {
-  roomLink: string;
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const { ti } = useLanguage();
-
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(roomLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] animate-fadeIn">
-      <div className="bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl mx-4 animate-scaleIn relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1 hover:bg-white/10 rounded-lg transition-colors text-text-secondary"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex flex-col items-center text-center gap-4">
-          <div className="p-3 bg-white/5 rounded-full">
-            <Share2 className="w-10 h-10 text-primary" />
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-xl font-display text-text-primary">
-              {ti({ en: "Share Room", vi: "Chia sẻ phòng" })}
-            </h3>
-            <p className="text-text-secondary text-sm">
-              {ti({
-                en: "Invite friends to join by sharing this link",
-                vi: "Mời bạn bè tham gia bằng cách chia sẻ link này",
-              })}
-            </p>
-          </div>
-
-          <div className="w-full space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-white/5 rounded-lg">
-              <input
-                type="text"
-                value={roomLink}
-                readOnly
-                className="flex-1 bg-transparent text-text-primary text-sm outline-none"
-              />
-            </div>
-
-            <button
-              onClick={handleCopyLink}
-              className={`w-full py-2.5 flex items-center justify-center gap-2 font-medium rounded-xl transition-all ${
-                copied
-                  ? "bg-green-600 text-white"
-                  : "bg-primary hover:bg-primary-light text-white shadow-lg shadow-primary/20"
-              }`}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-5 h-5" />
-                  {ti({ en: "Copied!", vi: "Đã copy!" })}
-                </>
-              ) : (
-                <>
-                  <Copy className="w-5 h-5" />
-                  {ti({ en: "Copy Link", vi: "Copy link" })}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

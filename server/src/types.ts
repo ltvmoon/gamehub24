@@ -13,6 +13,7 @@ export interface Room {
   isPublic: boolean;
   password?: string;
   players: Player[];
+  spectators: Player[];
   maxPlayers: number;
   createdAt: number;
 }

@@ -554,18 +554,23 @@ export default class Billiard extends BaseGame {
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
-    this.state.players = {
-      1: {
-        id: players[0]?.id || this.state.players[1].id,
-        username: players[0]?.username || this.state.players[1].username,
-        ballType: this.state.players[1].ballType,
-      },
-      2: {
-        id: players[1]?.id || this.state.players[2].id,
-        username: players[1]?.username || this.state.players[2].username,
-        ballType: this.state.players[2].ballType,
-      },
-    };
+    // Player 1 (Host)
+    this.state.players[1].id = players[0]?.id || null;
+    this.state.players[1].username = players[0]?.username || null;
+
+    // Player 2 (Guest or Bot)
+    if (players[1]) {
+      // Human guest overwrites Bot
+      this.state.players[2].id = players[1].id;
+      this.state.players[2].username = players[1].username;
+    } else {
+      // No guest. If it was human, clear it. Keep Bot.
+      if (this.state.players[2].id !== "BOT") {
+        this.state.players[2].id = null;
+        this.state.players[2].username = null;
+      }
+    }
+
     this.broadcastState();
     this.setState({ ...this.state });
   }

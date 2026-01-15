@@ -634,11 +634,22 @@ export default class Ludo extends BaseGame {
   updatePlayers(players: { id: string; username: string }[]): void {
     if (this.state.gamePhase !== "waiting") return;
 
-    for (let i = 0; i < Math.min(players.length, 4); i++) {
+    // Reset non-bot slots
+    this.state.players.forEach((p, i) => {
+      if (!p.isBot) {
+        p.id = null;
+        p.username = `Player ${i + 1}`;
+      }
+    });
+
+    let playerIndex = 0;
+    for (let i = 0; i < 4; i++) {
       if (!this.state.players[i].isBot) {
-        this.state.players[i].id = players[i]?.id || null;
-        this.state.players[i].username =
-          players[i]?.username || `Player ${i + 1}`;
+        if (playerIndex < players.length) {
+          this.state.players[i].id = players[playerIndex].id;
+          this.state.players[i].username = players[playerIndex].username;
+          playerIndex++;
+        }
       }
     }
 

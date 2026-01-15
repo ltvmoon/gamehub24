@@ -162,10 +162,19 @@ export default class TicTacToe extends BaseGame {
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
-    this.state.players = {
-      X: players[0]?.id || null,
-      O: players[1]?.id || null,
-    };
+    // X is always the first player (Host)
+    this.state.players.X = players[0]?.id || null;
+
+    // O is the second player. If human joins, they overwrite Bot.
+    if (players[1]) {
+      this.state.players.O = players[1].id;
+    } else {
+      // No human for O. If it was human, clear it. Keep Bot if active.
+      if (this.state.players.O !== "BOT") {
+        this.state.players.O = null;
+      }
+    }
+
     this.broadcastState();
     this.setState({ ...this.state });
   }

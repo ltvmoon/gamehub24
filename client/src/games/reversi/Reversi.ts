@@ -507,11 +507,20 @@ export default class Reversi extends BaseGame {
   updatePlayers(players: { id: string; username: string }[]): void {
     if (this.state.gamePhase !== "waiting") return;
 
-    for (let i = 0; i < Math.min(players.length, 2); i++) {
-      if (!this.state.players[i].isBot) {
-        this.state.players[i].id = players[i]?.id || null;
-        this.state.players[i].username =
-          players[i]?.username || `Player ${i + 1}`;
+    // Slot 0 (Host)
+    this.state.players[0].id = players[0]?.id || null;
+    this.state.players[0].username = players[0]?.username || "Player 1";
+
+    // Slot 1 (Guest or Bot)
+    if (players[1]) {
+      this.state.players[1].id = players[1].id;
+      this.state.players[1].username = players[1].username;
+      this.state.players[1].isBot = false;
+    } else {
+      // No guest. Clear if human. Keep if Bot.
+      if (!this.state.players[1].isBot) {
+        this.state.players[1].id = null;
+        this.state.players[1].username = "Player 2";
       }
     }
 

@@ -32,7 +32,6 @@ export default class Uno extends BaseGame {
           username: player?.username || `Slot ${i + 1}`,
           hand: [],
           isBot: false,
-          isGuest: false,
           isHost: player?.id === this.userId,
           calledUno: false,
         };
@@ -497,7 +496,6 @@ export default class Uno extends BaseGame {
       username: `Bot ${slotIndex + 1}`,
       hand: [],
       isBot: true,
-      isGuest: false,
       isHost: false,
       calledUno: false,
     };
@@ -523,7 +521,6 @@ export default class Uno extends BaseGame {
       username: playerName,
       hand: [],
       isBot: false,
-      isGuest: false,
       isHost: false,
       calledUno: false,
     };
@@ -538,7 +535,7 @@ export default class Uno extends BaseGame {
     if (this.state.gamePhase !== "waiting") return;
 
     const player = this.state.players[slotIndex];
-    if (!player.isBot && !player.isGuest) return;
+    if (!player.isBot) return;
 
     const newPlayers = [...this.state.players];
     newPlayers[slotIndex] = {
@@ -546,7 +543,6 @@ export default class Uno extends BaseGame {
       username: `Slot ${slotIndex + 1}`,
       hand: [],
       isBot: false,
-      isGuest: false,
       isHost: false,
       calledUno: false,
     };
@@ -605,7 +601,6 @@ export default class Uno extends BaseGame {
       username: p.username,
       hand: [],
       isBot: p.isBot,
-      isGuest: p.isGuest,
       isHost: p.isHost,
       calledUno: false,
     }));
@@ -640,7 +635,7 @@ export default class Uno extends BaseGame {
     let playerIdx = 0;
     for (let i = 0; i < 4; i++) {
       const slot = this.state.players[i];
-      if (!slot.isBot && !slot.isGuest) {
+      if (!slot.isBot) {
         if (playerIdx < players.length) {
           slot.id = players[playerIdx].id;
           slot.username = players[playerIdx].username;

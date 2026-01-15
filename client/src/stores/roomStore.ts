@@ -15,6 +15,7 @@ export interface Room {
   isPublic: boolean;
   password?: string;
   players: Player[];
+  spectators: Player[];
   maxPlayers: number;
   createdAt: Date;
 }
@@ -25,6 +26,7 @@ interface RoomStore {
   setCurrentRoom: (room: Room | null) => void;
   setPublicRooms: (rooms: Room[]) => void;
   updatePlayers: (players: Player[]) => void;
+  updateSpectators: (spectators: Player[]) => void;
   leaveRoom: () => void;
 }
 
@@ -36,6 +38,12 @@ export const useRoomStore = create<RoomStore>((set) => ({
   updatePlayers: (players) =>
     set((state) => ({
       currentRoom: state.currentRoom ? { ...state.currentRoom, players } : null,
+    })),
+  updateSpectators: (spectators) =>
+    set((state) => ({
+      currentRoom: state.currentRoom
+        ? { ...state.currentRoom, spectators }
+        : null,
     })),
   leaveRoom: () => set({ currentRoom: null }),
 }));

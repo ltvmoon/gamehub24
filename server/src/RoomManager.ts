@@ -27,6 +27,7 @@ export class RoomManager {
           socketId,
         },
       ],
+      spectators: [],
       maxPlayers: data.maxPlayers,
       createdAt: Date.now(),
     };
@@ -59,18 +60,20 @@ export class RoomManager {
       return { success: false, error: "Incorrect password" };
     }
 
-    // Check if room is full
-    if (room.players.length >= room.maxPlayers) {
-      return { success: false, error: "Room is full" };
-    }
-
-    // Check if player already in room
-    if (room.players.some((p) => p.id === userId)) {
+    // Check if player already in room (as player or spectator)
+    if (
+      room.players.some((p) => p.id === userId) ||
+      room.spectators.some((p) => p.id === userId)
+    ) {
       return { success: true, room };
     }
 
-    // Add player to room
-    room.players.push({
+    // New logic: All joiners become spectators first (unless rejoining handled above)
+    // We remove the "room is full" check for spectators, or maybe set a distinct limit?
+    // For now, let's allow unlimited spectators or a high number.
+
+    // Add player to spectators
+    room.spectators.push({
       id: userId,
       username,
       isHost: false,
@@ -105,7 +108,9 @@ export class RoomManager {
     const wasHost = room.ownerId === userId;
 
     // Remove player from room
+    // Remove player from room (check both lists)
     room.players = room.players.filter((p) => p.id !== userId);
+    room.spectators = room.spectators.filter((p) => p.id !== userId);
     this.playerRoomMap.delete(userId);
 
     // If room is empty or host left, delete room
@@ -113,6 +118,7 @@ export class RoomManager {
       this.rooms.delete(roomId);
       // Remove all players from this room
       room.players.forEach((p) => this.playerRoomMap.delete(p.id));
+      room.spectators.forEach((p) => this.playerRoomMap.delete(p.id));
       // Remove all chats from room
       console.log(
         `[RoomManager] Deleted room ${roomId} (Host Left: ${wasHost}, Empty: ${
@@ -157,6 +163,86 @@ export class RoomManager {
     const player = room.players.find((p) => p.id === userId);
     if (player) {
       player.socketId = socketId;
+    } else {
+      const spectator = room.spectators.find((p) => p.id === userId);
+      if (spectator) {
+        spectator.socketId = socketId;
+      }
     }
+  }
+
+  moveSpectatorToPlayer(
+    roomId: string,
+    userId: string
+  ): { success: boolean; room?: Room; error?: string } {
+    const room = this.rooms.get(roomId);
+    if (!room) return { success: false, error: "Room not found" };
+
+    const spectatorIndex = room.spectators.findIndex((p) => p.id === userId);
+    if (spectatorIndex === -1)
+      return { success: false, error: "User is not a spectator" };
+
+    if (room.players.length >= room.maxPlayers)
+      return { success: false, error: "Room player slots are full" };
+
+    const player = room.spectators[spectatorIndex];
+    room.spectators.splice(spectatorIndex, 1);
+    room.players.push(player);
+
+    return { success: true, room };
+  }
+
+  movePlayerToSpectator(
+    roomId: string,
+    userId: string
+  ): { success: boolean; room?: Room; error?: string } {
+    const room = this.rooms.get(roomId);
+    if (!room) return { success: false, error: "Room not found" };
+
+    const playerIndex = room.players.findIndex((p) => p.id === userId);
+    if (playerIndex === -1)
+      return { success: false, error: "User is not a player" };
+
+    // Prevent removing the host (unless we handle host reassignment here, but simpler to block)
+    if (room.players[playerIndex].id === room.ownerId) {
+      return { success: false, error: "Cannot move host to spectators" };
+    }
+
+    const player = room.players[playerIndex];
+    room.players.splice(playerIndex, 1);
+    room.spectators.push(player);
+
+    return { success: true, room };
+  }
+
+  kickUser(
+    roomId: string,
+    userId: string
+  ): { success: boolean; room?: Room; error?: string } {
+    const room = this.rooms.get(roomId);
+    if (!room) return { success: false, error: "Room not found" };
+
+    // Cannot kick host
+    if (userId === room.ownerId) {
+      return { success: false, error: "Cannot kick host" };
+    }
+
+    // Check players
+    const playerIndex = room.players.findIndex((p) => p.id === userId);
+    if (playerIndex !== -1) {
+      room.players.splice(playerIndex, 1);
+      this.playerRoomMap.delete(userId);
+      return { success: true, room };
+    }
+
+    // Check spectators
+    const spectatorIndex = room.spectators.findIndex((p) => p.id === userId);
+    if (spectatorIndex !== -1) {
+      room.spectators.splice(spectatorIndex, 1);
+      this.playerRoomMap.delete(userId);
+      return { success: true, room };
+    }
+
+    return { success: false, error: "User not found in room" };
   }
 }

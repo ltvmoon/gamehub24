@@ -275,18 +275,18 @@ export default class ChessGame extends BaseGame {
   updatePlayers(players: { id: string; username: string }[]): void {
     // Prioritize preserving existing assignment if possible, or just overwrite?
     // Simple overwrite based on room list order (Host=0, Guest=1)
-    const whiteId = players[0]?.id || null;
-    let blackId = players[1]?.id || null;
+    // Slot 0 (Host / White)
+    this.state.players.white = players[0]?.id || null;
 
-    // Preserve Bot if it was assigned and slot is empty
-    if (this.state.players.black === "BOT" && !blackId) {
-      blackId = "BOT";
+    // Slot 1 (Guest / Black or Bot)
+    if (players[1]) {
+      this.state.players.black = players[1].id;
+    } else {
+      // No guest. Keep Bot if it was Bot, otherwise clear.
+      if (this.state.players.black !== "BOT") {
+        this.state.players.black = null;
+      }
     }
-
-    this.state.players = {
-      white: whiteId,
-      black: blackId,
-    };
 
     this.broadcastState();
     this.setState({ ...this.state });

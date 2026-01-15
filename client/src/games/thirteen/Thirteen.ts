@@ -595,12 +595,23 @@ export default class Thirteen extends BaseGame {
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
-    // Update player slots with new players from room
-    for (let i = 0; i < Math.min(players.length, 4); i++) {
+    // Reset non-bot/guest slots
+    this.state.players.forEach((p, i) => {
+      if (!p.isBot && !p.isGuest) {
+        p.id = null;
+        p.username = `Slot ${i + 1}`;
+      }
+    });
+
+    let playerIndex = 0;
+    for (let i = 0; i < 4; i++) {
       const slot = this.state.players[i];
       if (!slot.isBot && !slot.isGuest) {
-        slot.id = players[i]?.id || null;
-        slot.username = players[i]?.username || `Slot ${i + 1}`;
+        if (playerIndex < players.length) {
+          slot.id = players[playerIndex].id;
+          slot.username = players[playerIndex].username;
+          playerIndex++;
+        }
       }
     }
     this.broadcastState();

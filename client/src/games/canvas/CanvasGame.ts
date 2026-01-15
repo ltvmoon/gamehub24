@@ -27,6 +27,7 @@ export interface CanvasAction extends GameAction {
 export default class CanvasGame extends BaseGame {
   private state: CanvasState;
   private onStateChange?: (state: CanvasState) => void;
+  private players: string[] = [];
 
   constructor(
     roomId: string,
@@ -68,11 +69,25 @@ export default class CanvasGame extends BaseGame {
     const action = data.action as CanvasAction;
 
     if (action.type === "DRAW") {
-      this.handleDraw(action.payload);
+      const stroke = action.payload as DrawStroke;
+      if (this.players.includes(stroke.playerId)) {
+        this.handleDraw(stroke);
+      }
     } else if (action.type === "CLEAR") {
-      this.handleClear();
+      // Only allow players to clear? Or maybe just host?
+      // For now, let's allow any active player to clear
+      // BUT we can't easily check playerId for CLEAR action as payload might be empty or different
+      // Actually BaseGame usually passes the sender's ID in action context if we structured it that way,
+      // but here data.action is just the payload.
+      // Let's assume CLEAR is global? Or check logic.
+      // The handleAction receives data: { action: GameAction }. GameAction has playerId.
+      if (this.players.includes(action.playerId)) {
+        this.handleClear();
+      }
     } else if (action.type === "UNDO") {
-      this.handleUndo(action.payload); // payload is playerId
+      if (this.players.includes(action.payload)) {
+        this.handleUndo(action.payload);
+      }
     } else if (action.type === "REQUEST_SYNC") {
       if (this.isHost) {
         this.broadcastState();
@@ -196,5 +211,7 @@ export default class CanvasGame extends BaseGame {
     this.handleClear();
   }
 
-  updatePlayers(_players: { id: string; username: string }[]): void {}
+  updatePlayers(players: { id: string; username: string }[]): void {
+    this.players = players.map((p) => p.id);
+  }
 }

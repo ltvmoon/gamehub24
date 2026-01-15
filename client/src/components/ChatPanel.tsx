@@ -64,25 +64,6 @@ export default function ChatPanel() {
 
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Player List */}
-      <div className="p-4 border-b border-white/10">
-        <h3 className="text-sm font-semibold text-text-secondary mb-3">
-          PLAYERS ({currentRoom?.players.length || 0}/
-          {currentRoom?.maxPlayers || 0})
-        </h3>
-        <div className="space-y-2">
-          {currentRoom?.players.map((player) => (
-            <div key={player.id} className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-neon-green"></div>
-              <span className="text-sm text-text-primary">
-                {player.username}
-                {player.isHost && " 👑"}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Messages */}
       <div className="flex-1 p-4 overflow-y-auto space-y-3">
         {messages.map((msg) =>

@@ -930,10 +930,9 @@ function PlayerSlotDisplay({
         <div className="flex flex-col items-center gap-0.5">
           <div className="flex items-center gap-1">
             {slot.isBot && <Bot className="w-5 h-5 text-blue-400" />}
-            {slot.isGuest && <User className="w-5 h-5 text-green-400" />}
             {slot.isHost && <Crown className="w-5 h-5 text-yellow-400" />}
             <span className="text-xs font-medium">{slot.username}</span>
-            {canAddBot && (slot.isBot || slot.isGuest) && (
+            {canAddBot && slot.id && !slot.isHost && (
               <button
                 onClick={onRemove}
                 className="p-0.5 hover:bg-slate-700 rounded"

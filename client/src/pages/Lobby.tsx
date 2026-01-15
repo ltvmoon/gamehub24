@@ -338,12 +338,21 @@ export default function Lobby() {
 
           {/* Public Rooms */}
           <section id="public-rooms-section">
-            <div className="flex items-center gap-3 mb-6">
-              <Users className="w-6 h-6 text-primary" />
-              <h3 className="text-2xl font-display text-text-primary">
-                {ti({ en: "Public Rooms", vi: "Phòng Công Khai" })} (
-                {publicRooms.length})
-              </h3>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Users className="w-6 h-6 text-primary" />
+                <h3 className="text-2xl font-display text-text-primary">
+                  {ti({ en: "Public Rooms", vi: "Phòng Công Khai" })} (
+                  {publicRooms.length})
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCreateModal("")}
+                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary font-medium rounded-lg border border-primary/20 hover:border-primary/40 transition-colors cursor-pointer flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                {ti({ en: "Create", vi: "Tạo" })}
+              </button>
             </div>
 
             {publicRooms.length === 0 ? (
@@ -450,53 +459,56 @@ function RoomListItem({ room }: { room: Room }) {
   const GameIcon = game?.icon || Gamepad;
 
   return (
-    <div className="glass-card rounded-xl p-4 hover:border-primary/30 transition-all duration-200 cursor-pointer group flex flex-col sm:flex-row items-start sm:items-center gap-4">
-      {/* Icon */}
-      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-        <GameIcon className="w-6 h-6 text-primary" />
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <h4 className="font-display text-lg text-text-primary truncate transition-colors">
-            {room.name}
-          </h4>
-          {room.password && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 uppercase tracking-wider">
-              {ti({ en: "Private", vi: "Riêng tư" })}
-            </span>
-          )}
+    <div className="glass-card rounded-xl p-4 hover:border-primary/30 transition-all duration-200 cursor-pointer group flex flex-col gap-4">
+      <div className="flex items-start gap-4">
+        {/* Icon */}
+        <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0 mt-1">
+          <GameIcon className="w-6 h-6 text-primary" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
-            <span className="capitalize truncate max-w-[100px]">
-              {ti(game?.name) || room.gameType}
-            </span>
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h4 className="font-display text-lg text-text-primary leading-tight break-words">
+              {room.name}
+            </h4>
+            {room.password && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 uppercase tracking-wider shrink-0">
+                {ti({ en: "Private", vi: "Riêng tư" })}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Users className="w-3.5 h-3.5 text-text-muted" />
-            <span className="truncate max-w-[120px]">
-              {ti({ en: "Host", vi: "Chủ" })}: {hostName}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-text-muted">•</span>
-            <span>
-              {room.players.length}/{room.maxPlayers}
-            </span>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-text-secondary">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+              <span className="capitalize">
+                {ti(game?.name) || room.gameType}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-text-muted shrink-0" />
+              <span>
+                {ti({ en: "Host", vi: "Chủ" })}:{" "}
+                <span className="text-text-primary">{hostName}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+              <span>
+                {room.players.length}/{room.maxPlayers}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Action */}
-      <div className="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+      {/* Action Buttons - Full width on bottom */}
+      <div className="flex items-center gap-2 w-full pt-2 border-t border-white/5">
         {isHost && (
           <button
             onClick={handleCloseRoom}
-            className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg border border-red-500/20 transition-all duration-200"
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg border border-red-500/20 transition-all duration-200"
             title="Close Room"
           >
             <Trash2 className="w-5 h-5" />
@@ -504,9 +516,9 @@ function RoomListItem({ room }: { room: Room }) {
         )}
         <button
           onClick={handleJoin}
-          className="flex-1 sm:flex-initial px-6 py-2.5 bg-primary hover:bg-primary-light text-white font-semibold rounded-lg shadow-lg shadow-primary/30 transition-all duration-200"
+          className="flex-1 px-6 py-2 bg-primary hover:bg-primary-light text-white font-semibold rounded-lg shadow-lg shadow-primary/30 transition-all duration-200"
         >
-          {ti({ en: "Join", vi: "Vào" })}
+          {ti({ en: "Join Room", vi: "Vào Phòng" })}
         </button>
       </div>
     </div>

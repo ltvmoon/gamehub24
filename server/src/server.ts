@@ -79,10 +79,10 @@ io.on("connection", (socket: Socket) => {
   // Get online users count
   socket.on("stats:online", (callback) => {
     try {
-      callback({ online: io.engine.clientsCount });
+      callback?.({ online: io.engine.clientsCount });
     } catch (error) {
       console.error("Error getting online count:", error);
-      callback({ online: 0 });
+      callback?.({ online: 0 });
     }
   });
 
@@ -96,13 +96,13 @@ io.on("connection", (socket: Socket) => {
 
       console.log(`📦 Room created: ${room.name} (${room.id}) by ${username}`);
 
-      callback({ success: true, room });
+      callback?.({ success: true, room });
 
       // Broadcast updated room list to all clients
       io.emit("room:list:update", roomManager.getPublicRooms());
     } catch (error) {
       console.error("Error creating room:", error);
-      callback({ success: false, error: "Failed to create room" });
+      callback?.({ success: false, error: "Failed to create room" });
     }
   });
 
@@ -123,10 +123,12 @@ io.on("connection", (socket: Socket) => {
         console.log(`👤 ${username} joined room: ${result.room.name}`);
 
         // Send room data to joiner
-        callback({ success: true, room: result.room });
+        callback?.({ success: true, room: result.room });
 
-        // Broadcast updated player list to room
+        // Broadcast updated lists to room
         io.to(data.roomId).emit("room:players", result.room.players);
+        io.to(data.roomId).emit("room:spectators", result.room.spectators);
+        io.to(data.roomId).emit("room:update", result.room);
 
         // Send system message
         const systemMessage: ChatMessage = {
@@ -143,11 +145,11 @@ io.on("connection", (socket: Socket) => {
         // Broadcast updated room list
         io.emit("room:list:update", roomManager.getPublicRooms());
       } else {
-        callback({ success: false, error: result.error });
+        callback?.({ success: false, error: result.error });
       }
     } catch (error) {
       console.error("Error joining room:", error);
-      callback({ success: false, error: "Failed to join room" });
+      callback?.({ success: false, error: "Failed to join room" });
     }
   });
 
@@ -162,8 +164,10 @@ io.on("connection", (socket: Socket) => {
         console.log(`👋 ${username} left room: ${result.roomId}`);
 
         if (result.room) {
-          // Room still exists, broadcast updated player list
+          // Room still exists, broadcast updated lists
           io.to(result.roomId).emit("room:players", result.room.players);
+          io.to(result.roomId).emit("room:spectators", result.room.spectators);
+          io.to(result.roomId).emit("room:update", result.room);
 
           // Send system message
           const systemMessage: ChatMessage = {
@@ -199,10 +203,10 @@ io.on("connection", (socket: Socket) => {
   socket.on("room:list", (callback) => {
     try {
       const rooms = roomManager.getPublicRooms();
-      callback(rooms);
+      callback?.(rooms);
     } catch (error) {
       console.error("Error getting room list:", error);
-      callback([]);
+      callback?.([]);
     }
   });
 
@@ -230,6 +234,164 @@ io.on("connection", (socket: Socket) => {
       console.error("Error updating room:", error);
     }
   });
+
+  // Host adds spectator to players
+  socket.on(
+    "room:addPlayer",
+    (data: { roomId: string; userId: string }, callback) => {
+      try {
+        const room = roomManager.getRoom(data.roomId);
+        if (!room)
+          return callback?.({ success: false, error: "Room not found" });
+
+        if (room.ownerId !== userId) {
+          return callback?.({
+            success: false,
+            error: "Only host can add players",
+          });
+        }
+
+        const result = roomManager.moveSpectatorToPlayer(
+          data.roomId,
+          data.userId
+        );
+        if (result.success && result.room) {
+          io.to(data.roomId).emit("room:players", result.room.players);
+          io.to(data.roomId).emit("room:spectators", result.room.spectators);
+          io.to(data.roomId).emit("room:update", result.room);
+          callback?.({ success: true });
+
+          // Send system message
+          const player = result.room.players.find((p) => p.id === data.userId);
+          const systemMessage: ChatMessage = {
+            id: uuidv4(),
+            roomId: data.roomId,
+            userId: "system",
+            username: "System",
+            message: `${player?.username} joined the game`,
+            timestamp: Date.now(),
+            type: "system",
+          };
+          io.to(data.roomId).emit("chat:message", systemMessage);
+        } else {
+          callback?.({ success: false, error: result.error });
+        }
+      } catch (error) {
+        console.error("Error adding player:", error);
+        callback?.({ success: false, error: "Internal error" });
+      }
+    }
+  );
+
+  // Host removes player to spectators
+  socket.on(
+    "room:removePlayer",
+    (data: { roomId: string; userId: string }, callback) => {
+      try {
+        const room = roomManager.getRoom(data.roomId);
+        if (!room)
+          return callback?.({ success: false, error: "Room not found" });
+
+        if (room.ownerId !== userId) {
+          return callback?.({
+            success: false,
+            error: "Only host can remove players",
+          });
+        }
+
+        const result = roomManager.movePlayerToSpectator(
+          data.roomId,
+          data.userId
+        );
+        if (result.success && result.room) {
+          io.to(data.roomId).emit("room:players", result.room.players);
+          io.to(data.roomId).emit("room:spectators", result.room.spectators);
+          io.to(data.roomId).emit("room:update", result.room);
+          callback?.({ success: true });
+
+          // Send system message
+          const spectator = result.room.spectators.find(
+            (p) => p.id === data.userId
+          );
+          const systemMessage: ChatMessage = {
+            id: uuidv4(),
+            roomId: data.roomId,
+            userId: "system",
+            username: "System",
+            message: `${spectator?.username} moved to spectators`,
+            timestamp: Date.now(),
+            type: "system",
+          };
+          io.to(data.roomId).emit("chat:message", systemMessage);
+        } else {
+          callback?.({ success: false, error: result.error });
+        }
+      } catch (error) {
+        console.error("Error removing player:", error);
+        callback?.({ success: false, error: "Internal error" });
+      }
+    }
+  );
+
+  // Host kicks user
+  socket.on(
+    "room:kick",
+    (data: { roomId: string; userId: string }, callback) => {
+      try {
+        const room = roomManager.getRoom(data.roomId);
+        if (!room)
+          return callback?.({ success: false, error: "Room not found" });
+
+        if (room.ownerId !== userId) {
+          return callback?.({
+            success: false,
+            error: "Only host can kick users",
+          });
+        }
+
+        const kickedUserSocketId =
+          room.players.find((p) => p.id === data.userId)?.socketId ||
+          room.spectators.find((p) => p.id === data.userId)?.socketId;
+
+        const result = roomManager.kickUser(data.roomId, data.userId);
+        if (result.success && result.room) {
+          io.to(data.roomId).emit("room:players", result.room.players);
+          io.to(data.roomId).emit("room:spectators", result.room.spectators);
+          io.to(data.roomId).emit("room:update", result.room);
+
+          // Force kicked user to leave room
+          if (kickedUserSocketId) {
+            const kickedSocket = io.sockets.sockets.get(kickedUserSocketId);
+            if (kickedSocket) {
+              kickedSocket.leave(data.roomId);
+              kickedSocket.emit("room:kicked", {
+                reason: "You were kicked by the host",
+              });
+            }
+          }
+
+          callback?.({ success: true });
+
+          // Send system message
+          const systemMessage: ChatMessage = {
+            id: uuidv4(),
+            roomId: data.roomId,
+            userId: "system",
+            username: "System",
+            message: `A user was kicked from the room`,
+            timestamp: Date.now(),
+            type: "system",
+          };
+          io.to(data.roomId).emit("chat:message", systemMessage);
+        } else {
+          callback?.({ success: false, error: result.error });
+        }
+      } catch (error) {
+        console.error("Error kicking user:", error);
+        callback?.({ success: false, error: "Internal error" });
+      }
+    }
+  );
 
   // GAME EVENTS (Pure relay)
 
@@ -285,10 +447,10 @@ io.on("connection", (socket: Socket) => {
   socket.on("chat:history", (data: { roomId: string }, callback) => {
     try {
       const history = chatHistory.get(data.roomId) || [];
-      callback(history);
+      callback?.(history);
     } catch (error) {
       console.error("Error getting chat history:", error);
-      callback([]);
+      callback?.([]);
     }
   });
 

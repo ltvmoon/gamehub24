@@ -1030,7 +1030,7 @@ export default function MonopolyUI({
             (p) => p.spaceId === offer.propertyId
           );
           const isSellOffer = property?.ownerId === offer.fromPlayerId;
-          const isBuyOffer = property?.ownerId === offer.toPlayerId;
+          // const isBuyOffer = property?.ownerId === offer.toPlayerId;
 
           let title = ti({ en: "TRADE OFFER", vi: "LỜI MỜI GIAO DỊCH" });
           let description = "";

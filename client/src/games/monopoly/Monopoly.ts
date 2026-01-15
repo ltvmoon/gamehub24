@@ -1599,12 +1599,26 @@ export default class Monopoly extends BaseGame {
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
-    players.forEach((player, index) => {
-      if (index < 4 && !this.state.players[index].isBot) {
-        this.state.players[index].id = player.id;
-        this.state.players[index].username = player.username;
+    // Reset human slots first to ensure sync
+    this.state.players.forEach((p, i) => {
+      if (!p.isBot) {
+        p.id = null;
+        p.username = `Player ${i + 1}`;
       }
     });
+
+    // Fill non-bot slots with available players
+    let playerIndex = 0;
+    for (let i = 0; i < 4; i++) {
+      if (playerIndex >= players.length) break;
+
+      if (!this.state.players[i].isBot) {
+        this.state.players[i].id = players[playerIndex].id;
+        this.state.players[i].username = players[playerIndex].username;
+        playerIndex++;
+      }
+    }
+
     this.onStateChange?.(this.state);
     if (this.isHost) {
       this.broadcastState();

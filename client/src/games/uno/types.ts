@@ -32,7 +32,6 @@ export interface PlayerSlot {
   username: string;
   hand: UnoCard[];
   isBot: boolean;
-  isGuest: boolean;
   isHost: boolean;
   calledUno: boolean; // Has called UNO when down to 1 card
 }

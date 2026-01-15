@@ -17,6 +17,7 @@ export interface YouTubeWatchAction extends GameAction {
 export default class YouTubeWatch extends BaseGame {
   private state: YouTubeWatchState;
   private onStateChange?: (state: YouTubeWatchState) => void;
+  private players: string[] = []; // Track active players for access control
 
   constructor(
     roomId: string,
@@ -71,9 +72,11 @@ export default class YouTubeWatch extends BaseGame {
       if (this.isHost) {
         // I am Host, receiving a request from a Client
         if (this.state.allowGuestControl) {
-          this.handleSyncState(action.payload);
+          // Verify requester is a player (not just a spectator)
+          if (this.players.includes(action.playerId)) {
+            this.handleSyncState(action.payload);
+          }
         }
-        // Else ignore guest attempt
       }
     } else if (action.type === "REQUEST_SYNC") {
       if (this.isHost) {
@@ -195,5 +198,7 @@ export default class YouTubeWatch extends BaseGame {
     this.setState({ ...this.state });
   }
 
-  updatePlayers(_players: { id: string; username: string }[]): void {}
+  updatePlayers(players: { id: string; username: string }[]): void {
+    this.players = players.map((p) => p.id);
+  }
 }
