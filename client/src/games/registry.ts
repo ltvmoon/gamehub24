@@ -285,7 +285,7 @@ games.set("billiard", {
     vi: "Đánh bóng vào lỗ và ghi bàn bóng 8 để thắng!",
   },
   icon: CircleDot,
-  categories: ["board", "classic", "strategy"],
+  categories: ["classic", "strategy"],
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,

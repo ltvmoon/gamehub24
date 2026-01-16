@@ -52,14 +52,24 @@ export abstract class BaseGame {
   abstract reset(): void;
   abstract updatePlayers(players: { id: string; username: string }[]): void;
 
+  // Game persistent state name (e.g. "tictactoe")
+  protected gameName: string = "unknown";
+
+  public setGameName(name: string): void {
+    this.gameName = name;
+  }
+
   // Host broadcasts state to all clients
-  protected broadcastState(): void {
+  public broadcastState(): void {
     if (this.isHost) {
       const state = this.getState();
       this.socket.emit("game:state", {
         roomId: this.roomId,
         state,
       });
+
+      // Auto-save state to localStorage
+      this.saveStateToStorage();
     }
   }
 
@@ -84,6 +94,36 @@ export abstract class BaseGame {
       roomId: this.roomId,
       result,
     });
+
+    // Clear saved state on game end
+    this.clearSavedState();
+  }
+
+  // Persist state to localStorage (Host only)
+  protected saveStateToStorage(): void {
+    if (this.isHost && this.gameName !== "unknown") {
+      try {
+        const key = `saved_game_${this.gameName}`;
+        const payload = {
+          state: this.getState(),
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(key, JSON.stringify(payload));
+      } catch (e) {
+        console.error("Failed to save game state:", e);
+      }
+    }
+  }
+
+  // Clear saved state (Host only)
+  protected clearSavedState(): void {
+    if (this.isHost && this.gameName !== "unknown") {
+      try {
+        localStorage.removeItem(`saved_game_${this.gameName}`);
+      } catch (e) {
+        console.error("Failed to clear game state:", e);
+      }
+    }
   }
 
   // Cleanup socket listeners

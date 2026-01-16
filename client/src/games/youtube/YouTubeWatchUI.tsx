@@ -10,9 +10,12 @@ import {
   User,
 } from "lucide-react";
 import type { GameUIProps } from "../types";
+import useLanguage from "../../stores/languageStore";
 
 export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as YouTubeWatch;
+
+  const { ts } = useLanguage();
   const [state, setState] = useState<YouTubeWatchState>(game.getState());
   const [urlInput, setUrlInput] = useState("");
   const [player, setPlayer] = useState<YouTubePlayer | null>(null);
@@ -114,7 +117,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
       setError(null);
       setUrlInput("");
     } catch (e) {
-      setError("Invalid URL");
+      setError(ts({ en: "Invalid URL", vi: "Định dạng URL không hợp lệ" }));
     }
   };
 
@@ -145,7 +148,10 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
                 type="text"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="Paste YouTube URL or ID..."
+                placeholder={ts({
+                  en: "Paste YouTube URL or ID...",
+                  vi: "Dán URL hoặc ID YouTube...",
+                })}
                 className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onKeyDown={(e) => e.key === "Enter" && handleSetVideo()}
               />
@@ -154,7 +160,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
               onClick={handleSetVideo}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
             >
-              Load
+              {ts({ en: "Load", vi: "Tải" })}
             </button>
           </div>
         )}
@@ -168,13 +174,15 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
               <User className="w-4 h-4 text-yellow-400" />
             )}
             <span>
-              Guest Control:{" "}
+              {ts({ en: "Guest Control", vi: "Khách có thể điều khiển" })}:{" "}
               <span
                 className={
                   state.allowGuestControl ? "text-green-400" : "text-yellow-400"
                 }
               >
-                {state.allowGuestControl ? "ON" : "OFF"}
+                {state.allowGuestControl
+                  ? ts({ en: "ON", vi: "Bật" })
+                  : ts({ en: "OFF", vi: "Tắt" })}
               </span>
             </span>
           </div>
@@ -228,7 +236,12 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 gap-2">
             <Play className="w-12 h-12 opacity-50" />
-            <p>Waiting for host to select a video...</p>
+            <p>
+              {ts({
+                en: "Waiting for host to select a video...",
+                vi: "Chờ chủ phòng chọn video...",
+              })}
+            </p>
             <p className="text-xs text-gray-600">ID: {game.getRoomId}</p>
           </div>
         )}
@@ -239,11 +252,13 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
         <div className="flex items-center gap-2">
           {state.isPlaying ? (
             <span className="flex items-center gap-1 text-green-400">
-              <Play className="w-3 h-3" /> Playing
+              <Play className="w-3 h-3" />{" "}
+              {ts({ en: "Playing", vi: "Đang phát" })}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-yellow-500">
-              <Pause className="w-3 h-3" /> Paused
+              <Pause className="w-3 h-3" />{" "}
+              {ts({ en: "Paused", vi: "Đang tạm dừng" })}
             </span>
           )}
         </div>

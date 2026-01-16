@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Settings, RefreshCw, Wifi, WifiOff, Save, Globe } from "lucide-react";
+import { Settings, RefreshCw, Wifi, WifiOff, Save } from "lucide-react";
 import { useSocketStore } from "../stores/socketStore";
 import { useUserStore } from "../stores/userStore";
 import useLanguage, { Language } from "../stores/languageStore";
@@ -73,7 +73,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-      <div className="bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl mx-4 animate-scaleIn">
+      <div className="bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl mx-4 animate-scaleIn max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
           <Settings className="w-6 h-6 text-primary" />
           <h2 className="font-display text-2xl text-text-primary">
@@ -84,10 +84,10 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-6">
           {/* Language Switcher */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
+            {/* <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
               <Globe className="w-4 h-4" />
               {ti({ en: "Language", vi: "Ngôn ngữ" })}
-            </label>
+            </label> */}
             <div className="flex gap-2">
               <button
                 onClick={() => setLanguage(Language.en)}

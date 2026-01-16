@@ -27,8 +27,7 @@ export type SpaceType =
 // Board space interface
 export interface BoardSpace {
   id: number;
-  name: string;
-  nameVi: string; // Vietnamese name
+  name: string | { en: string; vi: string };
   type: SpaceType;
   // Property-specific fields
   color?: PropertyColor;
@@ -65,8 +64,7 @@ export interface MonopolyPlayer {
 // Chance/Community Chest cards
 export interface Card {
   id: number;
-  text: string;
-  textVi: string;
+  text: string | { en: string; vi: string };
   action: CardAction;
 }
 
@@ -118,6 +116,7 @@ export interface TradeOffer {
   propertyId: number; // Space ID
   price: number;
   status: "pending" | "accepted" | "declined" | "cancelled";
+  responseMessage?: { en: string; vi: string };
 }
 
 // === Actions ===
@@ -216,6 +215,7 @@ export interface RespondTradeAction {
   type: "RESPOND_TRADE";
   offerId: string;
   accepted: boolean;
+  message?: string;
 }
 
 export interface CancelTradeAction {
@@ -258,22 +258,20 @@ export const PLAYER_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b"];
 // === Board Spaces (40 spaces, clockwise from GO) ===
 export const BOARD_SPACES: BoardSpace[] = [
   // Bottom row (right to left when viewing)
-  { id: 0, name: "GO", nameVi: "KHỞI HÀNH", type: "go" },
+  { id: 0, name: { en: "GO", vi: "KHỞI HÀNH" }, type: "go" },
   {
     id: 1,
-    name: "Hang Bai",
-    nameVi: "Hàng Bài",
+    name: { en: "Hang Bai", vi: "Hàng Bài" },
     type: "property",
     color: "brown",
     price: 600,
     rent: [20, 100, 300, 900, 1600, 2500],
     houseCost: 500,
   },
-  { id: 2, name: "Community Chest", nameVi: "Cộng Đồng", type: "chest" },
+  { id: 2, name: { en: "Community Chest", vi: "Cộng Đồng" }, type: "chest" },
   {
     id: 3,
-    name: "Hang Dao",
-    nameVi: "Hàng Đào",
+    name: { en: "Hang Dao", vi: "Hàng Đào" },
     type: "property",
     color: "brown",
     price: 600,
@@ -282,34 +280,30 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 4,
-    name: "Income Tax",
-    nameVi: "Thuế Thu Nhập",
+    name: { en: "Income Tax", vi: "Thuế Thu Nhập" },
     type: "tax",
     taxAmount: 2000,
   },
   {
     id: 5,
-    name: "Ga Ha Noi",
-    nameVi: "Ga Hà Nội",
+    name: { en: "Ga Ha Noi", vi: "Ga Hà Nội" },
     type: "railroad",
     price: 2000,
     baseRent: 250,
   },
   {
     id: 6,
-    name: "Hang Gai",
-    nameVi: "Hàng Gai",
+    name: { en: "Hang Gai", vi: "Hàng Gai" },
     type: "property",
     color: "lightblue",
     price: 1000,
     rent: [60, 300, 900, 2700, 4000, 5500],
     houseCost: 500,
   },
-  { id: 7, name: "Chance", nameVi: "Cơ Hội", type: "chance" },
+  { id: 7, name: { en: "Chance", vi: "Cơ Hội" }, type: "chance" },
   {
     id: 8,
-    name: "Hang Bong",
-    nameVi: "Hàng Bông",
+    name: { en: "Hang Bong", vi: "Hàng Bông" },
     type: "property",
     color: "lightblue",
     price: 1000,
@@ -318,8 +312,7 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 9,
-    name: "Hang Ma",
-    nameVi: "Hàng Mã",
+    name: { en: "Hang Ma", vi: "Hàng Mã" },
     type: "property",
     color: "lightblue",
     price: 1200,
@@ -327,11 +320,10 @@ export const BOARD_SPACES: BoardSpace[] = [
     houseCost: 500,
   },
   // Left column (bottom to top)
-  { id: 10, name: "Jail", nameVi: "Thăm Tù", type: "jail" },
+  { id: 10, name: { en: "Jail", vi: "Thăm Tù" }, type: "jail" },
   {
     id: 11,
-    name: "Pho Hue",
-    nameVi: "Phố Huế",
+    name: { en: "Pho Hue", vi: "Phố Huế" },
     type: "property",
     color: "pink",
     price: 1400,
@@ -340,16 +332,14 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 12,
-    name: "Electric Company",
-    nameVi: "Công Ty Điện",
+    name: { en: "Electric Company", vi: "Công Ty Điện" },
     type: "utility",
     price: 1500,
     baseRent: 40, // 4x or 10x dice roll
   },
   {
     id: 13,
-    name: "Ba Trieu",
-    nameVi: "Bà Triệu",
+    name: { en: "Ba Trieu", vi: "Bà Triệu" },
     type: "property",
     color: "pink",
     price: 1400,
@@ -358,8 +348,7 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 14,
-    name: "Trang Tien",
-    nameVi: "Tràng Tiền",
+    name: { en: "Trang Tien", vi: "Tràng Tiền" },
     type: "property",
     color: "pink",
     price: 1600,
@@ -368,27 +357,24 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 15,
-    name: "Ga Sai Gon",
-    nameVi: "Ga Sài Gòn",
+    name: { en: "Ga Sai Gon", vi: "Ga Sài Gòn" },
     type: "railroad",
     price: 2000,
     baseRent: 250,
   },
   {
     id: 16,
-    name: "Le Loi",
-    nameVi: "Lê Lợi",
+    name: { en: "Le Loi", vi: "Lê Lợi" },
     type: "property",
     color: "orange",
     price: 1800,
     rent: [140, 700, 2000, 5500, 7500, 9500],
     houseCost: 1000,
   },
-  { id: 17, name: "Community Chest", nameVi: "Cộng Đồng", type: "chest" },
+  { id: 17, name: { en: "Community Chest", vi: "Cộng Đồng" }, type: "chest" },
   {
     id: 18,
-    name: "Ham Nghi",
-    nameVi: "Hàm Nghi",
+    name: { en: "Ham Nghi", vi: "Hàm Nghi" },
     type: "property",
     color: "orange",
     price: 1800,
@@ -397,8 +383,7 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 19,
-    name: "Nguyen Hue",
-    nameVi: "Nguyễn Huệ",
+    name: { en: "Nguyen Hue", vi: "Nguyễn Huệ" },
     type: "property",
     color: "orange",
     price: 2000,
@@ -406,22 +391,24 @@ export const BOARD_SPACES: BoardSpace[] = [
     houseCost: 1000,
   },
   // Top row (left to right)
-  { id: 20, name: "Free Parking", nameVi: "Đỗ Xe Miễn Phí", type: "parking" },
+  {
+    id: 20,
+    name: { en: "Free Parking", vi: "Đỗ Xe Miễn Phí" },
+    type: "parking",
+  },
   {
     id: 21,
-    name: "Dong Khoi",
-    nameVi: "Đồng Khởi",
+    name: { en: "Dong Khoi", vi: "Đồng Khởi" },
     type: "property",
     color: "red",
     price: 2200,
     rent: [180, 900, 2500, 7000, 8750, 10500],
     houseCost: 1500,
   },
-  { id: 22, name: "Chance", nameVi: "Cơ Hội", type: "chance" },
+  { id: 22, name: { en: "Chance", vi: "Cơ Hội" }, type: "chance" },
   {
     id: 23,
-    name: "Le Thanh Ton",
-    nameVi: "Lê Thánh Tôn",
+    name: { en: "Le Thanh Ton", vi: "Lê Thánh Tôn" },
     type: "property",
     color: "red",
     price: 2200,
@@ -430,8 +417,7 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 24,
-    name: "Hai Ba Trung",
-    nameVi: "Hai Bà Trưng",
+    name: { en: "Hai Ba Trung", vi: "Hai Bà Trưng" },
     type: "property",
     color: "red",
     price: 2400,
@@ -440,16 +426,14 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 25,
-    name: "Ga Da Nang",
-    nameVi: "Ga Đà Nẵng",
+    name: { en: "Ga Da Nang", vi: "Ga Đà Nẵng" },
     type: "railroad",
     price: 2000,
     baseRent: 250,
   },
   {
     id: 26,
-    name: "Phan Boi Chau",
-    nameVi: "Phan Bội Châu",
+    name: { en: "Phan Boi Chau", vi: "Phan Bội Châu" },
     type: "property",
     color: "yellow",
     price: 2600,
@@ -458,8 +442,7 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 27,
-    name: "Phan Chu Trinh",
-    nameVi: "Phan Chu Trinh",
+    name: { en: "Phan Chu Trinh", vi: "Phan Chu Trinh" },
     type: "property",
     color: "yellow",
     price: 2600,
@@ -468,16 +451,14 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 28,
-    name: "Water Works",
-    nameVi: "Công Ty Nước",
+    name: { en: "Water Works", vi: "Công Ty Nước" },
     type: "utility",
     price: 1500,
     baseRent: 40,
   },
   {
     id: 29,
-    name: "Ly Thai To",
-    nameVi: "Lý Thái Tổ",
+    name: { en: "Ly Thai To", vi: "Lý Thái Tổ" },
     type: "property",
     color: "yellow",
     price: 2800,
@@ -485,11 +466,10 @@ export const BOARD_SPACES: BoardSpace[] = [
     houseCost: 1500,
   },
   // Right column (top to bottom)
-  { id: 30, name: "Go To Jail", nameVi: "Vào Tù", type: "gotojail" },
+  { id: 30, name: { en: "Go To Jail", vi: "Vào Tù" }, type: "gotojail" },
   {
     id: 31,
-    name: "Tran Hung Dao",
-    nameVi: "Trần Hưng Đạo",
+    name: { en: "Tran Hung Dao", vi: "Trần Hưng Đạo" },
     type: "property",
     color: "green",
     price: 3000,
@@ -498,19 +478,17 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 32,
-    name: "Dien Bien Phu",
-    nameVi: "Điện Biên Phủ",
+    name: { en: "Dien Bien Phu", vi: "Điện Biên Phủ" },
     type: "property",
     color: "green",
     price: 3000,
     rent: [260, 1300, 3900, 9000, 11000, 12750],
     houseCost: 2000,
   },
-  { id: 33, name: "Community Chest", nameVi: "Cộng Đồng", type: "chest" },
+  { id: 33, name: { en: "Community Chest", vi: "Cộng Đồng" }, type: "chest" },
   {
     id: 34,
-    name: "Le Duan",
-    nameVi: "Lê Duẩn",
+    name: { en: "Le Duan", vi: "Lê Duẩn" },
     type: "property",
     color: "green",
     price: 3200,
@@ -519,17 +497,15 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 35,
-    name: "Ga Hue",
-    nameVi: "Ga Huế",
+    name: { en: "Ga Hue", vi: "Ga Huế" },
     type: "railroad",
     price: 2000,
     baseRent: 250,
   },
-  { id: 36, name: "Chance", nameVi: "Cơ Hội", type: "chance" },
+  { id: 36, name: { en: "Chance", vi: "Cơ Hội" }, type: "chance" },
   {
     id: 37,
-    name: "Phu My Hung",
-    nameVi: "Phú Mỹ Hưng",
+    name: { en: "Phu My Hung", vi: "Phú Mỹ Hưng" },
     type: "property",
     color: "blue",
     price: 3500,
@@ -538,15 +514,13 @@ export const BOARD_SPACES: BoardSpace[] = [
   },
   {
     id: 38,
-    name: "Luxury Tax",
-    nameVi: "Thuế Xa Xỉ",
+    name: { en: "Luxury Tax", vi: "Thuế Xa Xỉ" },
     type: "tax",
     taxAmount: 1000,
   },
   {
     id: 39,
-    name: "Thu Thiem",
-    nameVi: "Thủ Thiêm",
+    name: { en: "Thu Thiem", vi: "Thủ Thiêm" },
     type: "property",
     color: "blue",
     price: 4000,
@@ -571,62 +545,55 @@ export const PROPERTY_COLORS: Record<PropertyColor, string> = {
 export const CHANCE_CARDS: Card[] = [
   {
     id: 1,
-    text: "Advance to GO",
-    textVi: "Đi đến ô Khởi Hành",
+    text: { en: "Advance to GO", vi: "Đi đến ô Khởi Hành" },
     action: { type: "MOVE", position: 0 },
   },
   {
     id: 2,
-    text: "Go to Jail",
-    textVi: "Đi vào Tù",
+    text: { en: "Go to Jail", vi: "Đi vào Tù" },
     action: { type: "GO_TO_JAIL" },
   },
   {
     id: 3,
-    text: "Bank pays you 500đ",
-    textVi: "Ngân hàng trả bạn 500đ",
+    text: { en: "Bank pays you 500đ", vi: "Ngân hàng trả bạn 500đ" },
     action: { type: "COLLECT", amount: 500 },
   },
   {
     id: 4,
-    text: "Pay 150đ fine",
-    textVi: "Nộp phạt 150đ",
+    text: { en: "Pay 150đ fine", vi: "Nộp phạt 150đ" },
     action: { type: "PAY", amount: 150 },
   },
   {
     id: 5,
-    text: "Advance to Đồng Khởi",
-    textVi: "Đi đến Đồng Khởi",
+    text: { en: "Advance to Đồng Khởi", vi: "Đi đến Đồng Khởi" },
     action: { type: "MOVE", position: 21 },
   },
   {
     id: 6,
-    text: "Go back 3 spaces",
-    textVi: "Lùi 3 ô",
+    text: { en: "Go back 3 spaces", vi: "Lùi 3 ô" },
     action: { type: "MOVE_RELATIVE", spaces: -3 },
   },
   {
     id: 7,
-    text: "Pay each player 500đ",
-    textVi: "Trả mỗi người chơi 500đ",
+    text: { en: "Pay each player 500đ", vi: "Trả mỗi người chơi 500đ" },
     action: { type: "PAY_EACH_PLAYER", amount: 500 },
   },
   {
     id: 8,
-    text: "Collect 1500đ",
-    textVi: "Nhận 1500đ",
+    text: { en: "Collect 1500đ", vi: "Nhận 1500đ" },
     action: { type: "COLLECT", amount: 1500 },
   },
   {
     id: 9,
-    text: "Get out of jail free",
-    textVi: "Ra tù miễn phí",
+    text: { en: "Get out of jail free", vi: "Ra tù miễn phí" },
     action: { type: "GET_OUT_JAIL" },
   },
   {
     id: 10,
-    text: "Repairs: 250đ/house, 1000đ/hotel",
-    textVi: "Sửa chữa: 250đ/nhà, 1000đ/khách sạn",
+    text: {
+      en: "Repairs: 250đ/house, 1000đ/hotel",
+      vi: "Sửa chữa: 250đ/nhà, 1000đ/khách sạn",
+    },
     action: { type: "REPAIRS", perHouse: 250, perHotel: 1000 },
   },
 ];
@@ -635,62 +602,55 @@ export const CHANCE_CARDS: Card[] = [
 export const CHEST_CARDS: Card[] = [
   {
     id: 1,
-    text: "Advance to GO",
-    textVi: "Đi đến ô Khởi Hành",
+    text: { en: "Advance to GO", vi: "Đi đến ô Khởi Hành" },
     action: { type: "MOVE", position: 0 },
   },
   {
     id: 2,
-    text: "Bank error, collect 2000đ",
-    textVi: "Lỗi ngân hàng, nhận 2000đ",
+    text: { en: "Bank error, collect 2000đ", vi: "Lỗi ngân hàng, nhận 2000đ" },
     action: { type: "COLLECT", amount: 2000 },
   },
   {
     id: 3,
-    text: "Doctor's fee, pay 500đ",
-    textVi: "Phí bác sĩ, trả 500đ",
+    text: { en: "Doctor's fee, pay 500đ", vi: "Phí bác sĩ, trả 500đ" },
     action: { type: "PAY", amount: 500 },
   },
   {
     id: 4,
-    text: "Sale of stock, get 500đ",
-    textVi: "Bán cổ phiếu, nhận 500đ",
+    text: { en: "Sale of stock, get 500đ", vi: "Bán cổ phiếu, nhận 500đ" },
     action: { type: "COLLECT", amount: 500 },
   },
   {
     id: 5,
-    text: "Get out of jail free",
-    textVi: "Ra tù miễn phí",
+    text: { en: "Get out of jail free", vi: "Ra tù miễn phí" },
     action: { type: "GET_OUT_JAIL" },
   },
   {
     id: 6,
-    text: "Go to Jail",
-    textVi: "Đi vào Tù",
+    text: { en: "Go to Jail", vi: "Đi vào Tù" },
     action: { type: "GO_TO_JAIL" },
   },
   {
     id: 7,
-    text: "Birthday! Collect 100đ from each",
-    textVi: "Sinh nhật! Nhận 100đ từ mỗi người",
+    text: {
+      en: "Birthday! Collect 100đ from each",
+      vi: "Sinh nhật! Nhận 100đ từ mỗi người",
+    },
     action: { type: "COLLECT_FROM_EACH", amount: 100 },
   },
   {
     id: 8,
-    text: "Income tax refund, get 200đ",
-    textVi: "Hoàn thuế, nhận 200đ",
+    text: { en: "Income tax refund, get 200đ", vi: "Hoàn thuế, nhận 200đ" },
     action: { type: "COLLECT", amount: 200 },
   },
   {
     id: 9,
-    text: "Pay hospital, 1000đ",
-    textVi: "Trả viện phí, 1000đ",
+    text: { en: "Pay hospital, 1000đ", vi: "Trả viện phí, 1000đ" },
     action: { type: "PAY", amount: 1000 },
   },
   {
     id: 10,
-    text: "Inherit 1000đ",
-    textVi: "Thừa kế 1000đ",
+    text: { en: "Inherit 1000đ", vi: "Thừa kế 1000đ" },
     action: { type: "COLLECT", amount: 1000 },
   },
 ];

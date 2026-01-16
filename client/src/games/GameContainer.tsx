@@ -2,6 +2,8 @@ import { useEffect, useState, useRef, type ComponentType } from "react";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { useGameStore } from "../stores/gameStore";
+import { useAlertStore } from "../stores/alertStore";
+import useLanguage from "../stores/languageStore";
 import { getSocket } from "../services/socket";
 import { getGame } from "./registry";
 import type { GameUIProps } from "./types";
@@ -10,6 +12,8 @@ export default function GameContainer() {
   const { currentRoom } = useRoomStore();
   const { userId } = useUserStore();
   const { gameInstance, setGameInstance, setIsHost } = useGameStore();
+  const { confirm: showConfirm } = useAlertStore();
+  const { ts } = useLanguage();
   const socket = getSocket();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,6 +94,42 @@ export default function GameContainer() {
         ) {
           game.destroy();
           return;
+        }
+
+        // Set game name for persistence
+        game.setGameName(gameType);
+
+        // Check for saved state (Host only)
+        if (isHost) {
+          try {
+            const key = `saved_game_${gameType}`;
+            const savedItem = localStorage.getItem(key);
+            if (savedItem) {
+              const { state, timestamp } = JSON.parse(savedItem);
+              const dateStr = new Date(timestamp).toLocaleString();
+
+              const shouldRestore = await showConfirm(
+                ts({
+                  en: `Found unfinished game from ${dateStr}. Resume?`,
+                  vi: `Tìm thấy ván game chưa xong lúc ${dateStr}. Tiếp tục?`,
+                }),
+                ts({ en: "Resume Game", vi: "Tiếp tục game" })
+              );
+
+              if (shouldRestore) {
+                game.setState(state);
+                // Sync current players to the restored state
+                game.updatePlayers(currentRoom.players);
+                // Ensure broadcast happens to sync all clients
+                game.broadcastState();
+              } else {
+                // User chose to start new, clear old state
+                localStorage.removeItem(key);
+              }
+            }
+          } catch (e) {
+            console.error("Error restoring game:", e);
+          }
         }
 
         // Tag instance for change detection

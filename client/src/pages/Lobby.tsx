@@ -536,7 +536,8 @@ function CreateRoomModal({
   const { username } = useUserStore();
   const [roomName, setRoomName] = useState("");
   const [gameType, setGameType] = useState(gameId);
-  const [isPublic, setIsPublic] = useState(true);
+  const [isPublic, setIsPublic] = useState(false);
+  const [requirePassword, setRequirePassword] = useState(false);
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const { setCurrentRoom } = useRoomStore();
@@ -561,7 +562,7 @@ function CreateRoomModal({
         name: roomName.trim() || username,
         gameType: game.id,
         isPublic,
-        password: isPublic ? undefined : password,
+        password: requirePassword ? password : undefined,
         maxPlayers: game.maxPlayers,
       },
       (response: { success: boolean; room?: Room; error?: string }) => {
@@ -635,8 +636,23 @@ function CreateRoomModal({
             </label>
           </div>
 
+          {/* Require Password */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requirePassword}
+                onChange={(e) => setRequirePassword(e.target.checked)}
+                className="w-4 h-4 text-primary bg-white/5 border-white/10 rounded focus:ring-2 focus:ring-primary cursor-pointer"
+              />
+              <span className="text-sm text-text-secondary">
+                {ti({ en: "Require Password", vi: "Yêu cầu mật khẩu" })}
+              </span>
+            </label>
+          </div>
+
           {/* Password (if private) */}
-          {!isPublic && (
+          {requirePassword && (
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 {ti({ en: "Password", vi: "Mật khẩu" })}
@@ -670,9 +686,6 @@ function CreateRoomModal({
     </div>
   );
 }
-
-// Regenerate Identity Modal Component
-// ... (omitted)
 
 function JoinRoomModal({ onClose }: { onClose: () => void }) {
   const [roomId, setRoomId] = useState("");

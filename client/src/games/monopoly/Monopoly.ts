@@ -17,6 +17,7 @@ import {
   PLAYER_COLORS,
   type TradeOffer,
 } from "./types";
+import { trans } from "../../stores/languageStore";
 
 export default class Monopoly extends BaseGame {
   private state: MonopolyState;
@@ -90,6 +91,11 @@ export default class Monopoly extends BaseGame {
   setState(state: MonopolyState): void {
     this.state = state;
     this.onStateChange?.(this.state);
+
+    // Resume bot if it's their turn
+    if (this.isHost) {
+      this.checkBotTurn();
+    }
   }
 
   // Notify UI and broadcast - creates new state reference for React
@@ -146,16 +152,24 @@ export default class Monopoly extends BaseGame {
     if (isSellOffer) {
       this.addLog(
         {
-          en: `${fromPlayer?.username} offered to sell ${space?.name} to ${toPlayer?.username} for ${price}đ`,
-          vi: `${fromPlayer?.username} đề nghị bán ${space?.nameVi} cho ${toPlayer?.username} với giá ${price}đ`,
+          en: `${fromPlayer?.username} offered to sell ${trans(
+            space?.name
+          )} to ${toPlayer?.username} for ${price}đ`,
+          vi: `${fromPlayer?.username} đề nghị bán ${trans(space?.name)} cho ${
+            toPlayer?.username
+          } với giá ${price}đ`,
         },
         "info"
       );
     } else {
       this.addLog(
         {
-          en: `${fromPlayer?.username} offered to buy ${space?.name} from ${toPlayer?.username} for ${price}đ`,
-          vi: `${fromPlayer?.username} đề nghị mua ${space?.nameVi} từ ${toPlayer?.username} với giá ${price}đ`,
+          en: `${fromPlayer?.username} offered to buy ${trans(
+            space?.name
+          )} from ${toPlayer?.username} for ${price}đ`,
+          vi: `${fromPlayer?.username} đề nghị mua ${trans(space?.name)} từ ${
+            toPlayer?.username
+          } với giá ${price}đ`,
         },
         "info"
       );
@@ -169,7 +183,11 @@ export default class Monopoly extends BaseGame {
     }
   }
 
-  private handleRespondTrade(offerId: string, accepted: boolean): void {
+  private handleRespondTrade(
+    offerId: string,
+    accepted: boolean,
+    message?: string
+  ): void {
     if (!this.isHost) return;
 
     const offerIndex = this.state.tradeOffers.findIndex(
@@ -216,8 +234,12 @@ export default class Monopoly extends BaseGame {
 
       this.addLog(
         {
-          en: `Trade successful! ${buyer.username} bought ${space?.name} from ${seller.username} for ${offer.price}đ`,
-          vi: `Giao dịch thành công! ${buyer.username} mua ${space?.nameVi} từ ${seller.username} giá ${offer.price}đ`,
+          en: `Trade successful! ${buyer.username} bought ${trans(
+            space?.name
+          )} from ${seller.username} for ${offer.price}đ`,
+          vi: `Giao dịch thành công! ${buyer.username} mua ${trans(
+            space?.name
+          )} từ ${seller.username} giá ${offer.price}đ`,
         },
         "action"
       );
@@ -230,6 +252,11 @@ export default class Monopoly extends BaseGame {
         (p) => p.id === offer.fromPlayerId
       );
 
+      // Attach message if provided
+      if (message) {
+        offer.responseMessage = { en: message, vi: message };
+      }
+
       this.addLog(
         {
           en: `${responder?.username} declined the trade offer from ${initiator?.username}`,
@@ -237,9 +264,21 @@ export default class Monopoly extends BaseGame {
         },
         "info"
       );
+
+      this.notifyAndBroadcast();
+
+      // Auto remove after 5 seconds if not closed by user
+      setTimeout(() => {
+        const idx = this.state.tradeOffers.findIndex((o) => o.id === offerId);
+        if (idx !== -1 && this.state.tradeOffers[idx].status === "declined") {
+          this.state.tradeOffers.splice(idx, 1);
+          this.notifyAndBroadcast();
+        }
+      }, 8000);
+      return; // EXIT HERE so we don't splice immediately below
     }
 
-    // Remove offer after delay or immediately
+    // Remove offer after delay or immediately (for accepted trades)
     this.state.tradeOffers.splice(offerIndex, 1);
     this.notifyAndBroadcast();
   }
@@ -255,8 +294,14 @@ export default class Monopoly extends BaseGame {
 
   // === Bot Logic ===
 
-  private botEvaluateTrade(offer: TradeOffer): void {
+  private botEvaluateTrade(originalOffer: TradeOffer): void {
     setTimeout(() => {
+      // Fetch fresh offer object from state
+      const offer = this.state.tradeOffers.find(
+        (o) => o.id === originalOffer.id
+      );
+      if (!offer || offer.status !== "pending") return;
+
       const bot = this.state.players.find((p) => p.id === offer.toPlayerId);
       if (!bot || !bot.isBot) return;
 
@@ -297,9 +342,29 @@ export default class Monopoly extends BaseGame {
         // Bot is SELLING (Receiving a Buy Offer)
         // Accept if OfferPrice >= LandValue * Premium
         const minPrice = landValue * 1.2; // Want 20% profit over "value"
+
+        this.addLog(
+          {
+            en: `${bot.username} thinks ${trans(
+              space?.name
+            )} is worth ${minPrice}đ`,
+            vi: `${bot.username} nghĩ ${trans(
+              space?.name
+            )} đáng giá ${minPrice}đ`,
+          },
+          "info"
+        );
+
         if (offer.price >= minPrice) {
           this.handleRespondTrade(offer.id, true);
         } else {
+          // Bot declines but gives a hint
+          // We must directly mutate the state object here before calling handleRespondTrade
+          // because handleRespondTrade will trigger notifyAndBroadcast which copies it
+          offer.responseMessage = {
+            en: `I want at least ${minPrice.toLocaleString()}đ`,
+            vi: `Tôi muốn ít nhất ${minPrice.toLocaleString()}đ`,
+          };
           this.handleRespondTrade(offer.id, false);
         }
       } else {
@@ -308,9 +373,25 @@ export default class Monopoly extends BaseGame {
         const canAfford = bot.money >= offer.price;
         const isGoodPrice = offer.price <= maxPrice;
 
+        this.addLog(
+          {
+            en: `${bot.username} thinks ${trans(
+              space?.name
+            )} is worth ${maxPrice}đ`,
+            vi: `${bot.username} nghĩ ${trans(
+              space?.name
+            )} đáng giá ${maxPrice}đ`,
+          },
+          "info"
+        );
+
         if (canAfford && isGoodPrice) {
           this.handleRespondTrade(offer.id, true);
         } else {
+          offer.responseMessage = {
+            en: `I only pay up to ${maxPrice.toLocaleString()}đ`,
+            vi: `Tôi chỉ trả tối đa ${maxPrice.toLocaleString()}đ`,
+          };
           this.handleRespondTrade(offer.id, false);
         }
       }
@@ -339,8 +420,12 @@ export default class Monopoly extends BaseGame {
       player.money += refund;
       this.addLog(
         {
-          en: `${player.username} sold a house on ${space.name} for ${refund}đ`,
-          vi: `${player.username} bán 1 nhà trên ${space.nameVi} được ${refund}đ`,
+          en: `${player.username} sold a house on ${trans(
+            space?.name
+          )} for ${refund}đ`,
+          vi: `${player.username} bán 1 nhà trên ${trans(
+            space?.name
+          )} được ${refund}đ`,
         },
         "action"
       );
@@ -373,8 +458,12 @@ export default class Monopoly extends BaseGame {
       player.money += mortgageValue;
       this.addLog(
         {
-          en: `${player.username} mortgaged ${space.name} for ${mortgageValue}đ`,
-          vi: `${player.username} thế chấp ${space.nameVi} được ${mortgageValue}đ`,
+          en: `${player.username} mortgaged ${trans(
+            space?.name
+          )} for ${mortgageValue}đ`,
+          vi: `${player.username} thế chấp ${trans(
+            space?.name
+          )} được ${mortgageValue}đ`,
         },
         "action"
       );
@@ -403,8 +492,8 @@ export default class Monopoly extends BaseGame {
 
     this.addLog(
       {
-        en: `${player.username} unmortgaged ${space.name} for ${cost}đ`,
-        vi: `${player.username} chuộc ${space.nameVi} giá ${cost}đ`,
+        en: `${player.username} unmortgaged ${trans(space?.name)} for ${cost}đ`,
+        vi: `${player.username} chuộc ${trans(space?.name)} giá ${cost}đ`,
       },
       "action"
     );
@@ -466,7 +555,11 @@ export default class Monopoly extends BaseGame {
         );
         break;
       case "RESPOND_TRADE":
-        this.handleRespondTrade(action.offerId, action.accepted);
+        this.handleRespondTrade(
+          action.offerId,
+          action.accepted,
+          action.message
+        );
         break;
       case "CANCEL_TRADE":
         this.handleCancelTrade(action.offerId);
@@ -762,16 +855,20 @@ export default class Monopoly extends BaseGame {
         this.state.pendingAction = { type: "BUY_DECISION", spaceId };
         this.addLog(
           {
-            en: `${player.username} can buy ${space.name} for ${space.price}đ`,
-            vi: `${player.username} có thể mua ${space.nameVi} giá ${space.price}đ`,
+            en: `${player.username} can buy ${trans(space?.name)} for ${
+              space.price
+            }đ`,
+            vi: `${player.username} có thể mua ${trans(space?.name)} giá ${
+              space.price
+            }đ`,
           },
           "action"
         );
       } else {
         this.addLog(
           {
-            en: `${player.username} cannot afford ${space.name}`,
-            vi: `${player.username} không đủ tiền mua ${space.nameVi}`,
+            en: `${player.username} cannot afford ${trans(space?.name)}`,
+            vi: `${player.username} không đủ tiền mua ${trans(space?.name)}`,
           },
           "alert"
         );
@@ -867,8 +964,8 @@ export default class Monopoly extends BaseGame {
     this.state.pendingAction = { type: "CARD", card };
     this.addLog(
       {
-        en: `${player.username} draws: ${card.text}`,
-        vi: `${player.username} rút thẻ: ${card.textVi}`,
+        en: `${player.username} draws: ${trans(card.text)}`,
+        vi: `${player.username} rút thẻ: ${trans(card.text)}`,
       },
       "action"
     );
@@ -911,8 +1008,12 @@ export default class Monopoly extends BaseGame {
     this.state.pendingAction = null;
     this.addLog(
       {
-        en: `${player.username} bought ${space.name} for ${space.price}đ`,
-        vi: `${player.username} đã mua ${space.nameVi} với giá ${space.price}đ`,
+        en: `${player.username} bought ${trans(space?.name)} for ${
+          space.price
+        }đ`,
+        vi: `${player.username} đã mua ${trans(space?.name)} với giá ${
+          space.price
+        }đ`,
       },
       "action"
     );
@@ -936,8 +1037,8 @@ export default class Monopoly extends BaseGame {
     this.state.pendingAction = null;
     this.addLog(
       {
-        en: `${player.username} declined to buy ${space?.name}`,
-        vi: `${player.username} không mua ${space?.nameVi}`,
+        en: `${player.username} declined to buy ${trans(space?.name)}`,
+        vi: `${player.username} không mua ${trans(space?.name)}`,
       },
       "info"
     );
@@ -1028,8 +1129,12 @@ export default class Monopoly extends BaseGame {
     const buildingTypeVi = ownership.houses === 5 ? "khách sạn" : "nhà";
     this.addLog(
       {
-        en: `${player.username} built a ${buildingType} on ${space.name}`,
-        vi: `${player.username} xây ${buildingTypeVi} trên ${space.nameVi}`,
+        en: `${player.username} built a ${buildingType} on ${trans(
+          space?.name
+        )}`,
+        vi: `${player.username} xây ${buildingTypeVi} trên ${trans(
+          space?.name
+        )}`,
       },
       "action"
     );
@@ -1191,8 +1296,8 @@ export default class Monopoly extends BaseGame {
 
     this.addLog(
       {
-        en: `${player.username}: ${card.text}`,
-        vi: `${player.username}: ${card.textVi}`,
+        en: `${player.username}: ${trans(card.text)}`,
+        vi: `${player.username}: ${trans(card.text)}`,
       },
       "info"
     );
@@ -1431,9 +1536,14 @@ export default class Monopoly extends BaseGame {
         const ownedInColor = myProperties.filter((p) =>
           colorProps.some((c) => c.id === p.spaceId)
         );
+
+        // Check local validation first
+        const validation = this.canBuildHouse(bot.id!, prop.spaceId);
+
         if (
           ownedInColor.length === colorProps.length &&
-          bot.money >= space.houseCost + 2000
+          bot.money >= space.houseCost + 2000 &&
+          validation.allowed // Check validation!
         ) {
           this.handleBuildHouse(bot.id!, prop.spaceId);
           setTimeout(() => this.executeBotTurn(bot), 500);
@@ -1516,11 +1626,16 @@ export default class Monopoly extends BaseGame {
     });
   }
 
-  requestRespondTrade(offerId: string, accepted: boolean): void {
+  requestRespondTrade(
+    offerId: string,
+    accepted: boolean,
+    message?: string
+  ): void {
     this.makeMove({
       type: "RESPOND_TRADE",
       offerId,
       accepted,
+      message,
     });
   }
 

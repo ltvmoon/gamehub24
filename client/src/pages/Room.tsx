@@ -314,6 +314,8 @@ export default function RoomPage() {
     );
   }
 
+  const game = getAllGames().find((g) => g.id === currentRoom.gameType);
+
   return (
     <>
       {showShareModal && (
@@ -383,7 +385,11 @@ export default function RoomPage() {
                         isHost ? ts({ en: "Change game", vi: "Đổi game" }) : ""
                       }
                     >
-                      <Gamepad className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      {game?.icon ? (
+                        <game.icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      ) : (
+                        <Gamepad className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      )}
                       <p className="capitalize font-medium">
                         {currentRoom.gameType}
                       </p>
