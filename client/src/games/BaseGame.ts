@@ -11,17 +11,28 @@ export interface GameResult {
   [key: string]: any;
 }
 
-export abstract class BaseGame {
+export abstract class BaseGame<T> {
   protected roomId: string;
   protected socket: Socket;
   protected isHost: boolean;
   protected userId: string;
+  protected players: { id: string; username: string }[];
 
-  constructor(roomId: string, socket: Socket, isHost: boolean, userId: string) {
+  protected state: T;
+
+  constructor(
+    roomId: string,
+    socket: Socket,
+    isHost: boolean,
+    userId: string,
+    players: { id: string; username: string }[] = [],
+  ) {
     this.roomId = roomId;
     this.socket = socket;
     this.isHost = isHost;
     this.userId = userId;
+    this.players = players;
+    this.state = this.getInitState();
 
     // Bind socket listeners
     if (!this.isHost) {
@@ -31,6 +42,8 @@ export abstract class BaseGame {
 
     // All players listen for game actions
     this.socket.on("game:action", this.handleAction.bind(this));
+
+    this.init();
   }
 
   public get isHostUser(): boolean {
@@ -42,12 +55,10 @@ export abstract class BaseGame {
   }
 
   // Abstract methods that must be implemented by each game
+  abstract getInitState(): T;
   abstract init(): void;
   abstract handleAction(data: { action: GameAction }): void;
   abstract makeMove(action: GameAction): void;
-  abstract getState(): any;
-  abstract setState(state: any): void;
-  abstract checkGameEnd(): GameResult | null;
   abstract checkGameEnd(): GameResult | null;
   abstract reset(): void;
   abstract updatePlayers(players: { id: string; username: string }[]): void;
@@ -59,10 +70,30 @@ export abstract class BaseGame {
     this.gameName = name;
   }
 
+  public getState(): T {
+    if (!this.state) {
+      throw new Error("Game state is not initialized");
+    }
+    return this.state;
+  }
+
+  public setState(state: T): void {
+    this.state = state;
+    this.onStateChange?.({ ...state });
+  }
+
   // Host broadcasts state to all clients
+  protected onStateChange?: (state: T) => void; // use for UI
+
+  public onUpdate(callback: (state: T) => void): void {
+    this.onStateChange = callback;
+  }
+
   public broadcastState(): void {
+    const state = this.getState();
+    this.onStateChange?.({ ...state });
+
     if (this.isHost) {
-      const state = this.getState();
       this.socket.emit("game:state", {
         roomId: this.roomId,
         state: { ...state },
@@ -82,7 +113,7 @@ export abstract class BaseGame {
   }
 
   // Client receives state update from host
-  protected handleStateSync(data: { state: any }): void {
+  protected handleStateSync(data: { state: T }): void {
     if (!this.isHost) {
       this.setState(data.state);
     }

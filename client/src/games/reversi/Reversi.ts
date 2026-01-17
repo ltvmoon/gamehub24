@@ -9,16 +9,15 @@ import {
 } from "./types";
 import { runMCTS } from "./mcts";
 
-export default class Reversi extends BaseGame {
+export default class Reversi extends BaseGame<ReversiState> {
   private state: ReversiState;
-  private onStateChange?: (state: ReversiState) => void;
 
   constructor(
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -67,10 +66,6 @@ export default class Reversi extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: ReversiState) => void): void {
-    this.onStateChange = callback;
   }
 
   getState(): ReversiState {

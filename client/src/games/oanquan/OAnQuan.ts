@@ -2,10 +2,8 @@ import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
 import type { OAnQuanState, OAnQuanAction } from "./types";
 import { Socket } from "socket.io-client";
 
-export default class OAnQuan extends BaseGame {
+export default class OAnQuan extends BaseGame<OAnQuanState> {
   private state: OAnQuanState;
-
-  public onStateChange?: (state: OAnQuanState) => void;
 
   constructor(
     roomId: string,
@@ -56,10 +54,6 @@ export default class OAnQuan extends BaseGame {
 
   reset(): void {
     this.requestResetGame();
-  }
-
-  onUpdate(callback: (state: OAnQuanState) => void) {
-    this.onStateChange = callback;
   }
 
   getMyPlayerIndex(): number {

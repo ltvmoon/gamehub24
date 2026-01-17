@@ -8,16 +8,15 @@ import {
 
 const GRID_SIZE = 6; // 6x6 dots = 5x5 boxes
 
-export default class DotsAndBoxes extends BaseGame {
+export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
   private state: DotsAndBoxesState;
-  private onStateChange?: (state: DotsAndBoxesState) => void;
 
   constructor(
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -83,10 +82,6 @@ export default class DotsAndBoxes extends BaseGame {
     }
   }
 
-  onUpdate(callback: (state: DotsAndBoxesState) => void): void {
-    this.onStateChange = callback;
-  }
-
   getState(): DotsAndBoxesState {
     return { ...this.state };
   }
@@ -106,7 +101,7 @@ export default class DotsAndBoxes extends BaseGame {
           action.playerId,
           action.lineType,
           action.row,
-          action.col
+          action.col,
         );
         break;
       case "START_GAME":
@@ -203,7 +198,7 @@ export default class DotsAndBoxes extends BaseGame {
     playerId: string,
     lineType: "horizontal" | "vertical",
     row: number,
-    col: number
+    col: number,
   ): void {
     if (this.state.gamePhase !== "playing") return;
 
@@ -297,7 +292,7 @@ export default class DotsAndBoxes extends BaseGame {
   }
 
   private calculateBestMove(
-    _botId: string
+    _botId: string,
   ): { lineType: "horizontal" | "vertical"; row: number; col: number } | null {
     // 1. Check for moves that complete a box
     const scoringMove = this.findScoringMove();
@@ -393,7 +388,7 @@ export default class DotsAndBoxes extends BaseGame {
       givesAway = this.checkIfAnyBoxHas3Sides(
         move.lineType,
         move.row,
-        move.col
+        move.col,
       );
 
       this.state.horizontalLines[move.row][move.col] = false;
@@ -402,7 +397,7 @@ export default class DotsAndBoxes extends BaseGame {
       givesAway = this.checkIfAnyBoxHas3Sides(
         move.lineType,
         move.row,
-        move.col
+        move.col,
       );
       this.state.verticalLines[move.row][move.col] = false;
     }
@@ -413,7 +408,7 @@ export default class DotsAndBoxes extends BaseGame {
   private checkIfAnyBoxHas3Sides(
     lineType: "horizontal" | "vertical",
     row: number,
-    col: number
+    col: number,
   ): boolean {
     // Check neighbors
     if (lineType === "horizontal") {
@@ -463,7 +458,7 @@ export default class DotsAndBoxes extends BaseGame {
   private checkCompletedBoxes(
     lineType: "horizontal" | "vertical",
     row: number,
-    col: number
+    col: number,
   ): { row: number; col: number }[] {
     const completed: { row: number; col: number }[] = [];
 
@@ -628,7 +623,7 @@ export default class DotsAndBoxes extends BaseGame {
   requestPlaceLine(
     lineType: "horizontal" | "vertical",
     row: number,
-    col: number
+    col: number,
   ): void {
     const action: DotsAndBoxesAction = {
       type: "PLACE_LINE",

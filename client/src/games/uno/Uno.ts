@@ -9,24 +9,13 @@ import {
   CardType,
 } from "./types";
 
-export default class Uno extends BaseGame {
-  private state: UnoState;
-  private onStateChange?: (state: UnoState) => void;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[]
-  ) {
-    super(roomId, socket, isHost, userId);
-
+export default class Uno extends BaseGame<UnoState> {
+  getInitState(): UnoState {
     // Initialize 4 player slots
     const slots: PlayerSlot[] = Array(4)
       .fill(null)
       .map((_, i) => {
-        const player = players[i];
+        const player = this.players[i];
         return {
           id: player?.id || null,
           username: player?.username || `Slot ${i + 1}`,
@@ -37,7 +26,7 @@ export default class Uno extends BaseGame {
         };
       });
 
-    this.state = {
+    return {
       players: slots,
       discardPile: [],
       drawPile: [],
@@ -51,27 +40,12 @@ export default class Uno extends BaseGame {
       mustDraw: false,
       hasDrawn: false,
     };
-
-    this.init();
   }
 
   init(): void {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: UnoState) => void): void {
-    this.onStateChange = callback;
-  }
-
-  getState(): UnoState {
-    return { ...this.state };
-  }
-
-  setState(state: UnoState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
   }
 
   handleAction(data: { action: GameAction }): void {
@@ -99,7 +73,7 @@ export default class Uno extends BaseGame {
         this.handleJoinSlot(
           action.slotIndex,
           action.playerId,
-          action.playerName
+          action.playerName,
         );
         break;
       case "REMOVE_PLAYER":
@@ -214,7 +188,7 @@ export default class Uno extends BaseGame {
     const cardsPerPlayer = 7;
 
     let cardIndex = 0;
-    for (const player of this.state.players) {
+    for (const player of this.getState().players) {
       if (player.id !== null) {
         player.hand = deck.slice(cardIndex, cardIndex + cardsPerPlayer);
         cardIndex += cardsPerPlayer;
@@ -286,7 +260,7 @@ export default class Uno extends BaseGame {
   private handlePlayCard(
     playerId: string,
     card: UnoCard,
-    chosenColor?: CardColor
+    chosenColor?: CardColor,
   ): void {
     if (this.state.gamePhase !== "playing") return;
 
@@ -356,7 +330,7 @@ export default class Uno extends BaseGame {
     switch (card.type) {
       case CardType.REVERSE:
         const activePlayers = this.state.players.filter(
-          (p) => p.id !== null && p.hand.length > 0
+          (p) => p.id !== null && p.hand.length > 0,
         ).length;
         if (activePlayers === 2) {
           // In 2-player game, Reverse acts like Skip
@@ -508,7 +482,7 @@ export default class Uno extends BaseGame {
   private handleJoinSlot(
     slotIndex: number,
     playerId: string,
-    playerName: string
+    playerName: string,
   ): void {
     if (slotIndex < 0 || slotIndex >= 4) return;
     if (this.state.gamePhase !== "waiting") return;

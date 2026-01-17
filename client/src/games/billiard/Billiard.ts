@@ -17,9 +17,8 @@ import {
   getBallType,
 } from "./types";
 
-export default class Billiard extends BaseGame {
+export default class Billiard extends BaseGame<BilliardState> {
   private state: BilliardState;
-  private onStateChange?: (state: BilliardState) => void;
   private onFrameUpdate?: (balls: Ball[]) => void; // For 60fps canvas updates
   private animationFrameId: number | null = null;
   private syncIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -30,7 +29,7 @@ export default class Billiard extends BaseGame {
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -39,7 +38,7 @@ export default class Billiard extends BaseGame {
   }
 
   private createInitialState(
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ): BilliardState {
     return {
       balls: createInitialBalls(),
@@ -75,10 +74,6 @@ export default class Billiard extends BaseGame {
         }
       }, 5000);
     }
-  }
-
-  onUpdate(callback: (state: BilliardState) => void): void {
-    this.onStateChange = callback;
   }
 
   // Register callback for 60fps frame updates (for canvas animation)
@@ -465,7 +460,7 @@ export default class Billiard extends BaseGame {
     if (myBallType) {
       // Check if any of the pocketed balls match our assigned type
       const pocketedOwnBall = this.pocketedThisShot.some(
-        (b) => b.type === myBallType
+        (b) => b.type === myBallType,
       );
 
       // Also check if we're at the 8-ball stage and pocketed 8
@@ -518,7 +513,7 @@ export default class Billiard extends BaseGame {
     }
 
     const ownBallsRemaining = this.state.balls.filter(
-      (b) => !b.pocketed && getBallType(b.id) === playerBallType
+      (b) => !b.pocketed && getBallType(b.id) === playerBallType,
     );
 
     if (ownBallsRemaining.length === 0) {
@@ -681,7 +676,7 @@ export default class Billiard extends BaseGame {
 
     // Find target ball (any non-pocketed ball except cue)
     const targetBalls = this.state.balls.filter(
-      (b) => b.id !== 0 && !b.pocketed
+      (b) => b.id !== 0 && !b.pocketed,
     );
 
     if (targetBalls.length === 0) return;

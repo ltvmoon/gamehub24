@@ -2,16 +2,15 @@ import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
 import type { Socket } from "socket.io-client";
 import { type TicTacToeState, type TicTacToeAction } from "./types";
 
-export default class TicTacToe extends BaseGame {
+export default class TicTacToe extends BaseGame<TicTacToeState> {
   private state: TicTacToeState;
-  private onStateChange?: (state: TicTacToeState) => void;
 
   constructor(
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -39,11 +38,6 @@ export default class TicTacToe extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  // Register callback for state changes (for UI updates)
-  onUpdate(callback: (state: TicTacToeState) => void): void {
-    this.onStateChange = callback;
   }
 
   getState(): TicTacToeState {
@@ -337,7 +331,7 @@ export default class TicTacToe extends BaseGame {
     depth: number,
     isMaximizing: boolean,
     botSymbol: string,
-    playerSymbol: string
+    playerSymbol: string,
   ): number {
     const result = this.checkWinInternal(board);
     if (result === botSymbol) return 10 - depth;
@@ -354,7 +348,7 @@ export default class TicTacToe extends BaseGame {
             depth + 1,
             false,
             botSymbol,
-            playerSymbol
+            playerSymbol,
           );
           board[i] = null;
           bestScore = Math.max(score, bestScore);
@@ -371,7 +365,7 @@ export default class TicTacToe extends BaseGame {
             depth + 1,
             true,
             botSymbol,
-            playerSymbol
+            playerSymbol,
           );
           board[i] = null;
           bestScore = Math.min(score, bestScore);

@@ -24,9 +24,8 @@ export interface CanvasAction extends GameAction {
   payload?: any;
 }
 
-export default class CanvasGame extends BaseGame {
+export default class CanvasGame extends BaseGame<CanvasState> {
   private state: CanvasState;
-  private onStateChange?: (state: CanvasState) => void;
   private players: string[] = [];
 
   constructor(
@@ -34,7 +33,7 @@ export default class CanvasGame extends BaseGame {
     socket: Socket,
     isHost: boolean,
     userId: string,
-    _players: { id: string; username: string }[]
+    _players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -49,11 +48,6 @@ export default class CanvasGame extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: CanvasState) => void): void {
-    this.onStateChange = callback;
-    callback(this.state);
   }
 
   getState(): CanvasState {
@@ -120,7 +114,7 @@ export default class CanvasGame extends BaseGame {
         }
         if (lastIndex !== -1) {
           this.state.strokes = this.state.strokes.filter(
-            (_, i) => i !== lastIndex
+            (_, i) => i !== lastIndex,
           );
           this.setState({ ...this.state });
         }

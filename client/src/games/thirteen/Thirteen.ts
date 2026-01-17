@@ -11,16 +11,15 @@ import {
   CombinationType,
 } from "./types";
 
-export default class Thirteen extends BaseGame {
+export default class Thirteen extends BaseGame<ThirteenState> {
   private state: ThirteenState;
-  private onStateChange?: (state: ThirteenState) => void;
 
   constructor(
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -60,10 +59,6 @@ export default class Thirteen extends BaseGame {
     }
   }
 
-  onUpdate(callback: (state: ThirteenState) => void): void {
-    this.onStateChange = callback;
-  }
-
   getState(): ThirteenState {
     return { ...this.state };
   }
@@ -92,7 +87,7 @@ export default class Thirteen extends BaseGame {
         this.handleJoinSlot(
           action.slotIndex,
           action.playerId,
-          action.playerName
+          action.playerName,
         );
         break;
       case "REMOVE_PLAYER":
@@ -176,7 +171,7 @@ export default class Thirteen extends BaseGame {
     if (cards.length === 0) return null;
 
     const sorted = [...cards].sort(
-      (a, b) => this.getCardValue(a) - this.getCardValue(b)
+      (a, b) => this.getCardValue(a) - this.getCardValue(b),
     );
 
     // Single
@@ -280,7 +275,7 @@ export default class Thirteen extends BaseGame {
   // Check if new combination can beat the last one
   private canBeat(
     newCombo: Combination,
-    lastCombo: Combination | null
+    lastCombo: Combination | null,
   ): boolean {
     if (!lastCombo) return true;
 
@@ -385,10 +380,10 @@ export default class Thirteen extends BaseGame {
 
     // Check if all others passed
     const activePlayers = this.state.players.filter(
-      (p) => p.id !== null && p.hand.length > 0
+      (p) => p.id !== null && p.hand.length > 0,
     );
     const allOthersPassed = activePlayers.every(
-      (p) => p.id === this.state.lastPlayedBy || p.passed
+      (p) => p.id === this.state.lastPlayedBy || p.passed,
     );
 
     if (allOthersPassed && this.state.lastPlayedBy) {
@@ -397,7 +392,7 @@ export default class Thirteen extends BaseGame {
       this.state.lastCombination = null;
       this.state.players.forEach((p) => (p.passed = false));
       const winnerIndex = this.state.players.findIndex(
-        (p) => p.id === this.state.lastPlayedBy
+        (p) => p.id === this.state.lastPlayedBy,
       );
       this.state.currentTurnIndex = winnerIndex;
     } else {
@@ -428,14 +423,14 @@ export default class Thirteen extends BaseGame {
 
   private playerHasCards(player: PlayerSlot, cards: Card[]): boolean {
     return cards.every((card) =>
-      player.hand.some((c) => c.rank === card.rank && c.suit === card.suit)
+      player.hand.some((c) => c.rank === card.rank && c.suit === card.suit),
     );
   }
 
   private removeCardsFromHand(player: PlayerSlot, cards: Card[]): void {
     for (const card of cards) {
       const index = player.hand.findIndex(
-        (c) => c.rank === card.rank && c.suit === card.suit
+        (c) => c.rank === card.rank && c.suit === card.suit,
       );
       if (index !== -1) {
         player.hand.splice(index, 1);
@@ -470,7 +465,7 @@ export default class Thirteen extends BaseGame {
   private handleJoinSlot(
     slotIndex: number,
     playerId: string,
-    playerName: string
+    playerName: string,
   ): void {
     if (slotIndex < 0 || slotIndex >= 4) return;
     if (this.state.gamePhase !== "waiting") return;
@@ -673,7 +668,7 @@ export default class Thirteen extends BaseGame {
 
   private findBeatingSingle(
     hand: Card[],
-    lastCombo: Combination
+    lastCombo: Combination,
   ): Card[] | null {
     const lastValue = this.getCardValue(lastCombo.cards[0]);
     for (const card of hand) {
@@ -702,7 +697,7 @@ export default class Thirteen extends BaseGame {
 
   private findBeatingTriple(
     hand: Card[],
-    lastCombo: Combination
+    lastCombo: Combination,
   ): Card[] | null {
     const lastValue = lastCombo.value;
     const grouped = this.groupByRank(hand);
@@ -721,7 +716,7 @@ export default class Thirteen extends BaseGame {
 
   private findBeatingStraight(
     hand: Card[],
-    lastCombo: Combination
+    lastCombo: Combination,
   ): Card[] | null {
     const requiredLength = lastCombo.cards.length;
     const lastValue = lastCombo.value;

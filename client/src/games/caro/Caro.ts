@@ -4,16 +4,15 @@ import { type CaroState, type CaroAction } from "./types";
 
 const BOARD_SIZE = 50;
 
-export default class Caro extends BaseGame {
+export default class Caro extends BaseGame<CaroState> {
   private state: CaroState;
-  private onStateChange?: (state: CaroState) => void;
 
   constructor(
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -41,10 +40,6 @@ export default class Caro extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: CaroState) => void): void {
-    this.onStateChange = callback;
   }
 
   getState(): CaroState {
@@ -164,7 +159,7 @@ export default class Caro extends BaseGame {
   private checkWin(
     row: number,
     col: number,
-    symbol: "X" | "O"
+    symbol: "X" | "O",
   ): [number, number][] | null {
     const directions = [
       [0, 1], // Horizontal
@@ -483,7 +478,7 @@ export default class Caro extends BaseGame {
     row: number,
     col: number,
     botSymbol: string,
-    playerSymbol: string
+    playerSymbol: string,
   ): number {
     // Simple heuristic:
     // Score based on creating own lines vs blocking opponent lines
@@ -516,7 +511,7 @@ export default class Caro extends BaseGame {
     dr: number,
     dc: number,
     symbol: string,
-    isAttack: boolean
+    isAttack: boolean,
   ): number {
     let consecutive = 0;
     let openEnds = 0;

@@ -18,16 +18,15 @@ import {
 // Red (top-left) → Green (top-right) → Yellow (bottom-right) → Blue (bottom-left)
 const PLAYER_COLORS: PlayerColor[] = ["red", "green", "yellow", "blue"];
 
-export default class Ludo extends BaseGame {
+export default class Ludo extends BaseGame<LudoState> {
   private state: LudoState;
-  private onStateChange?: (state: LudoState) => void;
 
   constructor(
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -67,10 +66,6 @@ export default class Ludo extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: LudoState) => void): void {
-    this.onStateChange = callback;
   }
 
   getState(): LudoState {
@@ -235,7 +230,7 @@ export default class Ludo extends BaseGame {
     const newPosition = this.calculateNewPosition(
       token,
       currentPlayer.color,
-      dice
+      dice,
     );
     if (!newPosition) return;
 
@@ -293,7 +288,7 @@ export default class Ludo extends BaseGame {
   private calculateNewPosition(
     token: Token,
     color: PlayerColor,
-    dice: number
+    dice: number,
   ): TokenPosition | null {
     const pos = token.position;
     const startPos = START_POSITIONS[color];
@@ -368,7 +363,7 @@ export default class Ludo extends BaseGame {
         ) {
           // Send token back to home
           const homeIndex = player.tokens.filter(
-            (t) => t.position.type === "home"
+            (t) => t.position.type === "home",
           ).length;
           token.position = { type: "home", index: homeIndex };
         }
@@ -468,13 +463,13 @@ export default class Ludo extends BaseGame {
     if (this.state.diceValue !== null) {
       const movableTokens = this.getMovableTokens(
         currentPlayer,
-        this.state.diceValue
+        this.state.diceValue,
       );
       if (movableTokens.length > 0) {
         const bestToken = this.pickBestToken(
           currentPlayer,
           movableTokens,
-          this.state.diceValue
+          this.state.diceValue,
         );
         this.handleMoveToken(botId, bestToken.id);
       }
@@ -484,7 +479,7 @@ export default class Ludo extends BaseGame {
   private pickBestToken(
     player: LudoPlayer,
     tokens: Token[],
-    dice: number
+    dice: number,
   ): Token {
     // Priority:
     // 1. Move token that can finish

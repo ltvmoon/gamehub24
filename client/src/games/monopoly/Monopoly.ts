@@ -19,9 +19,8 @@ import {
 } from "./types";
 import { trans } from "../../stores/languageStore";
 
-export default class Monopoly extends BaseGame {
+export default class Monopoly extends BaseGame<MonopolyState> {
   private state: MonopolyState;
-  private onStateChange?: (state: MonopolyState) => void;
   private chanceCards: Card[];
   private chestCards: Card[];
   private getOutOfJailCards: Map<string, number>; // playerId -> count
@@ -31,7 +30,7 @@ export default class Monopoly extends BaseGame {
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -79,10 +78,6 @@ export default class Monopoly extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: MonopolyState) => void): void {
-    this.onStateChange = callback;
   }
 
   getState(): MonopolyState {
@@ -138,7 +133,7 @@ export default class Monopoly extends BaseGame {
     fromPlayerId: string,
     toPlayerId: string,
     spaceId: number,
-    price: number
+    price: number,
   ): void {
     if (!this.isHost) return;
 
@@ -173,25 +168,25 @@ export default class Monopoly extends BaseGame {
       this.addLog(
         {
           en: `${fromPlayer?.username} offered to sell ${trans(
-            space?.name
+            space?.name,
           )} to ${toPlayer?.username} for ${price}đ`,
           vi: `${fromPlayer?.username} đề nghị bán ${trans(space?.name)} cho ${
             toPlayer?.username
           } với giá ${price}đ`,
         },
-        "info"
+        "info",
       );
     } else {
       this.addLog(
         {
           en: `${fromPlayer?.username} offered to buy ${trans(
-            space?.name
+            space?.name,
           )} from ${toPlayer?.username} for ${price}đ`,
           vi: `${fromPlayer?.username} đề nghị mua ${trans(space?.name)} từ ${
             toPlayer?.username
           } với giá ${price}đ`,
         },
-        "info"
+        "info",
       );
     }
 
@@ -206,18 +201,18 @@ export default class Monopoly extends BaseGame {
   private handleRespondTrade(
     offerId: string,
     accepted: boolean,
-    message?: string
+    message?: string,
   ): void {
     if (!this.isHost) return;
 
     const offerIndex = this.state.tradeOffers.findIndex(
-      (o) => o.id === offerId
+      (o) => o.id === offerId,
     );
     if (offerIndex === -1) return;
 
     const offer = this.state.tradeOffers[offerIndex];
     const property = this.state.properties.find(
-      (p) => p.spaceId === offer.propertyId
+      (p) => p.spaceId === offer.propertyId,
     );
     const space = BOARD_SPACES[offer.propertyId];
 
@@ -239,7 +234,7 @@ export default class Monopoly extends BaseGame {
             en: `Trade failed: ${buyer.username} cannot afford ${offer.price}đ`,
             vi: `Giao dịch thất bại: ${buyer.username} không đủ ${offer.price}đ`,
           },
-          "alert"
+          "alert",
         );
         this.state.tradeOffers.splice(offerIndex, 1);
         this.notifyAndBroadcast();
@@ -255,21 +250,21 @@ export default class Monopoly extends BaseGame {
       this.addLog(
         {
           en: `Trade successful! ${buyer.username} bought ${trans(
-            space?.name
+            space?.name,
           )} from ${seller.username} for ${offer.price}đ`,
           vi: `Giao dịch thành công! ${buyer.username} mua ${trans(
-            space?.name
+            space?.name,
           )} từ ${seller.username} giá ${offer.price}đ`,
         },
-        "action"
+        "action",
       );
     } else {
       offer.status = "declined";
       const responder = this.state.players.find(
-        (p) => p.id === offer.toPlayerId
+        (p) => p.id === offer.toPlayerId,
       );
       const initiator = this.state.players.find(
-        (p) => p.id === offer.fromPlayerId
+        (p) => p.id === offer.fromPlayerId,
       );
 
       // Attach message if provided
@@ -282,7 +277,7 @@ export default class Monopoly extends BaseGame {
           en: `${responder?.username} declined the trade offer from ${initiator?.username}`,
           vi: `${responder?.username} từ chối lời mời giao dịch từ ${initiator?.username}`,
         },
-        "info"
+        "info",
       );
 
       this.notifyAndBroadcast();
@@ -318,7 +313,7 @@ export default class Monopoly extends BaseGame {
     setTimeout(() => {
       // Fetch fresh offer object from state
       const offer = this.state.tradeOffers.find(
-        (o) => o.id === originalOffer.id
+        (o) => o.id === originalOffer.id,
       );
       if (!offer || offer.status !== "pending") return;
 
@@ -330,7 +325,7 @@ export default class Monopoly extends BaseGame {
 
       // Determine if Bot is Buyer or Seller
       const property = this.state.properties.find(
-        (p) => p.spaceId === offer.propertyId
+        (p) => p.spaceId === offer.propertyId,
       );
       const isBotOwner = property?.ownerId === bot.id;
 
@@ -349,11 +344,11 @@ export default class Monopoly extends BaseGame {
         (s) =>
           s.type === "property" &&
           space.type === "property" &&
-          s.color === space.color
+          s.color === space.color,
       );
       const botOwnedInColor = this.state.properties.filter(
         (p) =>
-          p.ownerId === bot.id && colorGroup.some((s) => s.id === p.spaceId)
+          p.ownerId === bot.id && colorGroup.some((s) => s.id === p.spaceId),
       ).length;
 
       // Bonus: If bot has 2/3 (or close to completing), value is higher
@@ -376,13 +371,13 @@ export default class Monopoly extends BaseGame {
         this.addLog(
           {
             en: `${bot.username} thinks ${trans(
-              space?.name
+              space?.name,
             )} is worth ${minPrice}đ`,
             vi: `${bot.username} nghĩ ${trans(
-              space?.name
+              space?.name,
             )} đáng giá ${minPrice}đ`,
           },
-          "info"
+          "info",
         );
 
         if (offer.price >= minPrice) {
@@ -406,13 +401,13 @@ export default class Monopoly extends BaseGame {
         this.addLog(
           {
             en: `${bot.username} thinks ${trans(
-              space?.name
+              space?.name,
             )} is worth ${maxPrice}đ`,
             vi: `${bot.username} nghĩ ${trans(
-              space?.name
+              space?.name,
             )} đáng giá ${maxPrice}đ`,
           },
-          "info"
+          "info",
         );
 
         if (canAfford && isGoodPrice) {
@@ -439,7 +434,7 @@ export default class Monopoly extends BaseGame {
     if (!this.isHost) return;
     const space = BOARD_SPACES[spaceId];
     const ownership = this.state.properties.find(
-      (p) => p.spaceId === spaceId && p.ownerId === playerId
+      (p) => p.spaceId === spaceId && p.ownerId === playerId,
     );
 
     if (
@@ -462,13 +457,13 @@ export default class Monopoly extends BaseGame {
       this.addLog(
         {
           en: `${player.username} sold a house on ${trans(
-            space?.name
+            space?.name,
           )} for ${refund}đ`,
           vi: `${player.username} bán 1 nhà trên ${trans(
-            space?.name
+            space?.name,
           )} được ${refund}đ`,
         },
-        "action"
+        "action",
       );
     }
 
@@ -479,7 +474,7 @@ export default class Monopoly extends BaseGame {
     if (!this.isHost) return;
     const space = BOARD_SPACES[spaceId];
     const ownership = this.state.properties.find(
-      (p) => p.spaceId === spaceId && p.ownerId === playerId
+      (p) => p.spaceId === spaceId && p.ownerId === playerId,
     );
 
     if (
@@ -502,13 +497,13 @@ export default class Monopoly extends BaseGame {
       this.addLog(
         {
           en: `${player.username} mortgaged ${trans(
-            space?.name
+            space?.name,
           )} for ${mortgageValue}đ`,
           vi: `${player.username} thế chấp ${trans(
-            space?.name
+            space?.name,
           )} được ${mortgageValue}đ`,
         },
-        "action"
+        "action",
       );
     }
     this.notifyAndBroadcast();
@@ -518,7 +513,7 @@ export default class Monopoly extends BaseGame {
     if (!this.isHost) return;
     const space = BOARD_SPACES[spaceId];
     const ownership = this.state.properties.find(
-      (p) => p.spaceId === spaceId && p.ownerId === playerId
+      (p) => p.spaceId === spaceId && p.ownerId === playerId,
     );
 
     if (
@@ -546,7 +541,7 @@ export default class Monopoly extends BaseGame {
         en: `${player.username} unmortgaged ${trans(space?.name)} for ${cost}đ`,
         vi: `${player.username} chuộc ${trans(space?.name)} giá ${cost}đ`,
       },
-      "action"
+      "action",
     );
 
     this.notifyAndBroadcast();
@@ -602,14 +597,14 @@ export default class Monopoly extends BaseGame {
           action.fromPlayerId,
           action.toPlayerId,
           action.spaceId,
-          action.price
+          action.price,
         );
         break;
       case "RESPOND_TRADE":
         this.handleRespondTrade(
           action.offerId,
           action.accepted,
-          action.message
+          action.message,
         );
         break;
       case "CANCEL_TRADE":
@@ -632,7 +627,7 @@ export default class Monopoly extends BaseGame {
 
   private addLog(
     message: string | { en: string; vi: string },
-    type: "info" | "action" | "alert" = "info"
+    type: "info" | "action" | "alert" = "info",
   ): void {
     const log: GameLog = {
       id: Math.random().toString(36).substr(2, 9),
@@ -722,7 +717,7 @@ export default class Monopoly extends BaseGame {
   private processDiceResult(
     playerId: string,
     die1: number,
-    die2: number
+    die2: number,
   ): void {
     const player = this.state.players.find((p) => p.id === playerId);
     if (!player) return;
@@ -741,7 +736,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} rolled 3 doubles, goes to jail!`,
             vi: `${player.username} đổ 3 lần đôi, phải vào tù!`,
           },
-          "alert"
+          "alert",
         );
         this.endTurn();
         this.notifyAndBroadcast(); // Notify changes
@@ -762,7 +757,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} rolled doubles and escapes jail!`,
             vi: `${player.username} đổ đôi và được ra tù!`,
           },
-          "action"
+          "action",
         );
         this.movePlayer(player, total);
       } else {
@@ -777,7 +772,7 @@ export default class Monopoly extends BaseGame {
               en: `${player.username} paid ${JAIL_FINE}đ and leaves jail`,
               vi: `${player.username} trả ${JAIL_FINE}đ để ra tù`,
             },
-            "action"
+            "action",
           );
           this.movePlayer(player, total);
         } else {
@@ -812,7 +807,7 @@ export default class Monopoly extends BaseGame {
           en: `${player.username} passed GO, collects ${SALARY}đ`,
           vi: `${player.username} đi qua KHỞI HÀNH, nhận ${SALARY}đ`,
         },
-        "info"
+        "info",
       );
     }
 
@@ -832,7 +827,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} landed on GO`,
             vi: `${player.username} vào ô KHỞI HÀNH`,
           },
-          "info"
+          "info",
         );
         break;
 
@@ -852,7 +847,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} must pay ${space.taxAmount}đ tax`,
             vi: `${player.username} phải nộp thuế ${space.taxAmount}đ`,
           },
-          "alert"
+          "alert",
         );
         break;
 
@@ -871,7 +866,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} is just visiting jail`,
             vi: `${player.username} thăm nuôi tù`,
           },
-          "info"
+          "info",
         );
         break;
 
@@ -882,7 +877,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} landed on Free Parking`,
             vi: `${player.username} vào Bãi Đỗ Xe`,
           },
-          "info"
+          "info",
         );
         break;
 
@@ -893,7 +888,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} goes to jail!`,
             vi: `${player.username} vào tù!`,
           },
-          "alert"
+          "alert",
         );
         break;
     }
@@ -922,7 +917,7 @@ export default class Monopoly extends BaseGame {
               space.price
             }đ`,
           },
-          "action"
+          "action",
         );
       } else {
         this.addLog(
@@ -930,7 +925,7 @@ export default class Monopoly extends BaseGame {
             en: `${player.username} cannot afford ${trans(space?.name)}`,
             vi: `${player.username} không đủ tiền mua ${trans(space?.name)}`,
           },
-          "alert"
+          "alert",
         );
       }
     } else if (ownership.ownerId !== player.id) {
@@ -938,19 +933,19 @@ export default class Monopoly extends BaseGame {
         this.addLog(
           {
             en: `${player.username} landed on ${trans(
-              space.name
+              space.name,
             )} which is mortgaged. No rent!`,
             vi: `${player.username} vào ${trans(
-              space.name
+              space.name,
             )} đang thế chấp. Không cần trả tiền thuê!`,
           },
-          "info"
+          "info",
         );
       } else {
         // Pay rent
         const rent = this.calculateRent(spaceId, ownership);
         const owner = this.state.players.find(
-          (p) => p.id === ownership.ownerId
+          (p) => p.id === ownership.ownerId,
         );
         if (owner && !owner.isBankrupt) {
           this.state.pendingAction = {
@@ -963,7 +958,7 @@ export default class Monopoly extends BaseGame {
               en: `${player.username} owes ${rent}đ rent to ${owner.username}`,
               vi: `${player.username} trả ${rent}đ tiền thuê cho ${owner.username}`,
             },
-            "alert"
+            "alert",
           );
         }
       }
@@ -973,7 +968,7 @@ export default class Monopoly extends BaseGame {
           en: `${player.username} landed on their own property`,
           vi: `${player.username} vào nhà mình`,
         },
-        "info"
+        "info",
       );
     }
   }
@@ -987,7 +982,7 @@ export default class Monopoly extends BaseGame {
       const railroadCount = this.state.properties.filter(
         (p) =>
           p.ownerId === ownership.ownerId &&
-          BOARD_SPACES[p.spaceId]?.type === "railroad"
+          BOARD_SPACES[p.spaceId]?.type === "railroad",
       ).length;
       return (space.baseRent || 250) * railroadCount;
     }
@@ -997,7 +992,7 @@ export default class Monopoly extends BaseGame {
       const utilityCount = this.state.properties.filter(
         (p) =>
           p.ownerId === ownership.ownerId &&
-          BOARD_SPACES[p.spaceId]?.type === "utility"
+          BOARD_SPACES[p.spaceId]?.type === "utility",
       ).length;
       const diceTotal =
         (this.state.diceValues?.[0] || 1) + (this.state.diceValues?.[1] || 1);
@@ -1011,12 +1006,12 @@ export default class Monopoly extends BaseGame {
 
     // Check if player owns full color set
     const colorProperties = BOARD_SPACES.filter(
-      (s) => s.type === "property" && s.color === space.color
+      (s) => s.type === "property" && s.color === space.color,
     );
     const ownedInColor = colorProperties.filter((s) =>
       this.state.properties.some(
-        (p) => p.spaceId === s.id && p.ownerId === ownership.ownerId
-      )
+        (p) => p.spaceId === s.id && p.ownerId === ownership.ownerId,
+      ),
     ).length;
     const ownsFullSet = ownedInColor === colorProperties.length;
 
@@ -1045,7 +1040,7 @@ export default class Monopoly extends BaseGame {
         en: `${player.username} draws: ${trans(card.text)}`,
         vi: `${player.username} rút thẻ: ${trans(card.text)}`,
       },
-      "action"
+      "action",
     );
   }
 
@@ -1100,7 +1095,7 @@ export default class Monopoly extends BaseGame {
           space.price
         }đ`,
       },
-      "action"
+      "action",
     );
 
     this.notifyAndBroadcast();
@@ -1125,7 +1120,7 @@ export default class Monopoly extends BaseGame {
         en: `${player.username} declined to buy ${trans(space?.name)}`,
         vi: `${player.username} không mua ${trans(space?.name)}`,
       },
-      "info"
+      "info",
     );
 
     this.notifyAndBroadcast();
@@ -1134,7 +1129,7 @@ export default class Monopoly extends BaseGame {
 
   canBuildHouse(
     playerId: string,
-    spaceId: number
+    spaceId: number,
   ): { allowed: boolean; reason?: { en: string; vi: string } } {
     const player = this.state.players.find((p) => p.id === playerId);
     if (!player)
@@ -1145,7 +1140,7 @@ export default class Monopoly extends BaseGame {
 
     const space = BOARD_SPACES[spaceId];
     const ownership = this.state.properties.find(
-      (p) => p.spaceId === spaceId && p.ownerId === playerId
+      (p) => p.spaceId === spaceId && p.ownerId === playerId,
     );
 
     if (!space || !ownership || space.type !== "property" || !space.houseCost)
@@ -1171,12 +1166,12 @@ export default class Monopoly extends BaseGame {
 
     // Check if owns full color set
     const colorProperties = BOARD_SPACES.filter(
-      (s) => s.type === "property" && s.color === space.color
+      (s) => s.type === "property" && s.color === space.color,
     );
     const ownedInColor = this.state.properties.filter(
       (p) =>
         colorProperties.some((s) => s.id === p.spaceId) &&
-        p.ownerId === playerId
+        p.ownerId === playerId,
     );
     if (ownedInColor.length !== colorProperties.length)
       return {
@@ -1206,7 +1201,7 @@ export default class Monopoly extends BaseGame {
     if (space.type !== "property" || !space.houseCost) return;
 
     const ownership = this.state.properties.find(
-      (p) => p.spaceId === spaceId && p.ownerId === playerId
+      (p) => p.spaceId === spaceId && p.ownerId === playerId,
     )!;
 
     player.money -= space.houseCost!;
@@ -1217,13 +1212,13 @@ export default class Monopoly extends BaseGame {
     this.addLog(
       {
         en: `${player.username} built a ${buildingType} on ${trans(
-          space?.name
+          space?.name,
         )}`,
         vi: `${player.username} xây ${buildingTypeVi} trên ${trans(
-          space?.name
+          space?.name,
         )}`,
       },
-      "action"
+      "action",
     );
 
     this.notifyAndBroadcast();
@@ -1251,7 +1246,7 @@ export default class Monopoly extends BaseGame {
           en: `${player.username} paid ${pending.amount}đ rent to ${owner.username}`,
           vi: `${player.username} trả ${pending.amount}đ thuê cho ${owner.username}`,
         },
-        "action"
+        "action",
       );
     } else {
       // Bankruptcy
@@ -1279,7 +1274,7 @@ export default class Monopoly extends BaseGame {
           en: `${player.username} paid ${pending.amount}đ tax`,
           vi: `${player.username} đóng thuế ${pending.amount}đ`,
         },
-        "action"
+        "action",
       );
     } else {
       this.handleBankruptcy(player, null);
@@ -1335,7 +1330,7 @@ export default class Monopoly extends BaseGame {
         break;
       case "PAY_EACH_PLAYER": {
         const activePlayers = this.state.players.filter(
-          (p) => p.id && !p.isBankrupt && p.id !== player.id
+          (p) => p.id && !p.isBankrupt && p.id !== player.id,
         );
         const payAmount = card.action.amount;
         const totalPay = payAmount * activePlayers.length;
@@ -1347,7 +1342,7 @@ export default class Monopoly extends BaseGame {
       }
       case "COLLECT_FROM_EACH": {
         const others = this.state.players.filter(
-          (p) => p.id && !p.isBankrupt && p.id !== player.id
+          (p) => p.id && !p.isBankrupt && p.id !== player.id,
         );
         const collectAmount = card.action.amount;
         others.forEach((p) => {
@@ -1360,7 +1355,7 @@ export default class Monopoly extends BaseGame {
       }
       case "REPAIRS": {
         const myProperties = this.state.properties.filter(
-          (p) => p.ownerId === player.id
+          (p) => p.ownerId === player.id,
         );
         const perHouse = card.action.perHouse;
         const perHotel = card.action.perHotel;
@@ -1386,7 +1381,7 @@ export default class Monopoly extends BaseGame {
         en: `${player.username}: ${trans(card.text)}`,
         vi: `${player.username}: ${trans(card.text)}`,
       },
-      "info"
+      "info",
     );
     this.notifyAndBroadcast();
     this.checkBotTurn();
@@ -1409,7 +1404,7 @@ export default class Monopoly extends BaseGame {
           en: `${player.username} used Get Out of Jail Free card`,
           vi: `${player.username} dùng thẻ Ra tù miễn phí`,
         },
-        "action"
+        "action",
       );
     } else if (player.money >= JAIL_FINE) {
       player.money -= JAIL_FINE;
@@ -1420,7 +1415,7 @@ export default class Monopoly extends BaseGame {
           en: `${player.username} paid ${JAIL_FINE}đ to leave jail`,
           vi: `${player.username} trả ${JAIL_FINE}đ để ra tù`,
         },
-        "action"
+        "action",
       );
     }
 
@@ -1429,7 +1424,7 @@ export default class Monopoly extends BaseGame {
 
   private handleBankruptcy(
     player: MonopolyPlayer,
-    creditor: MonopolyPlayer | null
+    creditor: MonopolyPlayer | null,
   ): void {
     player.isBankrupt = true;
     this.addLog(
@@ -1437,7 +1432,7 @@ export default class Monopoly extends BaseGame {
         en: `${player.username} is bankrupt!`,
         vi: `${player.username} phá sản!`,
       },
-      "alert"
+      "alert",
     );
 
     // Transfer properties to creditor or back to bank
@@ -1461,7 +1456,7 @@ export default class Monopoly extends BaseGame {
 
     // Check for winner
     const activePlayers = this.state.players.filter(
-      (p) => p.id && !p.isBankrupt
+      (p) => p.id && !p.isBankrupt,
     );
     if (activePlayers.length === 1) {
       this.state.gamePhase = "ended";
@@ -1471,7 +1466,7 @@ export default class Monopoly extends BaseGame {
           en: `${activePlayers[0].username} wins!`,
           vi: `${activePlayers[0].username} chiến thắng!`,
         },
-        "alert"
+        "alert",
       );
     } else {
       // If the current player went bankrupt and game is not over, pass the turn
@@ -1522,7 +1517,7 @@ export default class Monopoly extends BaseGame {
         en: `${nextPlayer?.username}'s turn`,
         vi: `Lượt của ${nextPlayer?.username}`,
       },
-      "info"
+      "info",
     );
 
     this.notifyAndBroadcast();
@@ -1595,7 +1590,7 @@ export default class Monopoly extends BaseGame {
       if (currentMoney >= amountNeeded) return;
 
       const myProperties = this.state.properties.filter(
-        (p) => p.ownerId === currentBot.id
+        (p) => p.ownerId === currentBot.id,
       );
 
       // 1. Sell Houses first
@@ -1617,7 +1612,7 @@ export default class Monopoly extends BaseGame {
       // 2. Mortgage Properties
       if (currentMoney < amountNeeded) {
         const unmortgaged = myProperties.filter(
-          (p) => !p.mortgaged && p.houses === 0
+          (p) => !p.mortgaged && p.houses === 0,
         );
         // Sort by least price to mortgage small stuff first? Or expensive?
         // Usually mortgage expensive gives more money.
@@ -1672,7 +1667,7 @@ export default class Monopoly extends BaseGame {
           ) {
             this.handleBuyProperty(
               currentBot.id!,
-              this.state.pendingAction.spaceId
+              this.state.pendingAction.spaceId,
             );
           } else {
             this.handleDeclineProperty(currentBot.id!);
@@ -1701,7 +1696,7 @@ export default class Monopoly extends BaseGame {
             tryToRaiseFunds(card.action.amount);
           } else if (card.action.type === "PAY_EACH_PLAYER") {
             const count = this.state.players.filter(
-              (p) => p.id && !p.isBankrupt && p.id !== currentBot.id
+              (p) => p.id && !p.isBankrupt && p.id !== currentBot.id,
             ).length;
             tryToRaiseFunds(card.action.amount * count);
           } else if (card.action.type === "REPAIRS") {
@@ -1732,7 +1727,7 @@ export default class Monopoly extends BaseGame {
 
     // Try to build houses
     const myProperties = this.state.properties.filter(
-      (p) => p.ownerId === currentBot.id
+      (p) => p.ownerId === currentBot.id,
     );
     // Shuffle properties to build randomly or iterate? Standard iteration is fine.
     for (const prop of myProperties) {
@@ -1746,10 +1741,10 @@ export default class Monopoly extends BaseGame {
         !prop.mortgaged
       ) {
         const colorProps = BOARD_SPACES.filter(
-          (s) => s.type === "property" && s.color === space.color
+          (s) => s.type === "property" && s.color === space.color,
         );
         const ownedInColor = myProperties.filter((p) =>
-          colorProps.some((c) => c.id === p.spaceId)
+          colorProps.some((c) => c.id === p.spaceId),
         );
 
         // Check local validation first
@@ -1847,7 +1842,7 @@ export default class Monopoly extends BaseGame {
   requestRespondTrade(
     offerId: string,
     accepted: boolean,
-    message?: string
+    message?: string,
   ): void {
     this.makeMove({
       type: "RESPOND_TRADE",
@@ -1919,7 +1914,7 @@ export default class Monopoly extends BaseGame {
         en: "Game reset!",
         vi: "Trò chơi được đặt lại!",
       },
-      "info"
+      "info",
     );
     this.getOutOfJailCards.clear();
     this.chanceCards = [...CHANCE_CARDS].sort(() => Math.random() - 0.5);
@@ -1930,7 +1925,7 @@ export default class Monopoly extends BaseGame {
 
   checkGameEnd(): GameResult | null {
     const activePlayers = this.state.players.filter(
-      (p) => p.id && !p.isBankrupt
+      (p) => p.id && !p.isBankrupt,
     );
     if (activePlayers.length <= 1 && this.state.gamePhase === "playing") {
       return { winner: activePlayers[0]?.id || undefined };

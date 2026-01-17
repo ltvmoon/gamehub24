@@ -5,7 +5,7 @@ import { Chess } from "chess.js";
 import { Chessground as ChessgroundApi } from "chessground";
 import type { Api } from "chessground/api";
 import type { Key } from "chessground/types";
-import { RotateCcw, Bot } from "lucide-react";
+import { RotateCcw, Bot, BookOpen, X } from "lucide-react";
 import "chessground/assets/chessground.base.css";
 import "chessground/assets/chessground.brown.css";
 import "chessground/assets/chessground.cburnett.css";
@@ -17,7 +17,8 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as ChessGame;
   const [state, setState] = useState<ChessState>(game.getState());
   const { userId } = useUserStore();
-  const { ti } = useLanguage();
+  const { ti, ts } = useLanguage();
+  const [showRules, setShowRules] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const chessgroundRef = useRef<Api | null>(null);
 
@@ -111,18 +112,128 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
     return dests;
   };
 
-  // PIECE SVGS Helper
-  const PIECE_SVGS: Record<string, string> = {
-    p: "pawn",
-    n: "knight",
-    b: "bishop",
-    r: "rook",
-    q: "queen",
-    k: "king",
-  };
+  const renderGameRules = () => (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl relative">
+        <button
+          onClick={() => setShowRules(false)}
+          className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="p-6 space-y-6">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-yellow-500" />
+            {ti({ en: "Game Rules", vi: "Luật Chơi" })}
+          </h2>
+
+          <div className="space-y-4 text-slate-300 leading-relaxed">
+            <section>
+              <h3 className="text-lg font-bold text-yellow-400 mt-4">
+                {ti({ en: "Objective", vi: "Mục tiêu" })}
+              </h3>
+              <p>
+                {ti({
+                  en: "Checkmate the opponent's king. White moves first.",
+                  vi: "Chiếu bí vua của đối phương. Trắng đi trước.",
+                })}
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-lg font-bold text-yellow-400 mt-4">
+                {ti({ en: "Basic Rules", vi: "Quy Tắc Cơ Bản" })}
+              </h3>
+              <ul className="space-y-2 list-disc pl-4 text-sm">
+                <li>
+                  <strong>{ti({ en: "King", vi: "Vua" })}</strong>:{" "}
+                  {ti({
+                    en: "Moves one square in any direction.",
+                    vi: "Di chuyển 1 ô theo mọi hướng.",
+                  })}
+                </li>
+                <li>
+                  <strong>{ti({ en: "Queen", vi: "Hậu" })}</strong>:{" "}
+                  {ti({
+                    en: "Moves diagonally, horizontally, or vertically any number of squares.",
+                    vi: "Di chuyển ngang, dọc, chéo bao nhiêu ô tùy ý.",
+                  })}
+                </li>
+                <li>
+                  <strong>{ti({ en: "Rook", vi: "Xe" })}</strong>:{" "}
+                  {ti({
+                    en: "Moves horizontally or vertically any number of squares.",
+                    vi: "Di chuyển ngang hoặc dọc bao nhiêu ô tùy ý.",
+                  })}
+                </li>
+                <li>
+                  <strong>{ti({ en: "Bishop", vi: "Tượng" })}</strong>:{" "}
+                  {ti({
+                    en: "Moves diagonally any number of squares.",
+                    vi: "Di chuyển chéo bao nhiêu ô tùy ý.",
+                  })}
+                </li>
+                <li>
+                  <strong>{ti({ en: "Knight", vi: "Mã" })}</strong>:{" "}
+                  {ti({
+                    en: "Moves in an 'L' shape: two squares in one direction and then one square perpendicular to that direction.",
+                    vi: "Di chuyển theo hình chữ L.",
+                  })}
+                </li>
+                <li>
+                  <strong>{ti({ en: "Pawn", vi: "Tốt" })}</strong>:{" "}
+                  {ti({
+                    en: "Moves forward one square (or two on the first move). Captures diagonally.",
+                    vi: "Di chuyển thẳng 1 ô (hoặc 2 ở nước đầu). Ăn chéo.",
+                  })}
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-lg font-bold text-yellow-400 mt-4">
+                {ti({ en: "Special Moves", vi: "Nước Đi Đặc Biệt" })}
+              </h3>
+              <ul className="space-y-2 list-disc pl-4 text-sm">
+                <li>
+                  {ti({
+                    en: "Castling: Move the King two squares towards a Rook.",
+                    vi: "Nhập thành: Di chuyển Vua 2 ô về phía Xe.",
+                  })}
+                </li>
+                <li>
+                  {ti({
+                    en: "En Passant: Special pawn capture.",
+                    vi: "Bắt tốt qua đường.",
+                  })}
+                </li>
+                <li>
+                  {ti({
+                    en: "Promotion: Pawn reaching the other side becomes a Queen, Rook, Bishop, or Knight.",
+                    vi: "Phong cấp: Tốt đi đến cuối bàn cờ được phong làm Hậu, Xe, Tượng hoặc Mã.",
+                  })}
+                </li>
+              </ul>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col items-center gap-4 p-4 w-full max-w-2xl mx-auto">
+      {showRules && renderGameRules()}
+
+      {/* Rules Button */}
+      <button
+        onClick={() => setShowRules(true)}
+        className="fixed bottom-4 right-4 p-3 bg-slate-700 hover:bg-slate-600 rounded-full text-yellow-500 transition-colors z-40 shadow-lg border border-slate-500"
+        title={ts({ en: "Rules", vi: "Luật chơi" })}
+      >
+        <BookOpen size={24} />
+      </button>
       {/* Status Header */}
       <div className="w-full flex items-center justify-between">
         <div className="flex flex-col gap-1">
@@ -278,16 +389,12 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
           </div>
           <div className="flex flex-wrap gap-1">
             {state.capturedPieces.white.map((p, i) => (
-              <div
+              <img
                 key={i}
-                className={`cg-icon ${PIECE_SVGS[p.toLowerCase()]} black`}
-                style={{
-                  width: 20,
-                  height: 20,
-                  display: "inline-block",
-                  backgroundSize: "contain",
-                }}
-              ></div>
+                src={`https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/b${p.toUpperCase()}.svg`}
+                alt={p}
+                className="w-5 h-5 object-contain"
+              />
             ))}
           </div>
         </div>
@@ -297,16 +404,12 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
           </div>
           <div className="flex flex-wrap gap-1">
             {state.capturedPieces.black.map((p, i) => (
-              <div
+              <img
                 key={i}
-                className={`cg-icon ${PIECE_SVGS[p.toLowerCase()]} white`}
-                style={{
-                  width: 20,
-                  height: 20,
-                  display: "inline-block",
-                  backgroundSize: "contain",
-                }}
-              ></div>
+                src={`https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/w${p.toUpperCase()}.svg`}
+                alt={p}
+                className="w-5 h-5 object-contain"
+              />
             ))}
           </div>
         </div>

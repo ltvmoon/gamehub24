@@ -10,16 +10,15 @@ import {
   WIN_LENGTH,
 } from "./types";
 
-export default class Connect4 extends BaseGame {
+export default class Connect4 extends BaseGame<Connect4State> {
   private state: Connect4State;
-  private onStateChange?: (state: Connect4State) => void;
 
   constructor(
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -62,10 +61,6 @@ export default class Connect4 extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: Connect4State) => void): void {
-    this.onStateChange = callback;
   }
 
   getState(): Connect4State {
@@ -194,7 +189,7 @@ export default class Connect4 extends BaseGame {
   private checkWin(
     row: number,
     col: number,
-    color: Cell
+    color: Cell,
   ): { row: number; col: number }[] {
     if (!color) return [];
 
@@ -220,7 +215,7 @@ export default class Connect4 extends BaseGame {
     col: number,
     dr: number,
     dc: number,
-    color: Cell
+    color: Cell,
   ): { row: number; col: number }[] {
     const cells: { row: number; col: number }[] = [{ row, col }];
 
@@ -414,7 +409,7 @@ export default class Connect4 extends BaseGame {
         Infinity,
         false,
         botColor,
-        opponentColor
+        opponentColor,
       );
 
       if (score > bestScore) {
@@ -443,7 +438,7 @@ export default class Connect4 extends BaseGame {
     beta: number,
     isMaximizing: boolean,
     botColor: Cell,
-    opponentColor: Cell
+    opponentColor: Cell,
   ): number {
     // Terminal conditions
     if (depth === 0) {
@@ -481,7 +476,7 @@ export default class Connect4 extends BaseGame {
           beta,
           false,
           botColor,
-          opponentColor
+          opponentColor,
         );
         board[row][col] = null;
 
@@ -504,7 +499,7 @@ export default class Connect4 extends BaseGame {
           beta,
           true,
           botColor,
-          opponentColor
+          opponentColor,
         );
         board[row][col] = null;
 
@@ -519,7 +514,7 @@ export default class Connect4 extends BaseGame {
   private evaluateBoard(
     board: Cell[][],
     botColor: Cell,
-    opponentColor: Cell
+    opponentColor: Cell,
   ): number {
     let score = 0;
 
@@ -539,7 +534,7 @@ export default class Connect4 extends BaseGame {
   private scoreWindows(
     board: Cell[][],
     botColor: Cell,
-    opponentColor: Cell
+    opponentColor: Cell,
   ): number {
     let score = 0;
 
@@ -601,7 +596,7 @@ export default class Connect4 extends BaseGame {
   private scoreWindow(
     window: Cell[],
     botColor: Cell,
-    opponentColor: Cell
+    opponentColor: Cell,
   ): number {
     const botCount = window.filter((c) => c === botColor).length;
     const opponentCount = window.filter((c) => c === opponentColor).length;
@@ -630,7 +625,7 @@ export default class Connect4 extends BaseGame {
     board: Cell[][],
     row: number,
     col: number,
-    color: Cell
+    color: Cell,
   ): boolean {
     if (!color) return false;
 

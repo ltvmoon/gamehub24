@@ -14,9 +14,8 @@ export interface YouTubeWatchAction extends GameAction {
   payload?: any;
 }
 
-export default class YouTubeWatch extends BaseGame {
+export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
   private state: YouTubeWatchState;
-  private onStateChange?: (state: YouTubeWatchState) => void;
   private players: string[] = []; // Track active players for access control
 
   constructor(
@@ -24,7 +23,7 @@ export default class YouTubeWatch extends BaseGame {
     socket: Socket,
     isHost: boolean,
     userId: string,
-    _players: { id: string; username: string }[]
+    _players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -43,12 +42,6 @@ export default class YouTubeWatch extends BaseGame {
     if (this.isHost) {
       this.broadcastState();
     }
-  }
-
-  onUpdate(callback: (state: YouTubeWatchState) => void): void {
-    this.onStateChange = callback;
-    // Immediately fire with current state
-    callback(this.state);
   }
 
   getState(): YouTubeWatchState {

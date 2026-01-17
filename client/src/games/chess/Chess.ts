@@ -3,9 +3,8 @@ import type { Socket } from "socket.io-client";
 import { type ChessState, type ChessAction } from "./types";
 import { Chess } from "chess.js";
 
-export default class ChessGame extends BaseGame {
+export default class ChessGame extends BaseGame<ChessState> {
   private state: ChessState;
-  private onStateChange?: (state: ChessState) => void;
   private chess: Chess;
 
   constructor(
@@ -49,10 +48,6 @@ export default class ChessGame extends BaseGame {
       this.broadcastState();
       this.checkBotTurn();
     }
-  }
-
-  onUpdate(callback: (state: ChessState) => void): void {
-    this.onStateChange = callback;
   }
 
   getState(): ChessState {

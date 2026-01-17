@@ -13,6 +13,7 @@ import {
   CircleDot,
   ChessRook,
   Landmark,
+  Moon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -363,6 +364,26 @@ games.set("oanquan", {
     return new OAnQuan(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./oanquan/OAnQuanUI").then((m) => m.default),
+});
+
+// Register Werewolf (Ma Sói)
+games.set("werewolf", {
+  id: "werewolf",
+  name: { en: "Werewolf", vi: "Ma Sói" },
+  description: {
+    en: "Social deduction game. Find the wolves before it's too late!",
+    vi: "Trò chơi ẩn vai. Tìm ra ma sói trước khi quá muộn!",
+  },
+  icon: Moon,
+  categories: ["party", "strategy"],
+  minPlayers: 3,
+  maxPlayers: 20,
+  isAvailable: true,
+  createGame: async (roomId, socket, isHost, userId, players) => {
+    const { default: Werewolf } = await import("./werewolf/Werewolf");
+    return new Werewolf(roomId, socket, isHost, userId, players);
+  },
+  loadUI: () => import("./werewolf/WerewolfUI").then((m) => m.default),
 });
 
 // Registry functions
