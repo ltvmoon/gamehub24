@@ -22,7 +22,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       waitReConnectRef.current = false;
       showAlert(
         ts({ en: "Reconnected to server", vi: "Đã kết nối lại server" }),
-        { type: "success" }
+        { type: "success" },
       );
     }
   }, [isConnected]);
@@ -35,7 +35,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
             en: "URL must start with http:// or https://",
             vi: "URL phải bắt đầu bằng http:// hoặc https://",
           }),
-          { type: "error" }
+          { type: "error" },
         );
         return;
       }
@@ -46,7 +46,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
           en: "Server URL updated. Reconnecting...",
           vi: "Đã cập nhật URL server. Đang kết nối lại...",
         }),
-        { type: "loading" }
+        { type: "loading" },
       );
     } catch (e) {
       showAlert(ts({ en: "Invalid URL", vi: "URL không hợp lệ" }), {
@@ -62,7 +62,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
           en: "Are you sure? This will generate a new random ID and username. The page will reload.",
           vi: "Bạn có chắc không? Điều này sẽ tạo ID và tên người dùng mới. Trang sẽ tải lại.",
         }),
-        ts({ en: "Regenerate Identity", vi: "Tạo danh tính mới" })
+        ts({ en: "Regenerate Identity", vi: "Tạo danh tính mới" }),
       )
     ) {
       setIsRegenerating(true);
@@ -123,7 +123,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="http://localhost:3001"
-                className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary min-w-0"
               />
               <button
                 onClick={handleSaveUrl}
@@ -144,7 +144,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                     }),
                     {
                       type: "loading",
-                    }
+                    },
                   );
                 }}
                 className="px-3 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg transition-colors"

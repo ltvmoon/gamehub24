@@ -65,7 +65,7 @@ export abstract class BaseGame {
       const state = this.getState();
       this.socket.emit("game:state", {
         roomId: this.roomId,
-        state,
+        state: { ...state },
       });
 
       // Auto-save state to localStorage

@@ -82,7 +82,7 @@ export default function RoomPage() {
               navigate("/");
             }
           }
-        }
+        },
       );
     };
 
@@ -128,7 +128,7 @@ export default function RoomPage() {
         {
           type: "info",
           title: ts({ en: "Room Closed", vi: "Phòng đã đóng" }),
-        }
+        },
       );
       setCurrentRoom(null);
       clearMessages();
@@ -145,7 +145,7 @@ export default function RoomPage() {
         {
           type: "error",
           title: ts({ en: "Kicked", vi: "Bị đuổi" }),
-        }
+        },
       );
       setCurrentRoom(null);
       clearMessages();
@@ -164,7 +164,7 @@ export default function RoomPage() {
   const isHost = currentRoom?.ownerId === userId;
 
   const hostUser = currentRoom?.players.find(
-    (p) => p.id === currentRoom.ownerId
+    (p) => p.id === currentRoom.ownerId,
   );
 
   const isSpectator = currentRoom?.spectators?.some((p) => p.id === userId);
@@ -200,7 +200,7 @@ export default function RoomPage() {
           }),
       isHost
         ? ts({ en: "Close room?", vi: "Đóng phòng?" })
-        : ts({ en: "Leave room?", vi: "Rời phòng?" })
+        : ts({ en: "Leave room?", vi: "Rời phòng?" }),
     );
     if (confirmed) {
       socket.emit("room:leave", { roomId });
@@ -391,7 +391,11 @@ export default function RoomPage() {
                         <Gamepad className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       )}
                       <p className="capitalize font-medium">
-                        {currentRoom.gameType}
+                        {ti(
+                          getAllGames().find(
+                            (g) => g.id === currentRoom.gameType,
+                          )?.name || "",
+                        )}
                       </p>
                       {isHost && (
                         <span className="text-[10px] opacity-70">▼</span>
@@ -410,7 +414,7 @@ export default function RoomPage() {
                     className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm flex-shrink-0 cursor-pointer hover:bg-white/10 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
                   >
                     <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-muted" />
-                    <span className="max-w-[80px] sm:max-w-none truncate">
+                    <span className="max-w-[80px] md:max-w-none truncate">
                       {username}
                     </span>
                   </button>
@@ -492,7 +496,9 @@ export default function RoomPage() {
                   })}
                 </div>
               )}
-              <GameContainer />
+              <GameContainer
+                onShowChangeGameModal={() => setShowChangeGameModal(true)}
+              />
             </div>
 
             {/* Resize Handle (Desktop Only) */}
@@ -573,7 +579,7 @@ function PasswordPromptModal({
             setPassword("");
           }
         }
-      }
+      },
     );
   };
 
@@ -643,7 +649,10 @@ function ChangeGameModal({
 }) {
   const { ti } = useLanguage();
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] animate-fadeIn">
+    <div
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] animate-fadeIn"
+      onClick={onClose}
+    >
       <div className="bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl mx-4 animate-scaleIn relative">
         <button
           onClick={onClose}
@@ -656,7 +665,7 @@ function ChangeGameModal({
           {ti({ en: "Change Game", vi: "Đổi game" })}
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {getAllGames().map((game) => {
             const Icon = game.icon;
             const isSelected = currentRoom.gameType === game.id;
@@ -669,8 +678,8 @@ function ChangeGameModal({
                   isSelected
                     ? "bg-primary/20 border-primary cursor-default"
                     : !game.isAvailable
-                    ? "opacity-50 cursor-not-allowed border-white/5 bg-white/5"
-                    : "bg-white/5 border-white/10 hover:border-primary/50 hover:bg-white/10 cursor-pointer"
+                      ? "opacity-50 cursor-not-allowed border-white/5 bg-white/5"
+                      : "bg-white/5 border-white/10 hover:border-primary/50 hover:bg-white/10 cursor-pointer"
                 }`}
               >
                 <div
@@ -690,7 +699,7 @@ function ChangeGameModal({
                   >
                     {ti(game.name)}
                   </h4>
-                  <p className="text-xs text-text-secondary line-clamp-1">
+                  <p className="text-xs text-text-secondary line-clamp-2 mt-2 opacity-50">
                     {ti(game.description)}
                   </p>
                 </div>

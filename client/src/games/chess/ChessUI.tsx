@@ -45,7 +45,15 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
       },
       events: {
         move: (orig: Key, dest: Key) => {
-          game.requestMove(orig, dest);
+          // Check for promotion
+          const chess = new Chess(state.fen);
+          const piece = chess.get(orig as any);
+          const isPromotion =
+            piece?.type === "p" &&
+            ((piece.color === "w" && dest[1] === "8") ||
+              (piece.color === "b" && dest[1] === "1"));
+
+          game.requestMove(orig, dest, isPromotion ? "q" : undefined);
         },
       },
       draggable: {

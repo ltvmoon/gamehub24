@@ -13,7 +13,7 @@ export default class ChessGame extends BaseGame {
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) {
     super(roomId, socket, isHost, userId);
 
@@ -125,7 +125,7 @@ export default class ChessGame extends BaseGame {
         "[Chess] Invalid turn or player. Turn:",
         this.state.turn,
         "Color:",
-        playerColor
+        playerColor,
       );
       return;
     }
@@ -145,7 +145,7 @@ export default class ChessGame extends BaseGame {
         console.log("[Chess] Move validation failed (move returned null)");
       }
     } catch (e) {
-      console.error("Invalid move:", e);
+      console.error("Invalid move:", e, { from, to, promotion });
     }
   }
 

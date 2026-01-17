@@ -55,7 +55,7 @@ app.get("/stats", (req, res) => {
   const rooms = roomManager.getPublicRooms();
   const playersInRooms = rooms.reduce(
     (acc, room) => acc + room.players.length,
-    0
+    0,
   );
   const stats = {
     online: io.engine.clientsCount,
@@ -102,23 +102,49 @@ io.on("connection", (socket: Socket) => {
       io.emit("room:list:update", roomManager.getPublicRooms());
     } catch (error) {
       console.error("Error creating room:", error);
-      callback?.({ success: false, error: "Failed to create room" });
+      callback?.({
+        success: false,
+        error: "Failed to create room: " + (error as Error).message,
+      });
     }
   });
 
   // Join room
   socket.on("room:join", (data: JoinRoomData, callback) => {
     try {
-      const result = roomManager.joinRoom(
+      let result = roomManager.joinRoom(
         data.roomId,
         userId,
         username,
         socket.id,
-        data.password
+        data.password,
       );
 
+      // If room not found, auto create
+      if (!result.success && result.error === "Room not found") {
+        const savedSettings = roomManager.getRoomSettings(data.roomId);
+        const room = roomManager.createRoom(
+          {
+            name: savedSettings?.name || data.roomId,
+            gameType: savedSettings?.gameType || "", // Use saved or default
+            isPublic: false,
+            maxPlayers: 10,
+          },
+          userId,
+          username,
+          socket.id,
+          data.roomId,
+        );
+        result = { success: true, room };
+        console.log(
+          `📦 Room auto-created: ${room.name} (${room.id}) by ${username} (using ${
+            savedSettings ? "saved" : "default"
+          } settings)`,
+        );
+      }
+
       if (result.success && result.room) {
-        socket.join(data.roomId);
+        socket.join(result.room.id);
 
         console.log(`👤 ${username} joined room: ${result.room.name}`);
 
@@ -149,7 +175,10 @@ io.on("connection", (socket: Socket) => {
       }
     } catch (error) {
       console.error("Error joining room:", error);
-      callback?.({ success: false, error: "Failed to join room" });
+      callback?.({
+        success: false,
+        error: "Failed to join room: " + (error as Error).message,
+      });
     }
   });
 
@@ -223,6 +252,12 @@ io.on("connection", (socket: Socket) => {
       if (data.gameType) {
         room.gameType = data.gameType;
         console.log(`🔄 Room ${room.name} game changed to: ${data.gameType}`);
+
+        // Save updated settings
+        roomManager.saveRoomSettings(data.roomId, {
+          gameType: room.gameType,
+          name: room.name,
+        });
       }
 
       // Broadcast updated room to all players in the room
@@ -253,7 +288,7 @@ io.on("connection", (socket: Socket) => {
 
         const result = roomManager.moveSpectatorToPlayer(
           data.roomId,
-          data.userId
+          data.userId,
         );
         if (result.success && result.room) {
           io.to(data.roomId).emit("room:players", result.room.players);
@@ -280,7 +315,7 @@ io.on("connection", (socket: Socket) => {
         console.error("Error adding player:", error);
         callback?.({ success: false, error: "Internal error" });
       }
-    }
+    },
   );
 
   // Host removes player to spectators
@@ -301,7 +336,7 @@ io.on("connection", (socket: Socket) => {
 
         const result = roomManager.movePlayerToSpectator(
           data.roomId,
-          data.userId
+          data.userId,
         );
         if (result.success && result.room) {
           io.to(data.roomId).emit("room:players", result.room.players);
@@ -311,7 +346,7 @@ io.on("connection", (socket: Socket) => {
 
           // Send system message
           const spectator = result.room.spectators.find(
-            (p) => p.id === data.userId
+            (p) => p.id === data.userId,
           );
           const systemMessage: ChatMessage = {
             id: uuidv4(),
@@ -330,7 +365,7 @@ io.on("connection", (socket: Socket) => {
         console.error("Error removing player:", error);
         callback?.({ success: false, error: "Internal error" });
       }
-    }
+    },
   );
 
   // Host kicks user
@@ -390,7 +425,7 @@ io.on("connection", (socket: Socket) => {
         console.error("Error kicking user:", error);
         callback?.({ success: false, error: "Internal error" });
       }
-    }
+    },
   );
 
   // GAME EVENTS (Pure relay)
@@ -458,7 +493,7 @@ io.on("connection", (socket: Socket) => {
 
   socket.on("disconnect", (reason) => {
     console.log(
-      `🔴 User disconnected: ${username} (${userId}) [${socket.id}]. Reason: ${reason}`
+      `🔴 User disconnected: ${username} (${userId}) [${socket.id}]. Reason: ${reason}`,
     );
 
     // Handle room cleanup

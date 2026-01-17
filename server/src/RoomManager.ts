@@ -3,14 +3,35 @@ import type { Room, CreateRoomData } from "./types";
 export class RoomManager {
   private rooms: Map<string, Room> = new Map();
   private playerRoomMap: Map<string, string> = new Map(); // userId -> roomId
+  private roomSettings: Map<string, { gameType: string; name: string }> =
+    new Map();
+
+  getRoomSettings(roomId: string) {
+    return this.roomSettings.get(roomId);
+  }
+
+  saveRoomSettings(
+    roomId: string,
+    settings: { gameType: string; name: string },
+  ) {
+    this.roomSettings.set(roomId, settings);
+  }
 
   createRoom(
     data: CreateRoomData,
     userId: string,
     username: string,
-    socketId: string
+    socketId: string,
+    customRoomId?: string,
   ): Room {
-    const roomId = username;
+    const roomId = customRoomId || username;
+
+    // check if room already exists
+    if (this.rooms.has(roomId)) {
+      throw new Error(
+        "Room name " + roomId + " already exists. Please choose another name.",
+      );
+    }
 
     const room: Room = {
       id: roomId,
@@ -34,9 +55,13 @@ export class RoomManager {
 
     this.rooms.set(roomId, room);
     this.playerRoomMap.set(userId, roomId);
+    this.saveRoomSettings(roomId, {
+      gameType: room.gameType,
+      name: room.name,
+    });
 
     console.log(
-      `[RoomManager] Created room ${roomId} for user ${userId} (${username})`
+      `[RoomManager] Created room ${roomId} for user ${userId} (${username})`,
     );
 
     return room;
@@ -47,7 +72,7 @@ export class RoomManager {
     userId: string,
     username: string,
     socketId: string,
-    password?: string
+    password?: string,
   ): { success: boolean; room?: Room; error?: string } {
     const room = this.rooms.get(roomId);
 
@@ -83,7 +108,7 @@ export class RoomManager {
     this.playerRoomMap.set(userId, roomId);
 
     console.log(
-      `[RoomManager] User ${userId} (${username}) joined room ${roomId}`
+      `[RoomManager] User ${userId} (${username}) joined room ${roomId}`,
     );
 
     return { success: true, room };
@@ -123,7 +148,7 @@ export class RoomManager {
       console.log(
         `[RoomManager] Deleted room ${roomId} (Host Left: ${wasHost}, Empty: ${
           room.players.length === 0
-        })`
+        })`,
       );
       return { roomId, wasHost };
     }
@@ -133,7 +158,7 @@ export class RoomManager {
       room.players[0].isHost = true;
       room.ownerId = room.players[0].id;
       console.log(
-        `[RoomManager] Reassigned host for room ${roomId} to ${room.players[0].username}`
+        `[RoomManager] Reassigned host for room ${roomId} to ${room.players[0].username}`,
       );
     }
 
@@ -173,7 +198,7 @@ export class RoomManager {
 
   moveSpectatorToPlayer(
     roomId: string,
-    userId: string
+    userId: string,
   ): { success: boolean; room?: Room; error?: string } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: "Room not found" };
@@ -194,7 +219,7 @@ export class RoomManager {
 
   movePlayerToSpectator(
     roomId: string,
-    userId: string
+    userId: string,
   ): { success: boolean; room?: Room; error?: string } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: "Room not found" };
@@ -217,7 +242,7 @@ export class RoomManager {
 
   kickUser(
     roomId: string,
-    userId: string
+    userId: string,
   ): { success: boolean; room?: Room; error?: string } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: "Room not found" };

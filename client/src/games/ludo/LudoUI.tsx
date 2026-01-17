@@ -5,6 +5,7 @@ import { SAFE_POSITIONS } from "./types";
 import { Play, RefreshCw, Dices } from "lucide-react";
 import { useAlertStore } from "../../stores/alertStore";
 import type { GameUIProps } from "../types";
+import useLanguage from "../../stores/languageStore";
 
 // Color mappings for CSS
 const COLOR_CLASSES: Record<
@@ -73,6 +74,7 @@ const animationStyles = `
 
 export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
   const game = baseGame as Ludo;
+  const { ti, ts } = useLanguage();
   const [state, setState] = useState<LudoState>(game.getState());
   const [rolling, setRolling] = useState(false);
   const [displayDice, setDisplayDice] = useState<number>(1);
@@ -84,7 +86,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
   } | null>(null);
   const prevDiceValue = useRef<number | null>(null);
   const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -176,7 +178,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
     event: React.MouseEvent,
     token: Token,
     color: PlayerColor,
-    playerIndex: number
+    playerIndex: number,
   ) => {
     if (!isMyTurn) return;
     if (!state.hasRolled) return;
@@ -231,7 +233,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
   const getTokenScreenPosition = (
     pos: TokenPosition,
     color: PlayerColor,
-    tokenIndex: number
+    tokenIndex: number,
   ): { x: number; y: number } | null => {
     if (pos.type === "home") {
       // Home tokens in 4 corners, 2x2 grid inside the home base
@@ -370,7 +372,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
   const renderToken = (
     token: Token,
     color: PlayerColor,
-    playerIndex: number
+    playerIndex: number,
   ) => {
     const pos = getTokenScreenPosition(token.position, color, token.id);
     if (!pos) return null;
@@ -481,7 +483,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
 
   // Get player name position on board - centered in each corner (15x15 grid)
   const getPlayerNamePosition = (
-    color: PlayerColor
+    color: PlayerColor,
   ): { x: string; y: string } => {
     switch (color) {
       case "red":
@@ -510,7 +512,10 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-white text-sm mb-3 text-center">
-              Select which token to move:
+              {ti({
+                en: "Select which token to move:",
+                vi: "Chọn quân cờ để di chuyển:",
+              })}
             </p>
             <div className="flex gap-2 justify-center">
               {tokenSelectPopup.tokens.map(({ token, color }) => {
@@ -534,7 +539,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
               })}
             </div>
             <p className="text-gray-400 text-xs mt-2 text-center">
-              Click outside to cancel
+              {ti({ en: "Click outside to cancel", vi: "Click ngoài để hủy" })}
             </p>
           </div>
         </div>
@@ -544,10 +549,12 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
         <div className="flex flex-col items-center gap-3">
           <div className="text-lg text-gray-400">
             {isMyTurn ? (
-              <span className="text-green-400 font-semibold">Your turn!</span>
+              <span className="text-green-400 font-semibold">
+                {ti({ en: "Your turn!", vi: "Đến lượt bạn!" })}
+              </span>
             ) : (
               <span>
-                Waiting for{" "}
+                {ti({ en: "Waiting for", vi: "Đợi" })}{" "}
                 <span
                   className={COLOR_CLASSES[currentPlayer?.color || "red"].text}
                 >
@@ -567,10 +574,10 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
               >
                 <Dices className="w-5 h-5" />
                 {rolling
-                  ? "Rolling..."
+                  ? ti({ en: "Rolling...", vi: "Đang tung xúc xắc..." })
                   : state.canRollAgain
-                  ? "Roll Again! 🎉"
-                  : "Roll Dice"}
+                    ? ti({ en: "Roll Again! 🎉", vi: "Tung lại! 🎉" })
+                    : ti({ en: "Roll Dice", vi: "Tung xúc xắc" })}
               </button>
             )}
           </div>
@@ -580,7 +587,11 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
             !rolling &&
             hasMovableTokens && (
               <span className="text-yellow-400 animate-pulse">
-                👆 Click a highlighted token to move
+                👆{" "}
+                {ti({
+                  en: "Click a highlighted token to move",
+                  vi: "Click quân cờ được tô sáng để di chuyển",
+                })}
               </span>
             )}
         </div>
@@ -592,10 +603,8 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
           <h3 className="text-xl font-bold text-white mb-2">Game Over!</h3>
           <p className="text-gray-300">
             {state.winner === currentUserId
-              ? "🎉 You won!"
-              : `${
-                  state.players.find((p) => p.id === state.winner)?.username
-                } wins!`}
+              ? ti({ en: "🎉 You won!", vi: "🎉 Bạn đã thắng!" })
+              : `${state.players.find((p) => p.id === state.winner)?.username} ${ti({ en: "wins!", vi: "đã thắng!" })}`}
           </p>
         </div>
       )}
@@ -616,9 +625,12 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
                 <div className="flex items-center gap-2">
                   <div className={`w-4 h-4 rounded-full ${colors.bg}`} />
                   <span className="text-sm text-white">
-                    {player.id ? player.username : "(empty)"}
+                    {player.id
+                      ? player.username
+                      : ti({ en: "(empty)", vi: "(trống)" })}
                     {player.isBot && " 🤖"}
-                    {player.id === currentUserId && " (You)"}
+                    {player.id === currentUserId &&
+                      ti({ en: " (You)", vi: " (Bạn)" })}
                   </span>
                 </div>
                 {isHost &&
@@ -652,7 +664,8 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
             onClick={() => game.requestStartGame()}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
           >
-            <Play className="w-4 h-4" /> Start Game
+            <Play className="w-4 h-4" />{" "}
+            {ti({ en: "Start Game", vi: "Bắt đầu" })}
           </button>
         )}
         {state.gamePhase === "ended" && (
@@ -660,7 +673,8 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
             onClick={() => game.requestNewGame()}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
           >
-            <RefreshCw className="w-4 h-4" /> Play Again
+            <RefreshCw className="w-4 h-4" />{" "}
+            {ti({ en: "Play Again", vi: "Chơi lại" })}
           </button>
         )}
       </div>
@@ -1085,27 +1099,29 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
           (player, playerIndex) =>
             player.id &&
             player.tokens.map((token) =>
-              renderToken(token, player.color, playerIndex)
-            )
+              renderToken(token, player.color, playerIndex),
+            ),
         )}
       </div>
 
       {state.gamePhase === "playing" && isHost && (
         <button
           onClick={async () => {
-            const confirmed = await useAlertStore
-              .getState()
-              .confirm(
-                "Are you sure you want to reset the game? All progress will be lost.",
-                "New Game"
-              );
+            const confirmed = await useAlertStore.getState().confirm(
+              ts({
+                en: "Are you sure you want to reset the game? All progress will be lost.",
+                vi: "Bạn có chắc chắn muốn reset game? Tất cả tiến trình sẽ bị mất.",
+              }),
+              ts({ en: "New Game", vi: "Ván mới" }),
+            );
             if (confirmed) {
               game.requestNewGame();
             }
           }}
           className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg transition-colors"
         >
-          <RefreshCw className="w-4 h-4" /> New Game
+          <RefreshCw className="w-4 h-4" />{" "}
+          {ti({ en: "New Game", vi: "Ván mới" })}
         </button>
       )}
     </div>

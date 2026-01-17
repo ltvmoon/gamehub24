@@ -48,7 +48,7 @@ export interface GameModule {
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[]
+    players: { id: string; username: string }[],
   ) => Promise<BaseGame>;
   loadUI: () => Promise<ComponentType<GameUIProps>>;
 }
@@ -248,9 +248,8 @@ games.set("dotsandboxes", {
   maxPlayers: 2,
   isAvailable: true,
   createGame: async (roomId, socket, isHost, userId, players) => {
-    const { default: DotsAndBoxes } = await import(
-      "./dotsandboxes/DotsAndBoxes"
-    );
+    const { default: DotsAndBoxes } =
+      await import("./dotsandboxes/DotsAndBoxes");
     return new DotsAndBoxes(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./dotsandboxes/DotsAndBoxesUI").then((m) => m.default),
@@ -314,6 +313,26 @@ games.set("monopoly", {
     return new Monopoly(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./monopoly/MonopolyUI").then((m) => m.default),
+});
+
+// Register O An Quan
+games.set("oanquan", {
+  id: "oanquan",
+  name: { en: "O An Quan", vi: "Ô Ăn Quan" },
+  description: {
+    en: "Traditional Vietnamese simplified strategy game.",
+    vi: "Trò chơi dân gian Việt Nam. Tính toán nước đi để ăn nhiều quân nhất!",
+  },
+  icon: Grid2X2,
+  categories: ["board", "strategy", "classic"],
+  minPlayers: 2,
+  maxPlayers: 2,
+  isAvailable: true,
+  createGame: async (roomId, socket, isHost, userId, players) => {
+    const { default: OAnQuan } = await import("./oanquan/OAnQuan");
+    return new OAnQuan(roomId, socket, isHost, userId, players);
+  },
+  loadUI: () => import("./oanquan/OAnQuanUI").then((m) => m.default),
 });
 
 // Registry functions

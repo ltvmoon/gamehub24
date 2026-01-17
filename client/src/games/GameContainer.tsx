@@ -7,8 +7,13 @@ import useLanguage from "../stores/languageStore";
 import { getSocket } from "../services/socket";
 import { getGame } from "./registry";
 import type { GameUIProps } from "./types";
+import { RotateCcw } from "lucide-react";
 
-export default function GameContainer() {
+export default function GameContainer({
+  onShowChangeGameModal,
+}: {
+  onShowChangeGameModal: () => void;
+}) {
   const { currentRoom } = useRoomStore();
   const { userId } = useUserStore();
   const { gameInstance, setGameInstance, setIsHost } = useGameStore();
@@ -82,7 +87,7 @@ export default function GameContainer() {
             socket,
             isHost,
             userId,
-            currentRoom.players
+            currentRoom.players,
           ),
           gameModule.loadUI(),
         ]);
@@ -113,7 +118,7 @@ export default function GameContainer() {
                   en: `Found unfinished game from ${dateStr}. Resume?`,
                   vi: `Tìm thấy ván game chưa xong lúc ${dateStr}. Tiếp tục?`,
                 }),
-                ts({ en: "Resume Game", vi: "Tiếp tục game" })
+                ts({ en: "Resume Game", vi: "Tiếp tục game" }),
               );
 
               if (shouldRestore) {
@@ -168,7 +173,7 @@ export default function GameContainer() {
 
   if (!currentRoom) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-[400px]">
         <p className="text-text-muted">No room selected</p>
       </div>
     );
@@ -176,15 +181,23 @@ export default function GameContainer() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-text-secondary">{error}</p>
+      <div className="flex flex-col items-center justify-center h-[400px]">
+        <p className="text-text-secondary text-red-500">{error}</p>
+
+        <button
+          onClick={onShowChangeGameModal}
+          className="mt-4 px-4 py-2 flex items-center bg-slate-500 text-white rounded-lg hover:bg-slate-600 transition-colors"
+        >
+          <RotateCcw className="w-4 h-4 mr-2" />
+          {ts({ en: "Change Game", vi: "Đổi game" })}
+        </button>
       </div>
     );
   }
 
   if (isLoading || !gameInstance || !GameUI) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-[400px]">
         <p className="text-text-muted">Loading game...</p>
       </div>
     );

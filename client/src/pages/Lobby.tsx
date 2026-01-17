@@ -69,7 +69,7 @@ export default function Lobby() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<GameCategory | null>(
-    null
+    null,
   );
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -189,7 +189,7 @@ export default function Lobby() {
               <button
                 onClick={() => {
                   const roomDiv = document.getElementById(
-                    "public-rooms-section"
+                    "public-rooms-section",
                   );
                   if (roomDiv) {
                     roomDiv.scrollIntoView({ behavior: "smooth" });
@@ -241,7 +241,7 @@ export default function Lobby() {
                 </button>
                 {getAllCategories().map((category) => {
                   const count = getAllGames().filter((g) =>
-                    g.categories.includes(category)
+                    g.categories.includes(category),
                   ).length;
                   return (
                     <button
@@ -269,7 +269,7 @@ export default function Lobby() {
                 .filter((game) =>
                   selectedCategory
                     ? game.categories.includes(selectedCategory)
-                    : true
+                    : true,
                 )
                 .map((game) => {
                   const Icon = game.icon;
@@ -432,7 +432,7 @@ function RoomListItem({ room }: { room: Room }) {
         } else {
           showAlert(response.error || "Failed to join room", { type: "error" });
         }
-      }
+      },
     );
   };
 
@@ -443,7 +443,7 @@ function RoomListItem({ room }: { room: Room }) {
         ts({
           en: "Are you sure you want to close this room?",
           vi: "Bạn có chắc muốn đóng phòng này không?",
-        })
+        }),
       ))
     )
       return;
@@ -535,7 +535,9 @@ function CreateRoomModal({
 }) {
   const { username } = useUserStore();
   const [roomName, setRoomName] = useState("");
-  const [gameType, setGameType] = useState(gameId);
+  const [gameType, setGameType] = useState(
+    gameId || localStorage.getItem("gamehub24_lastGameId") || "",
+  );
   const [isPublic, setIsPublic] = useState(false);
   const [requirePassword, setRequirePassword] = useState(false);
   const [password, setPassword] = useState("");
@@ -544,6 +546,10 @@ function CreateRoomModal({
   const { show: showAlert } = useAlertStore();
   const { isConnected } = useSocketStore();
   const { ti, ts } = useLanguage();
+
+  useEffect(() => {
+    if (gameType) localStorage.setItem("gamehub24_lastGameId", gameType);
+  }, [gameType]);
 
   const handleCreate = () => {
     const socket = getSocket();
@@ -574,7 +580,7 @@ function CreateRoomModal({
             type: "error",
           });
         }
-      }
+      },
     );
   };
 
@@ -716,7 +722,7 @@ function JoinRoomModal({ onClose }: { onClose: () => void }) {
             type: "error",
           });
         }
-      }
+      },
     );
   };
 

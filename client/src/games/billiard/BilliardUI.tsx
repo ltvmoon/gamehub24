@@ -232,8 +232,8 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       (b) => b.id === 0 && !b.pocketed
     );
     if (aiming && cueBallForAim && power > 0) {
-      const endX = cueBallForAim.x + Math.cos(angle) * power * 150;
-      const endY = cueBallForAim.y + Math.sin(angle) * power * 150;
+      const endX = cueBallForAim.x + Math.cos(angle) * power * 300;
+      const endY = cueBallForAim.y + Math.sin(angle) * power * 300;
 
       // Power indicator gradient
       const gradient = ctx.createLinearGradient(

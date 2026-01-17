@@ -52,10 +52,10 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
           const playerName = isBot
             ? "Bot"
             : isMe
-            ? myUsername
-            : player
-            ? ti({ en: "Opponent", vi: "Đối thủ" })
-            : null;
+              ? myUsername
+              : player
+                ? ti({ en: "Opponent", vi: "Đối thủ" })
+                : null;
 
           return (
             <div
@@ -196,7 +196,7 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
               onClick={() => handleCellClick(index)}
               disabled={!canInteract}
               className={`
-                w-20 h-20 sm:w-24 sm:h-24 rounded-lg flex items-center justify-center text-4xl transition-all
+                w-20 h-20 md:w-24 md:h-24 rounded-lg flex items-center justify-center text-4xl transition-all
                 border border-slate-700
                 ${
                   cell

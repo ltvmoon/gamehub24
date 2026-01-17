@@ -71,15 +71,15 @@ export default function MonopolyUI({
   const { confirm: showConfirm } = useAlertStore();
   const [state, setState] = useState<MonopolyState>(game.getState());
   const [historyLogs, setHistoryLogs] = useState<GameLog[]>(
-    game.getState().logs || []
+    game.getState().logs || [],
   );
   const { ti, ts } = useLanguage();
   const [rolling, setRolling] = useState(false);
   const [displayDice, setDisplayDice] = useState<[number, number]>(
-    game.getState().diceValues || [1, 1]
+    game.getState().diceValues || [1, 1],
   );
   const [selectedProperty, setSelectedProperty] = useState<BoardSpace | null>(
-    null
+    null,
   );
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
   const [showRules, setShowRules] = useState(false);
@@ -93,7 +93,7 @@ export default function MonopolyUI({
 
   // Hover state for visual connection
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(
-    null
+    null,
   );
 
   const [lineCoords, setLineCoords] = useState<{
@@ -123,7 +123,7 @@ export default function MonopolyUI({
       }
 
       const boardEl = document.getElementById(
-        `monopoly-board-space-${targetId}`
+        `monopoly-board-space-${targetId}`,
       );
       const sourceEl = document.getElementById(sourceId);
       const containerEl = gameContainerRef.current;
@@ -272,7 +272,7 @@ export default function MonopolyUI({
 
   // Get board space position for display (11x11 grid)
   const getSpacePosition = (
-    index: number
+    index: number,
   ): { row: number; col: number; rotation: number } => {
     if (index >= 0 && index <= 10) {
       // Bottom row (left to right)
@@ -374,17 +374,17 @@ export default function MonopolyUI({
 
         {/* Space name */}
         <div className="flex-1 flex items-center justify-center p-0.5 overflow-hidden">
-          <span className="text-[5px] sm:text-[6px] md:text-[8px] text-white text-center leading-tight line-clamp-2 font-medium">
+          <span className="text-[5px] md:text-[6px] md:text-[8px] text-white text-center leading-tight line-clamp-2 font-medium">
             {ti(space.name || space.name)}
           </span>
         </div>
 
         {/* Houses/Hotel indicator */}
         {ownership && ownership.houses > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-[1px] sm:gap-0.5 p-[1px] sm:p-0.5">
+          <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-[1px] md:gap-0.5 p-[1px] md:p-0.5">
             {ownership.houses === 5 ? (
               <div
-                className="w-2 h-1.5 sm:w-3 sm:h-2 bg-red-500 rounded-sm"
+                className="w-2 h-1.5 md:w-3 md:h-2 bg-red-500 rounded-sm"
                 title="Hotel"
               >
                 {/* 🏨 */}
@@ -393,7 +393,7 @@ export default function MonopolyUI({
               Array.from({ length: ownership.houses }).map((_, i) => (
                 <div
                   key={i}
-                  className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-500 rounded-sm"
+                  className="w-1 h-1 md:w-1.5 md:h-1.5 bg-green-500 rounded-sm"
                   title="House"
                 >
                   {/* 🏠 */}
@@ -406,7 +406,7 @@ export default function MonopolyUI({
         {/* Owner indicator */}
         {owner && (
           <div
-            className="absolute top-0 right-0 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full border border-white"
+            className="absolute top-0 right-0 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full border border-white"
             style={{ backgroundColor: owner.color }}
             title={owner.username}
           />
@@ -415,7 +415,7 @@ export default function MonopolyUI({
         {/* Mortgaged indicator */}
         {ownership?.mortgaged && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <Lock className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
+            <Lock className="w-2 h-2 md:w-3 md:h-3 text-white" />
           </div>
         )}
       </div>
@@ -560,7 +560,7 @@ export default function MonopolyUI({
           if (!player.id) return null;
           const isActive = state.currentPlayerIndex === index;
           const myProps = state.properties.filter(
-            (p) => p.ownerId === player.id
+            (p) => p.ownerId === player.id,
           );
           const isExpanded = expandedPlayerId[player.id || ""];
 
@@ -942,7 +942,7 @@ export default function MonopolyUI({
                     en: "Start a new game? Current progress will be lost.",
                     vi: "Bắt đầu ván mới? Tiến trình hiện tại sẽ bị mất.",
                   }),
-                  ts({ en: "New Game", vi: "Ván mới" })
+                  ts({ en: "New Game", vi: "Ván mới" }),
                 )
               ) {
                 game.requestResetGame();
@@ -962,7 +962,7 @@ export default function MonopolyUI({
     if (!selectedProperty) return null;
 
     const ownership = state.properties.find(
-      (p) => p.spaceId === selectedProperty.id
+      (p) => p.spaceId === selectedProperty.id,
     );
     const owner = ownership
       ? state.players.find((p) => p.id === ownership.ownerId)
@@ -972,12 +972,12 @@ export default function MonopolyUI({
     const utilitiesCount = state.properties.filter(
       (p) =>
         p.ownerId === currentUserId &&
-        BOARD_SPACES[p.spaceId].type === "utility"
+        BOARD_SPACES[p.spaceId].type === "utility",
     ).length;
     const railwaysCount = state.properties.filter(
       (p) =>
         p.ownerId === currentUserId &&
-        BOARD_SPACES[p.spaceId].type === "railroad"
+        BOARD_SPACES[p.spaceId].type === "railroad",
     ).length;
 
     return (
@@ -1256,13 +1256,13 @@ export default function MonopolyUI({
                         await showConfirm(
                           ts({
                             en: `Mortgage ${ts(
-                              selectedProperty.name
+                              selectedProperty.name,
                             )} for ${price}?`,
                             vi: `Bạn có chắc chắn muốn thế chấp ${ts(
-                              selectedProperty.name
+                              selectedProperty.name,
                             )} với giá ${price}?`,
                           }),
-                          ts({ en: "Mortgage", vi: "Thế chấp" })
+                          ts({ en: "Mortgage", vi: "Thế chấp" }),
                         )
                       ) {
                         game.requestMortgage(selectedProperty.id);
@@ -1304,7 +1304,7 @@ export default function MonopolyUI({
                   >
                     {state.players
                       .filter(
-                        (p) => p.id && p.id !== currentUserId && !p.isBankrupt
+                        (p) => p.id && p.id !== currentUserId && !p.isBankrupt,
                       )
                       .map((p) => (
                         <option key={p.id} value={p.id!}>
@@ -1321,10 +1321,10 @@ export default function MonopolyUI({
                   <button
                     onClick={() => {
                       const select = document.getElementById(
-                        "trade-player-select"
+                        "trade-player-select",
                       ) as HTMLSelectElement;
                       const input = document.getElementById(
-                        "trade-price-input"
+                        "trade-price-input",
                       ) as HTMLInputElement;
                       const targetId = select.value;
                       const price = parseInt(input.value);
@@ -1332,7 +1332,7 @@ export default function MonopolyUI({
                         game.requestOfferTrade(
                           targetId,
                           selectedProperty.id,
-                          price
+                          price,
                         );
                         setSelectedProperty(null);
                       }
@@ -1362,7 +1362,7 @@ export default function MonopolyUI({
                 <button
                   onClick={() => {
                     const input = document.getElementById(
-                      "buy-price-input"
+                      "buy-price-input",
                     ) as HTMLInputElement;
                     const price = parseInt(input.value);
                     if (!isNaN(price) && price > 0) {
@@ -1370,7 +1370,7 @@ export default function MonopolyUI({
                       game.requestOfferTrade(
                         ownership.ownerId,
                         selectedProperty.id,
-                        price
+                        price,
                       );
                       setSelectedProperty(null);
                     }
@@ -1392,7 +1392,7 @@ export default function MonopolyUI({
                   {(() => {
                     const validation = game.canBuildHouse(
                       currentUserId!,
-                      selectedProperty.id
+                      selectedProperty.id,
                     );
                     return (
                       <div className="flex flex-col gap-1">
@@ -1423,7 +1423,7 @@ export default function MonopolyUI({
                                 ts({
                                   en: "Wait for your turn",
                                   vi: "Đợi tới lượt của bạn",
-                                })
+                                }),
                             )}
                           </p>
                         )}
@@ -1490,8 +1490,8 @@ export default function MonopolyUI({
                     log.type === "alert"
                       ? "bg-red-900/20 border-red-500 text-red-200"
                       : log.type === "action"
-                      ? "bg-blue-900/20 border-blue-500 text-blue-200"
-                      : "bg-slate-700/30 border-gray-500 text-gray-400"
+                        ? "bg-blue-900/20 border-blue-500 text-blue-200"
+                        : "bg-slate-700/30 border-gray-500 text-gray-400"
                   }`}
                 >
                   <span className="opacity-40 mr-1.5 min-w-[38px] flex-shrink-0">
@@ -1524,7 +1524,7 @@ export default function MonopolyUI({
         <h3 className="text-lg font-bold text-orange-400 mb-4 border-b border-orange-400/30 pb-2">
           {ti({ en: "Chance Cards", vi: "Thẻ Cơ Hội" })} (?)
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {CHANCE_CARDS.map((card) => (
             <div
               key={card.id}
@@ -1547,7 +1547,7 @@ export default function MonopolyUI({
         <h3 className="text-lg font-bold text-yellow-400 mb-4 border-b border-yellow-400/30 pb-2">
           {ti({ en: "Community Chest Cards", vi: "Thẻ Khí Vận" })} (chest)
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {CHEST_CARDS.map((card) => (
             <div
               key={card.id}
@@ -1780,7 +1780,7 @@ export default function MonopolyUI({
         !dismissedOffers.includes(o.id) &&
         (o.toPlayerId === currentUserId ||
           (o.fromPlayerId === currentUserId &&
-            (o.status === "pending" || o.status === "declined")))
+            (o.status === "pending" || o.status === "declined"))),
     );
 
     if (!myOffers || myOffers.length === 0) return null;
@@ -1790,7 +1790,7 @@ export default function MonopolyUI({
         {myOffers.map((offer) => {
           const fromMe = offer.fromPlayerId === currentUserId;
           const otherPlayer = state.players.find(
-            (p) => p.id === (fromMe ? offer.toPlayerId : offer.fromPlayerId)
+            (p) => p.id === (fromMe ? offer.toPlayerId : offer.fromPlayerId),
           );
           const space = BOARD_SPACES[offer.propertyId];
 
@@ -1798,7 +1798,7 @@ export default function MonopolyUI({
           // We need state to know who owns it, but we can infer from "fromMyself" and intent?
           // Actually, we can check property ownership in state
           const property = state.properties.find(
-            (p) => p.spaceId === offer.propertyId
+            (p) => p.spaceId === offer.propertyId,
           );
           const isSellOffer = property?.ownerId === offer.fromPlayerId;
           // const isBuyOffer = property?.ownerId === offer.toPlayerId;
@@ -1923,7 +1923,7 @@ export default function MonopolyUI({
                           game.requestRespondTrade(
                             offer.id,
                             false,
-                            declineMessage
+                            declineMessage,
                           );
                           setDecliningOfferId(null);
                           setDeclineMessage("");
@@ -1945,7 +1945,7 @@ export default function MonopolyUI({
                           game.requestRespondTrade(
                             offer.id,
                             false,
-                            declineMessage
+                            declineMessage,
                           );
                           setDecliningOfferId(null);
                           setDeclineMessage("");
@@ -2018,7 +2018,7 @@ export default function MonopolyUI({
           return (
             <div
               key={player.id}
-              className={`absolute w-3 h-3 sm:w-5 sm:h-5 rounded-full border-2 border-white shadow-lg flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${
+              className={`absolute w-3 h-3 md:w-5 md:h-5 rounded-full border-2 border-white shadow-lg flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${
                 isCurrentPlayer
                   ? "z-50 ring-4 ring-yellow-400 ring-offset-2 ring-offset-slate-700 scale-150 shadow-[0_0_20px_rgba(250,204,21,0.8)]"
                   : "z-30"
@@ -2031,7 +2031,7 @@ export default function MonopolyUI({
               title={player.username}
             >
               {/* Helper avatar icon */}
-              <span className="text-[6px] sm:text-[9px] font-bold text-white drop-shadow-md select-none">
+              <span className="text-[6px] md:text-[9px] font-bold text-white drop-shadow-md select-none">
                 {player.username.charAt(0).toUpperCase()}
               </span>
 
@@ -2056,10 +2056,10 @@ export default function MonopolyUI({
 
       {/* Main Board */}
       <div className="flex flex-col items-center gap-2 flex-1">
-        <div className="relative bg-slate-900 rounded-lg sm:rounded-xl p-0.5 sm:p-1 shadow-2xl border-2 sm:border-4 border-slate-700 overflow-hidden w-full max-w-[95vw]">
+        <div className="relative bg-slate-900 rounded-lg md:rounded-xl p-0.5 md:p-1 shadow-2xl border-2 md:border-4 border-slate-700 overflow-hidden w-full max-w-[95vw]">
           {/* Grid board */}
           <div
-            className="grid gap-[1px] sm:gap-0.5 w-full"
+            className="grid gap-[1px] md:gap-0.5 w-full"
             style={{
               gridTemplateColumns: "repeat(11, 1fr)",
               gridTemplateRows: "repeat(11, 1fr)",
@@ -2076,7 +2076,7 @@ export default function MonopolyUI({
               }}
             >
               {/* Title */}
-              <h2 className="text-xs sm:text-lg md:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-500 mb-1 sm:mb-2">
+              <h2 className="text-xs md:text-lg md:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-500 mb-1 md:mb-2">
                 CỜ TỶ PHÚ
               </h2>
 
