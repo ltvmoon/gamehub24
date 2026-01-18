@@ -132,7 +132,6 @@ export class RoomManager {
 
     const wasHost = room.ownerId === userId;
 
-    // Remove player from room
     // Remove player from room (check both lists)
     room.players = room.players.filter((p) => p.id !== userId);
     room.spectators = room.spectators.filter((p) => p.id !== userId);
@@ -154,13 +153,13 @@ export class RoomManager {
     }
 
     // If host left but room not empty, assign new host
-    if (wasHost && room.players.length > 0) {
-      room.players[0].isHost = true;
-      room.ownerId = room.players[0].id;
-      console.log(
-        `[RoomManager] Reassigned host for room ${roomId} to ${room.players[0].username}`,
-      );
-    }
+    // if (wasHost && room.players.length > 0) {
+    //   room.players[0].isHost = true;
+    //   room.ownerId = room.players[0].id;
+    //   console.log(
+    //     `[RoomManager] Reassigned host for room ${roomId} to ${room.players[0].username}`,
+    //   );
+    // }
 
     return { roomId, room, wasHost };
   }

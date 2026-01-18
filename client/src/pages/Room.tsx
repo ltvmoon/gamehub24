@@ -106,7 +106,7 @@ export default function RoomPage() {
       socket.off("connect", handleConnect);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [roomId, socket, navigate, setCurrentRoom]); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, socket, navigate, setCurrentRoom]);
 
   // Effect for room event listeners
   useEffect(() => {

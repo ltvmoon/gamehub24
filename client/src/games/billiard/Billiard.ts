@@ -1,5 +1,5 @@
+import { transString } from "../../stores/languageStore";
 import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
 import {
   type BilliardState,
   type BilliardAction,
@@ -18,39 +18,23 @@ import {
 } from "./types";
 
 export default class Billiard extends BaseGame<BilliardState> {
-  private state: BilliardState;
   private onFrameUpdate?: (balls: Ball[]) => void; // For 60fps canvas updates
   private animationFrameId: number | null = null;
   private syncIntervalId: ReturnType<typeof setInterval> | null = null;
   private pocketedThisShot: Ball[] = []; // Track balls pocketed during current shot
 
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    this.state = this.createInitialState(players);
-    this.init();
-  }
-
-  private createInitialState(
-    players: { id: string; username: string }[],
-  ): BilliardState {
+  getInitState(): BilliardState {
     return {
       balls: createInitialBalls(),
       players: {
         1: {
-          id: players[0]?.id || null,
-          username: players[0]?.username || null,
+          id: this.players[0]?.id || null,
+          username: this.players[0]?.username || null,
           ballType: null,
         },
         2: {
-          id: players[1]?.id || null,
-          username: players[1]?.username || null,
+          id: this.players[1]?.id || null,
+          username: this.players[1]?.username || null,
           ballType: null,
         },
       },
@@ -65,8 +49,8 @@ export default class Billiard extends BaseGame<BilliardState> {
   }
 
   init(): void {
+    super.init();
     if (this.isHost) {
-      this.broadcastState();
       // Periodic sync every 5 seconds during simulation
       this.syncIntervalId = setInterval(() => {
         if (this.state.isSimulating) {
@@ -81,13 +65,8 @@ export default class Billiard extends BaseGame<BilliardState> {
     this.onFrameUpdate = callback;
   }
 
-  getState(): BilliardState {
-    return { ...this.state };
-  }
-
   setState(state: BilliardState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
+    super.setState(state);
 
     // If receiving a shot action, start local physics simulation
     if (state.lastShot && state.isSimulating && !this.isHost) {
@@ -130,7 +109,7 @@ export default class Billiard extends BaseGame<BilliardState> {
         if (!this.isHost) {
           // Sync authoritative state from host
           this.state = action.state;
-          this.onStateChange?.(this.state);
+          this.syncState();
         }
         break;
     }
@@ -411,7 +390,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     if (!this.isHost) {
       // Guest just updates local UI to show simulation stopped
       // but does NOT change turns - wait for host's state broadcast
-      this.onStateChange?.({ ...this.state });
+      this.notifyListeners(this.state);
       return;
     }
 
@@ -433,7 +412,10 @@ export default class Billiard extends BaseGame<BilliardState> {
     // Handle foul - respawn cue ball
     if (this.state.foul) {
       this.respawnCueBall();
-      this.state.turnMessage = "Foul! Cue ball pocketed.";
+      this.state.turnMessage = transString({
+        en: "Foul! Cue ball pocketed.",
+        vi: "Lỗi! Bóng trắng vào lỗ.",
+      });
     }
 
     // Check if player pocketed their own ball (continue turn)
@@ -529,7 +511,7 @@ export default class Billiard extends BaseGame<BilliardState> {
   reset(): void {
     this.stopSimulation();
     this.state = {
-      ...this.createInitialState([]),
+      ...this.getInitState(),
       players: {
         1: {
           id: this.state.players[1].id,

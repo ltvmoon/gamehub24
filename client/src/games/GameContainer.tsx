@@ -128,7 +128,8 @@ export default function GameContainer({
                 // Sync current players to the restored state
                 game.updatePlayers(currentRoom.players);
                 // Ensure broadcast happens to sync all clients
-                game.broadcastState();
+                // First time host enter room, no one here yet -> no need to broadcast
+                // game.broadcastState();
               } else {
                 // User chose to start new, clear old state
                 localStorage.removeItem(key);

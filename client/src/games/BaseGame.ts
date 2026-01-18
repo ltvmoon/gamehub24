@@ -68,7 +68,7 @@ export abstract class BaseGame<T> {
   abstract makeMove(action: GameAction): void;
   abstract checkGameEnd(): GameResult | null;
   abstract reset(): void;
-  abstract updatePlayers(players: { id: string; username: string }[]): void;
+  abstract updatePlayers(players: Player[]): void;
 
   // Game persistent state name (e.g. "tictactoe")
   protected gameName: string = "unknown";

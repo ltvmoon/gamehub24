@@ -26,6 +26,9 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
   // Store balls in a ref for 60fps drawing without React re-renders
   const ballsRef = useRef<Ball[]>(game.getState().balls);
 
+  // Ball trails for moving balls
+  const trailsRef = useRef<Map<number, { x: number; y: number }[]>>(new Map());
+
   // Ripple animation for pocketed balls
   interface RippleEffect {
     x: number;
@@ -42,7 +45,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
   const [aimAngle, setAimAngle] = useState(0);
   const [aimPower, setAimPower] = useState(0);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
-    null
+    null,
   );
 
   // Canvas scale for responsive
@@ -138,11 +141,11 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
         ball.y - BALL_RADIUS * 0.3,
         BALL_RADIUS * 0.3,
         0,
-        Math.PI * 2
+        Math.PI * 2,
       );
       ctx.fill();
     },
-    []
+    [],
   );
 
   // Draw the entire canvas - can be called at 60fps
@@ -183,6 +186,43 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       ctx.arc(pocket.x, pocket.y, POCKET_RADIUS, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // Draw movement trails
+    trailsRef.current.forEach((trail, ballId) => {
+      if (trail.length < 2) return;
+
+      const color = BALL_COLORS[ballId] || "#FFF";
+
+      // Draw ghost balls (afterimages)
+      for (let i = 0; i < trail.length; i++) {
+        const point = trail[i];
+
+        // Calculate opacity: 0 at tail (oldest), up to 0.4 at head (newest)
+        const opacity = (i / trail.length) * 0.4;
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, BALL_RADIUS, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.globalAlpha = opacity;
+        ctx.fill();
+
+        // Add a highlight reflection to make it look more like a ball
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.beginPath();
+        // Smaller reflection
+        ctx.arc(
+          point.x - BALL_RADIUS * 0.3,
+          point.y - BALL_RADIUS * 0.3,
+          BALL_RADIUS * 0.3,
+          0,
+          Math.PI * 2,
+        );
+        ctx.globalAlpha = opacity;
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1.0;
+    });
 
     // Get current game state for highlighting
     const currentState = game.getState();
@@ -229,32 +269,199 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
     // Draw aim line when aiming
     const cueBallForAim = ballsRef.current.find(
-      (b) => b.id === 0 && !b.pocketed
+      (b) => b.id === 0 && !b.pocketed,
     );
     if (aiming && cueBallForAim && power > 0) {
-      const endX = cueBallForAim.x + Math.cos(angle) * power * 300;
-      const endY = cueBallForAim.y + Math.sin(angle) * power * 300;
+      // Ray casting for trace line (multi-step)
+      let rayX = cueBallForAim.x;
+      let rayY = cueBallForAim.y;
+      let rayAngle = angle;
+      let remainingDistance = 2000; // Max Total trace distance
+      const MAX_STEPS = 1;
 
-      // Power indicator gradient
-      const gradient = ctx.createLinearGradient(
-        cueBallForAim.x,
-        cueBallForAim.y,
-        endX,
-        endY
-      );
-      gradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
-      gradient.addColorStop(1, "rgba(255, 100, 100, 0.8)");
-
-      ctx.strokeStyle = gradient;
-      ctx.lineWidth = 3;
-      ctx.setLineDash([10, 5]);
       ctx.beginPath();
-      ctx.moveTo(cueBallForAim.x, cueBallForAim.y);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.moveTo(rayX, rayY);
 
-      // Draw cue stick
+      for (let step = 0; step < MAX_STEPS; step++) {
+        let minDist = remainingDistance;
+        let collisionPoint = {
+          x: rayX + Math.cos(rayAngle) * minDist,
+          y: rayY + Math.sin(rayAngle) * minDist,
+        };
+        let collisionType: "wall" | "ball" | null = null;
+        let targetBall: Ball | null = null;
+        let wallNormal = { x: 0, y: 0 }; // For reflection
+
+        const cos = Math.cos(rayAngle);
+        const sin = Math.sin(rayAngle);
+
+        // Check wall collisions based on current ray direction
+        // Right wall
+        if (cos > 0) {
+          const d = (TABLE_WIDTH - BALL_RADIUS - rayX) / cos;
+          if (d > 0 && d < minDist) {
+            minDist = d;
+            collisionPoint = {
+              x: TABLE_WIDTH - BALL_RADIUS,
+              y: rayY + d * sin,
+            };
+            collisionType = "wall";
+            wallNormal = { x: -1, y: 0 };
+          }
+        }
+        // Left wall
+        else if (cos < 0) {
+          const d = (BALL_RADIUS - rayX) / cos;
+          if (d > 0 && d < minDist) {
+            minDist = d;
+            collisionPoint = { x: BALL_RADIUS, y: rayY + d * sin };
+            collisionType = "wall";
+            wallNormal = { x: 1, y: 0 };
+          }
+        }
+        // Bottom wall
+        if (sin > 0) {
+          const d = (TABLE_HEIGHT - BALL_RADIUS - rayY) / sin;
+          if (d > 0 && d < minDist) {
+            minDist = d;
+            collisionPoint = {
+              x: rayX + d * cos,
+              y: TABLE_HEIGHT - BALL_RADIUS,
+            };
+            collisionType = "wall";
+            wallNormal = { x: 0, y: -1 };
+          }
+        }
+        // Top wall
+        else if (sin < 0) {
+          const d = (BALL_RADIUS - rayY) / sin;
+          if (d > 0 && d < minDist) {
+            minDist = d;
+            collisionPoint = { x: rayX + d * cos, y: BALL_RADIUS };
+            collisionType = "wall";
+            wallNormal = { x: 0, y: 1 };
+          }
+        }
+
+        // Check ball collisions
+        // Only check ball collisions if we haven't already hit a wall closer than any possible ball
+        for (const ball of ballsRef.current) {
+          if (ball.id === 0 || ball.pocketed) continue;
+
+          // Don't check collision with the ball we just bounced off (if any) - though simpler logic usually suffices
+          // Quadratic equation for ray-sphere intersection
+          const dx = rayX - ball.x;
+          const dy = rayY - ball.y;
+          const b = 2 * (cos * dx + sin * dy);
+          const c = dx * dx + dy * dy - 4 * BALL_RADIUS * BALL_RADIUS;
+          const delta = b * b - 4 * c;
+
+          if (delta >= 0) {
+            const t1 = (-b - Math.sqrt(delta)) / 2;
+            const t2 = (-b + Math.sqrt(delta)) / 2;
+            let t = -1;
+            if (t1 > 0.001)
+              t = t1; // Use small epsilon to avoid self-collision
+            else if (t2 > 0.001) t = t2;
+
+            if (t > 0 && t < minDist) {
+              minDist = t;
+              collisionPoint = {
+                x: rayX + t * cos,
+                y: rayY + t * sin,
+              };
+              collisionType = "ball";
+              targetBall = ball;
+            }
+          }
+        }
+
+        // Draw segment
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.lineTo(collisionPoint.x, collisionPoint.y);
+        ctx.stroke();
+
+        // Start new path for next segment (so we can stroke each one if needed, but continuous line is okay)
+        // Actually, let's keep drawing the continuous line.
+        ctx.beginPath();
+        ctx.moveTo(collisionPoint.x, collisionPoint.y);
+
+        // Draw Ghost Ball at collision
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(
+          collisionPoint.x,
+          collisionPoint.y,
+          BALL_RADIUS,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; // Fainter ghost
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.stroke();
+        // Add number to ghost ball to indicate step
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.font = "10px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText((step + 1).toString(), collisionPoint.x, collisionPoint.y);
+        ctx.restore();
+
+        // Handle collision
+        if (collisionType === "ball" && targetBall) {
+          // Determine bounce for object ball
+          const impactAngle = Math.atan2(
+            targetBall.y - collisionPoint.y,
+            targetBall.x - collisionPoint.x,
+          );
+
+          // Draw line for object ball direction
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(targetBall.x, targetBall.y);
+          ctx.lineTo(
+            targetBall.x + Math.cos(impactAngle) * 75,
+            targetBall.y + Math.sin(impactAngle) * 75,
+          );
+          ctx.stroke();
+
+          // Stop prediction on ball hit
+          break;
+        } else if (collisionType === "wall") {
+          // Reflect ray
+          // R = D - 2(D.N)N
+          // Since N is axis aligned, it's simpler.
+          // If normal.x is non-zero, invert cos. If normal.y is non-zero, invert sin.
+
+          // Actually, we need to reflect the angle.
+          // If hitting vertical wall (normal.x != 0), angle = PI - angle
+          // If hitting horizontal wall (normal.y != 0), angle = -angle
+
+          if (wallNormal.x !== 0) {
+            rayAngle = Math.PI - rayAngle;
+          } else {
+            rayAngle = -rayAngle;
+          }
+
+          // Update origin for next step (add a tiny bit to avoid sticking to wall)
+          rayX = collisionPoint.x + wallNormal.x * 0.1;
+          rayY = collisionPoint.y + wallNormal.y * 0.1;
+          remainingDistance -= minDist;
+          if (remainingDistance <= 0) break;
+        } else {
+          // No collision (shouldn't happen given table bounds, but safe break)
+          break;
+        }
+      }
+
+      // Draw cue stick (original logic)
       const stickLength = 200;
       const stickDistance = BALL_RADIUS + 5 + power * 50;
       const stickStartX = cueBallForAim.x - Math.cos(angle) * stickDistance;
@@ -289,13 +496,13 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
         activeRipples.push(ripple);
 
         // Draw multiple concentric ripples
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
           const rippleProgress = Math.max(0, progress - i * 0.15);
           if (rippleProgress > 0 && rippleProgress < 1) {
             const radius = POCKET_RADIUS + rippleProgress * 40;
             const alpha = (1 - rippleProgress) * 0.6;
 
-            ctx.strokeStyle = ripple.color;
+            ctx.strokeStyle = "white";
             ctx.globalAlpha = alpha;
             ctx.lineWidth = 3 - rippleProgress * 2;
             ctx.beginPath();
@@ -326,14 +533,25 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
     game.onUpdate((newState) => {
       setState(newState);
       ballsRef.current = newState.balls;
+
+      // Clear trails on game reset
+      if (
+        newState.gamePhase === "waiting" ||
+        (newState.currentTurn === 1 &&
+          newState.gamePhase === "playing" &&
+          !newState.lastShot)
+      ) {
+        trailsRef.current.clear();
+      }
+
       drawCanvasRef.current();
     });
 
-    // Subscribe to frame updates for smooth 60fps animation
+    // Subscribe to frame updates for smooth 60fps physics
     game.onFrame((balls) => {
       // Detect newly pocketed balls and create ripple effects
       const currentPocketed = new Set(
-        balls.filter((b) => b.pocketed).map((b) => b.id)
+        balls.filter((b) => b.pocketed).map((b) => b.id),
       );
 
       for (const ball of balls) {
@@ -352,7 +570,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
                 y: pocket.y,
                 color: color,
                 startTime: performance.now(),
-                duration: 2000, // 600ms ripple animation
+                duration: 2000,
               });
               break;
             }
@@ -362,9 +580,54 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
       prevPocketedRef.current = currentPocketed;
       ballsRef.current = balls;
-      drawCanvasRef.current();
     });
   }, [game]);
+
+  // Animation loop for trails and ripples
+  useEffect(() => {
+    let animationId: number;
+
+    const loop = () => {
+      // Update trails
+      const balls = ballsRef.current;
+      for (const ball of balls) {
+        const currentTrail = trailsRef.current.get(ball.id) || [];
+
+        // Check if ball is moving and NOT pocketed
+        const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        const isMoving = speed > 0.2 && !ball.pocketed;
+
+        if (isMoving) {
+          // Add current position
+          currentTrail.push({ x: ball.x, y: ball.y });
+
+          // Limit trail length (keep last 20 points)
+          if (currentTrail.length > 20) {
+            currentTrail.shift();
+          }
+
+          trailsRef.current.set(ball.id, currentTrail);
+        } else if (currentTrail.length > 0) {
+          // Decay trail if ball stopped OR pocketed
+          currentTrail.shift();
+          if (currentTrail.length === 0) {
+            trailsRef.current.delete(ball.id);
+          } else {
+            trailsRef.current.set(ball.id, currentTrail);
+          }
+        }
+      }
+
+      drawCanvasRef.current();
+      animationId = requestAnimationFrame(loop);
+    };
+
+    animationId = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, []);
 
   // Get coordinates from mouse/touch event
   const getCanvasCoords = useCallback(
@@ -378,7 +641,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
         y: (clientY - rect.top) / scale,
       };
     },
-    [scale]
+    [scale],
   );
 
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
@@ -409,7 +672,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
   const updateAim = useCallback(
     (clientX: number, clientY: number) => {
       const cueBallNow = ballsRef.current.find(
-        (b) => b.id === 0 && !b.pocketed
+        (b) => b.id === 0 && !b.pocketed,
       );
       if (!cueBallNow) return;
 
@@ -430,7 +693,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       const power = Math.min(1, dist / 200);
       setAimPower(power);
     },
-    [getCanvasCoords]
+    [getCanvasCoords],
   );
 
   const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
@@ -444,6 +707,8 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
   const handleShoot = useCallback(() => {
     if (aimPowerRef.current > 0.05) {
+      // Clear trails before new shot
+      trailsRef.current.clear();
       game.shoot(aimAngleRef.current, aimPowerRef.current);
     }
     setIsAiming(false);
