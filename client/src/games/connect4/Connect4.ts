@@ -1,5 +1,4 @@
-import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
+import { BaseGame, type GameAction } from "../BaseGame";
 import {
   type Connect4State,
   type Connect4Action,
@@ -11,30 +10,19 @@ import {
 } from "./types";
 
 export default class Connect4 extends BaseGame<Connect4State> {
-  private state: Connect4State;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    // Initialize with 2 player slots
-    this.state = {
+  getInitState(): Connect4State {
+    return {
       board: this.createEmptyBoard(),
       players: [
         {
-          id: players[0]?.id || null,
-          username: players[0]?.username || "Player 1",
+          id: this.players[0]?.id || null,
+          username: this.players[0]?.username || "Player 1",
           color: "red",
           isBot: false,
         },
         {
-          id: players[1]?.id || null,
-          username: players[1]?.username || "Player 2",
+          id: this.players[1]?.id || null,
+          username: this.players[1]?.username || "Player 2",
           color: "yellow",
           isBot: false,
         },
@@ -47,8 +35,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
       lastMove: null,
       winningCells: [],
     };
-
-    this.init();
   }
 
   private createEmptyBoard(): Cell[][] {
@@ -57,22 +43,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
       .map(() => Array(COLS).fill(null));
   }
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  getState(): Connect4State {
-    return { ...this.state };
-  }
-
-  setState(state: Connect4State): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as Connect4Action;
     if (!this.isHost) return;
 
@@ -101,17 +72,14 @@ export default class Connect4 extends BaseGame<Connect4State> {
       case "DECLINE_UNDO":
         this.handleDeclineUndo();
         break;
-      case "REQUEST_SYNC":
-        this.broadcastState();
-        break;
     }
   }
 
-  makeMove(action: Connect4Action): void {
+  makeAction(action: Connect4Action): void {
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -129,8 +97,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
     this.state.lastMove = null;
     this.state.winningCells = [];
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
     this.checkBotTurn();
   }
 
@@ -168,8 +135,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
       this.state.currentPlayerIndex = 1 - this.state.currentPlayerIndex;
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
     this.checkBotTurn();
   }
 
@@ -278,8 +244,8 @@ export default class Connect4 extends BaseGame<Connect4State> {
       this.applyUndo();
     } else {
       this.state.undoRequest = { fromId: playerId, fromName: playerName };
-      this.broadcastState();
-      this.setState({ ...this.state });
+
+      this.syncState();
     }
   }
 
@@ -298,14 +264,13 @@ export default class Connect4 extends BaseGame<Connect4State> {
     this.state.lastMove = null;
     this.state.winningCells = [];
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleDeclineUndo(): void {
     this.state.undoRequest = null;
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
   }
 
   // ============== Bot AI (Minimax with Alpha-Beta) ==============
@@ -321,8 +286,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
       isBot: true,
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleRemoveBot(): void {
@@ -336,8 +300,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
       isBot: false,
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private checkBotTurn(): void {
@@ -683,22 +646,22 @@ export default class Connect4 extends BaseGame<Connect4State> {
       playerId: this.userId,
       col,
     };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestStartGame(): void {
     const action: Connect4Action = { type: "START_GAME" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestAddBot(): void {
     const action: Connect4Action = { type: "ADD_BOT" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestRemoveBot(): void {
     const action: Connect4Action = { type: "REMOVE_BOT" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestUndo(): void {
@@ -708,31 +671,22 @@ export default class Connect4 extends BaseGame<Connect4State> {
       playerId: this.userId,
       playerName: player?.username || "Player",
     };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   acceptUndo(): void {
     const action: Connect4Action = { type: "ACCEPT_UNDO" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   declineUndo(): void {
     const action: Connect4Action = { type: "DECLINE_UNDO" };
-    this.makeMove(action);
-  }
-
-  requestSync(): void {
-    const action: Connect4Action = { type: "REQUEST_SYNC" };
-    if (this.isHost) {
-      this.broadcastState();
-    } else {
-      this.sendAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestNewGame(): void {
     const action: Connect4Action = { type: "RESET" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   reset(): void {
@@ -748,22 +702,14 @@ export default class Connect4 extends BaseGame<Connect4State> {
       winningCells: [],
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
-  }
-
-  checkGameEnd(): GameResult | null {
-    if (this.state.winner) {
-      return {
-        winner: this.state.winner === "draw" ? undefined : this.state.winner,
-        isDraw: this.state.winner === "draw",
-      };
-    }
-    return null;
+    this.syncState();
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
-    if (this.state.gamePhase !== "waiting") return;
+    if (this.state.gamePhase !== "waiting") {
+      this.syncState();
+      return;
+    }
 
     // Slot 0 (Host)
     this.state.players[0].id = players[0]?.id || null;
@@ -782,8 +728,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
       }
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // ============== Helper Methods ==============
@@ -800,9 +745,5 @@ export default class Connect4 extends BaseGame<Connect4State> {
 
   isColumnFull(col: number): boolean {
     return this.state.board[0][col] !== null;
-  }
-
-  getPreviewRow(col: number): number {
-    return this.getLowestEmptyRow(col);
   }
 }

@@ -74,6 +74,7 @@ export default function RoomPage() {
 
           if (response.success && response.room) {
             setCurrentRoom(response.room);
+            console.log("Joined room:", response.room);
           } else {
             isJoining = false;
             if (response.error === "Incorrect password") {

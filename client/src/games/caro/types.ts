@@ -1,3 +1,5 @@
+import type { Player } from "../../stores/roomStore";
+
 export interface CaroState {
   board: Record<string, "X" | "O">;
   currentTurn: "X" | "O";
@@ -5,8 +7,8 @@ export interface CaroState {
   winningLine: [number, number][] | null;
   isDraw: boolean;
   players: {
-    X: string | null;
-    O: string | null;
+    X: Player | null;
+    O: Player | null;
   };
   gameOver: boolean;
   history: string[]; // List of keys "row,col"

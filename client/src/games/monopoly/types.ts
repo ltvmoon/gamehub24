@@ -234,10 +234,6 @@ export interface RemoveBotAction {
   slotIndex: number;
 }
 
-export interface RequestSyncAction {
-  type: "REQUEST_SYNC";
-}
-
 export interface OfferTradeAction {
   type: "OFFER_TRADE";
   fromPlayerId: string;
@@ -274,7 +270,6 @@ export type MonopolyAction =
   | StartGameAction
   | AddBotAction
   | RemoveBotAction
-  | RequestSyncAction
   | OfferTradeAction
   | RespondTradeAction
   | CancelTradeAction

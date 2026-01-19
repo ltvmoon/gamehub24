@@ -10,13 +10,18 @@ import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 
 const COLORS = [
-  "#ef4444", // red
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#eab308", // yellow
-  "#a855f7", // purple
-  "#ec4899", // pink
-  "#000000", // black
+  "#f5f5f5", // trắng
+  "#6b7280", // xám
+  "#ef4444", // đỏ
+  "#f97316", // cam
+  "#facc15", // vàng
+  "#22c55e", // xanh lá
+  "#3b82f6", // xanh dương
+  "#a855f7", // tím
+  "#ec4899", // hồng
+  "#92400e", // nâu
+  "#06b6d4", // cyan
+
   // "#ffffff", // white (eraser-like)
 ];
 
@@ -64,7 +69,7 @@ export default function CanvasGameUI({
   // Redraw canvas with optional partial stroke for animation
   const redrawCanvas = (
     animatingStrokeId?: string,
-    animatingPointCount?: number
+    animatingPointCount?: number,
   ) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -73,6 +78,9 @@ export default function CanvasGameUI({
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // fill rect with soft white
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Use stateRef to get latest strokes
     stateRef.current.strokes.forEach((stroke) => {
@@ -182,7 +190,7 @@ export default function CanvasGameUI({
       // Detect new strokes from other users
       const newStrokes = newState.strokes.filter(
         (s) =>
-          !drawnStrokeIdsRef.current.has(s.id) && s.playerId !== currentUserId
+          !drawnStrokeIdsRef.current.has(s.id) && s.playerId !== currentUserId,
       );
 
       // Queue new strokes for animation
@@ -203,11 +211,12 @@ export default function CanvasGameUI({
       // Trigger animation processing after state is set
       setTimeout(() => processAnimationQueue(), 0);
     };
-    game.onUpdate(handleStateChange);
-    setState(game.getState());
-    game.requestSync();
+    const unsub = game.onUpdate(handleStateChange);
 
-    return () => clearTimeout(initTimeout);
+    return () => {
+      unsub();
+      clearTimeout(initTimeout);
+    };
   }, [game, currentUserId]);
 
   // Redraw canvas when strokes change (for own strokes)
@@ -258,7 +267,7 @@ export default function CanvasGameUI({
       ctx.beginPath();
       ctx.moveTo(
         currentStroke[currentStroke.length - 1].x,
-        currentStroke[currentStroke.length - 1].y
+        currentStroke[currentStroke.length - 1].y,
       );
       ctx.lineTo(point.x, point.y);
       ctx.stroke();
@@ -337,7 +346,7 @@ export default function CanvasGameUI({
       ctx.beginPath();
       ctx.moveTo(
         currentStroke[currentStroke.length - 1].x,
-        currentStroke[currentStroke.length - 1].y
+        currentStroke[currentStroke.length - 1].y,
       );
       ctx.lineTo(point.x, point.y);
       ctx.stroke();
@@ -376,7 +385,7 @@ export default function CanvasGameUI({
     if (
       await showConfirm(
         ts({ en: "Clear canvas for everyone", vi: "Xóa canvas cho tất cả" }),
-        ts({ en: "Clear canvas?", vi: "Xóa canvas?" })
+        ts({ en: "Clear canvas?", vi: "Xóa canvas?" }),
       )
     ) {
       game.clear();
@@ -386,7 +395,7 @@ export default function CanvasGameUI({
   return (
     <div className="flex flex-col items-center gap-2 md:gap-4 p-2 md:p-4 w-full h-full max-w-full md:max-w-2xl mx-auto">
       {/* Toolbar */}
-      <div className="flex items-center gap-1.5 md:gap-2 p-1.5 md:p-2 bg-slate-800 rounded-lg w-full justify-center">
+      <div className="flex items-center gap-1.5 md:gap-1 p-1.5 md:p-2 bg-slate-800 rounded-lg w-full justify-center">
         {/* Mobile: Color picker button */}
         <button
           onClick={() => setShowColorModal(true)}
@@ -396,7 +405,7 @@ export default function CanvasGameUI({
         />
         {/* Desktop: Inline color palette */}
         <Palette className="w-4 h-4 text-slate-400 hidden md:block" />
-        <div className="hidden md:flex items-center gap-1.5">
+        <div className="hidden md:flex items-center gap-1">
           {COLORS.map((color) => (
             <button
               key={color}

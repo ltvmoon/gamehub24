@@ -1,43 +1,12 @@
-import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
-import {
-  type DotsAndBoxesState,
-  type DotsAndBoxesAction,
-  type DotsAndBoxesPlayer,
-} from "./types";
+import { BaseGame, type GameAction } from "../BaseGame";
+import { type DotsAndBoxesState, type DotsAndBoxesAction } from "./types";
+import type { Player } from "../../stores/roomStore";
 
 const GRID_SIZE = 6; // 6x6 dots = 5x5 boxes
 
 export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
-  private state: DotsAndBoxesState;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    const gamePlayers: DotsAndBoxesPlayer[] = [
-      {
-        id: players[0]?.id || null,
-        username: players[0]?.username || "Player 1",
-        color: "red",
-        score: 0,
-        isBot: false,
-      },
-      {
-        id: players[1]?.id || null,
-        username: players[1]?.username || "Player 2",
-        color: "blue",
-        score: 0,
-        isBot: false,
-      },
-    ];
-
-    this.state = {
+  getInitState(): DotsAndBoxesState {
+    return {
       gridSize: GRID_SIZE,
       horizontalLines: Array(GRID_SIZE)
         .fill(null)
@@ -48,7 +17,10 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       boxes: Array(GRID_SIZE - 1)
         .fill(null)
         .map(() => Array(GRID_SIZE - 1).fill(null)),
-      players: gamePlayers,
+      players: [
+        { ...this.players[0], color: "red", score: 0 },
+        { ...this.players[1], color: "blue", score: 0 },
+      ],
       currentPlayerIndex: 0,
       winner: null,
       isGameEnded: false,
@@ -56,19 +28,8 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       lastLine: null,
       undoRequest: null,
     };
-
-    this.init();
   }
 
-  // History for undo: { action, boxesEarned: {row, col}[], prevScore, prevIndex }
-  // actually, we just need enough info to revert.
-  // When we undo, we need to know:
-  // - Which line was placed
-  // - Which boxes were captured (to clear them)
-  // - Who placed it (to decrement score)
-  // - Who was the player before this move (Wait, turn logic is tricky if bonus turn happened)
-  //   If bonus turn happened, currentPlayerIndex didn't change.
-  //   So we should store `previousPlayerIndex`.
   private moveHistory: {
     line: { type: "horizontal" | "vertical"; row: number; col: number };
     playerId: string;
@@ -76,24 +37,9 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     prevPlayerIndex: number;
   }[] = [];
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  getState(): DotsAndBoxesState {
-    return { ...this.state };
-  }
-
-  setState(state: DotsAndBoxesState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as DotsAndBoxesAction;
-    if (!this.isHost && action.type !== "REQUEST_SYNC") return;
+    if (!this.isHost) return;
 
     switch (action.type) {
       case "PLACE_LINE":
@@ -109,9 +55,6 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
         break;
       case "RESET":
         this.reset();
-        break;
-      case "REQUEST_SYNC":
-        this.broadcastState();
         break;
       case "ADD_BOT":
         this.handleAddBot(action.slotIndex);
@@ -131,11 +74,11 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     }
   }
 
-  makeMove(action: DotsAndBoxesAction): void {
+  makeAction(action: DotsAndBoxesAction): void {
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -154,10 +97,12 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       ...this.state.players[slotIndex],
       id: `BOT_${Date.now()}_${slotIndex}`,
       username: `Bot ${slotIndex + 1}`,
+      isHost: false,
       isBot: true,
+      color: slotIndex === 0 ? "red" : "blue",
+      score: 0,
     };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleRemoveBot(slotIndex: number): void {
@@ -168,30 +113,23 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       slotIndex >= 2
     )
       return;
-    if (!this.state.players[slotIndex].isBot) return;
+    if (!this.state.players[slotIndex]?.isBot) return;
 
-    this.state.players[slotIndex] = {
-      ...this.state.players[slotIndex],
-      id: null,
-      username: `Player ${slotIndex + 1}`,
-      isBot: false,
-    };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.state.players[slotIndex] = null;
+    this.syncState();
   }
 
   private handleStartGame(): void {
     if (this.canStartGame()) {
       this.reset();
       this.state.gamePhase = "playing";
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
       this.checkBotTurn();
     }
   }
 
   public canStartGame(): boolean {
-    return this.state.players.every((p) => p.id !== null);
+    return this.state.players.every((p) => p?.id != null);
   }
 
   private handlePlaceLine(
@@ -203,7 +141,7 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     if (this.state.gamePhase !== "playing") return;
 
     const currentPlayer = this.state.players[this.state.currentPlayerIndex];
-    if (currentPlayer.id !== playerId) return;
+    if (currentPlayer?.id !== playerId) return;
 
     // Validate coordinates
     if (this.state.isGameEnded) return;
@@ -264,8 +202,7 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     this.state.undoRequest = null; // Clear any pending undo requests on new move
 
     this.updateGameStatus();
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     // Check for bot turn
     this.checkBotTurn();
@@ -275,7 +212,7 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     if (this.state.isGameEnded) return;
     const currentPlayer = this.state.players[this.state.currentPlayerIndex];
 
-    if (currentPlayer.isBot && currentPlayer.id) {
+    if (currentPlayer?.isBot && currentPlayer.id) {
       setTimeout(() => this.executeBotTurn(currentPlayer.id!), 800);
     }
   }
@@ -283,7 +220,7 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
   private executeBotTurn(botId: string): void {
     if (this.state.isGameEnded) return;
     const currentPlayer = this.state.players[this.state.currentPlayerIndex];
-    if (currentPlayer.id !== botId) return;
+    if (currentPlayer?.id !== botId) return;
 
     const move = this.calculateBestMove(botId);
     if (move) {
@@ -505,12 +442,16 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
 
   private updateGameStatus(): void {
     const totalBoxes = (this.state.gridSize - 1) * (this.state.gridSize - 1);
-    const filledBoxes = this.state.players.reduce((sum, p) => sum + p.score, 0);
+    const filledBoxes = this.state.players.reduce(
+      (sum, p) => sum + (p?.score || 0),
+      0,
+    );
 
     if (filledBoxes === totalBoxes) {
       this.state.isGameEnded = true;
       const p1 = this.state.players[0];
       const p2 = this.state.players[1];
+      if (!p1 || !p2) return;
       if (p1.score > p2.score) this.state.winner = p1.id;
       else if (p2.score > p1.score) this.state.winner = p2.id;
       else this.state.winner = "draw"; // Or handle draw
@@ -536,28 +477,32 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       lastLine: null,
       undoRequest: null,
     };
-    this.state.players.forEach((p) => (p.score = 0));
+    this.state.players.forEach((p) => p && (p.score = 0));
     this.moveHistory = [];
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // Undo Logic
   private handleRequestUndo(playerId: string): void {
     // Can only request undo if there is history
     if (this.moveHistory.length === 0) return;
+
+    // check bot => auto approve
+    if (this.state.players.find((p) => p?.isBot)) {
+      this.handleApproveUndo();
+      return;
+    }
+
     if (this.state.undoRequest) return; // Already requested
 
     this.state.undoRequest = { requesterId: playerId };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleRejectUndo(): void {
     this.state.undoRequest = null;
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleApproveUndo(): void {
@@ -575,7 +520,7 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     }
 
     // Revert boxes
-    const player = this.state.players.find((p) => p.id === lastMove.playerId);
+    const player = this.state.players.find((p) => p?.id === lastMove.playerId);
     if (player) {
       player.score -= lastMove.boxesCaptured.length;
     }
@@ -593,30 +538,30 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     this.state.lastLine = prevMove ? prevMove.line : null;
 
     this.state.undoRequest = null;
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
-  updatePlayers(players: { id: string; username: string }[]): void {
+  updatePlayers(players: Player[]): void {
     for (let i = 0; i < 2; i++) {
       const roomPlayer = players[i];
       if (roomPlayer) {
-        // Real player present for this slot
-        this.state.players[i].id = roomPlayer.id;
-        this.state.players[i].username = roomPlayer.username;
-        this.state.players[i].isBot = false; // Correctly mark as human
+        this.state.players[i] = {
+          id: roomPlayer.id,
+          username: roomPlayer.username,
+          isHost: roomPlayer.isHost,
+          isBot: roomPlayer.isBot,
+          color: i === 0 ? "red" : "blue",
+          score: this.state.players[i]?.score || 0,
+        };
       } else {
         // No real player for this slot
         // If it was a human, clear it. If it was a bot, keep it.
-        if (!this.state.players[i].isBot) {
-          this.state.players[i].id = null;
-          this.state.players[i].username = `Player ${i + 1}`;
-          this.state.players[i].isBot = false;
+        if (!this.state.players[i]?.isBot) {
+          this.state.players[i] = null;
         }
       }
     }
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // Public API
@@ -632,17 +577,17 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       col,
       playerId: this.userId,
     };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestAddBot(slotIndex: number): void {
     const action: DotsAndBoxesAction = { type: "ADD_BOT", slotIndex };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestRemoveBot(slotIndex: number): void {
     const action: DotsAndBoxesAction = { type: "REMOVE_BOT", slotIndex };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestUndo(): void {
@@ -650,42 +595,26 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       type: "REQUEST_UNDO",
       playerId: this.userId,
     };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   approveUndo(): void {
     const action: DotsAndBoxesAction = { type: "APPROVE_UNDO" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   rejectUndo(): void {
     const action: DotsAndBoxesAction = { type: "REJECT_UNDO" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestNewGame(): void {
     const action: DotsAndBoxesAction = { type: "RESET" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestStartGame(): void {
     const action: DotsAndBoxesAction = { type: "START_GAME" };
-    this.makeMove(action);
-  }
-
-  requestSync(): void {
-    const action: DotsAndBoxesAction = { type: "REQUEST_SYNC" };
-    if (this.isHost) {
-      this.broadcastState();
-    } else {
-      this.sendAction(action);
-    }
-  }
-
-  checkGameEnd(): GameResult | null {
-    if (this.state.winner) {
-      return { winner: this.state.winner };
-    }
-    return null;
+    this.makeAction(action);
   }
 }

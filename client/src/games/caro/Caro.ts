@@ -1,30 +1,20 @@
-import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
+import type { Player } from "../../stores/roomStore";
+import { BaseGame, type GameAction } from "../BaseGame";
 import { type CaroState, type CaroAction } from "./types";
 
 const BOARD_SIZE = 50;
 
 export default class Caro extends BaseGame<CaroState> {
-  private state: CaroState;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    this.state = {
+  getInitState(): CaroState {
+    return {
       board: {},
       currentTurn: "X",
       winner: null,
       winningLine: null,
       isDraw: false,
       players: {
-        X: players[0]?.id || null,
-        O: players[1]?.id || null,
+        X: this.players[0],
+        O: this.players[1],
       },
       gameOver: false,
       history: [],
@@ -32,32 +22,15 @@ export default class Caro extends BaseGame<CaroState> {
       pendingUndoRequest: null,
       gamePhase: "waiting",
     };
-
-    this.init();
   }
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  getState(): CaroState {
-    return { ...this.state };
-  }
-
-  setState(state: CaroState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as CaroAction;
 
     if (this.isHost) {
       switch (action.type) {
         case "MAKE_MOVE":
-          this.makeMove(action);
+          this.makeAction(action);
           break;
         case "UNDO_REQUEST":
           this.handleUndoRequest(action.playerId);
@@ -78,7 +51,7 @@ export default class Caro extends BaseGame<CaroState> {
     }
   }
 
-  makeMove(action: GameAction): void {
+  makeAction(action: GameAction): void {
     const { row, col, playerId } = action as {
       row: number;
       col: number;
@@ -109,16 +82,8 @@ export default class Caro extends BaseGame<CaroState> {
       this.state.currentTurn = playerSymbol === "X" ? "O" : "X";
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
     this.checkBotTurn();
-  }
-
-  checkGameEnd(): GameResult | null {
-    // Already checked in makeMove
-    return this.state.gameOver
-      ? { winner: this.state.winner || undefined }
-      : null;
   }
 
   reset(): void {
@@ -135,24 +100,29 @@ export default class Caro extends BaseGame<CaroState> {
       pendingUndoRequest: null,
       gamePhase: "waiting",
     };
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
   }
 
-  updatePlayers(players: { id: string; username: string }[]): void {
-    const xId = players[0]?.id || null;
-    let oId = players[1]?.id || null;
+  updatePlayers(players: Player[]): void {
+    const x = players[0] || null;
+    let o = players[1] || null;
 
-    if (this.state.players.O === "BOT" && !oId) {
-      oId = "BOT";
+    if (o?.isBot || !o) {
+      o = {
+        id: "BOT",
+        username: "Bot",
+        isHost: false,
+        isBot: true,
+      };
     }
 
     this.state.players = {
-      X: xId,
-      O: oId,
+      X: x,
+      O: o,
     };
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
   }
   // --- Helpers ---
 
@@ -209,8 +179,8 @@ export default class Caro extends BaseGame<CaroState> {
   }
 
   private getPlayerSymbolInternal(playerId: string): "X" | "O" | null {
-    if (this.state.players.X === playerId) return "X";
-    if (this.state.players.O === playerId) return "O";
+    if (this.state.players.X?.id === playerId) return "X";
+    if (this.state.players.O?.id === playerId) return "O";
     return null;
   }
 
@@ -227,27 +197,31 @@ export default class Caro extends BaseGame<CaroState> {
       col,
       playerId: this.userId,
     };
-    this.isHost ? this.makeMove(action) : this.sendAction(action);
+    this.isHost ? this.makeAction(action) : this.sendSocketGameAction(action);
   }
 
   requestUndo(): void {
     const action: CaroAction = { type: "UNDO_REQUEST", playerId: this.userId };
-    this.isHost ? this.handleUndoRequest(this.userId) : this.sendAction(action);
+    this.isHost
+      ? this.handleUndoRequest(this.userId)
+      : this.sendSocketGameAction(action);
   }
 
   responseUndo(accepted: boolean): void {
     const action: CaroAction = { type: "UNDO_RESPONSE", accepted };
-    this.isHost ? this.handleUndoResponse(accepted) : this.sendAction(action);
+    this.isHost
+      ? this.handleUndoResponse(accepted)
+      : this.sendSocketGameAction(action);
   }
 
   switchTurn(): void {
     const action: CaroAction = { type: "SWITCH_TURN" };
-    this.isHost ? this.handleSwitchTurn() : this.sendAction(action);
+    this.isHost ? this.handleSwitchTurn() : this.sendSocketGameAction(action);
   }
 
   requestReset(): void {
     const action: CaroAction = { type: "RESET_GAME" };
-    this.isHost ? this.reset() : this.sendAction(action);
+    this.isHost ? this.reset() : this.sendSocketGameAction(action);
   }
 
   // --- Host Handlers ---
@@ -285,8 +259,8 @@ export default class Caro extends BaseGame<CaroState> {
     if (lastSymbol !== requesterSymbol) return;
 
     this.state.pendingUndoRequest = playerId;
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
   }
 
   private handleUndoResponse(accepted: boolean): void {
@@ -305,8 +279,8 @@ export default class Caro extends BaseGame<CaroState> {
       }
       this.state.pendingUndoRequest = null;
     }
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
   }
 
   private handleSwitchTurn(): void {
@@ -314,8 +288,8 @@ export default class Caro extends BaseGame<CaroState> {
     if (this.state.history.length > 0) return;
 
     this.state.currentTurn = this.state.currentTurn === "X" ? "O" : "X";
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
   }
 
   // --- Bot Logic ---
@@ -323,19 +297,24 @@ export default class Caro extends BaseGame<CaroState> {
   addBot(): void {
     if (!this.isHost) return;
     if (this.state.gamePhase !== "waiting") return;
-    this.state.players.O = "BOT";
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.state.players.O = {
+      id: "BOT",
+      username: "Bot",
+      isHost: false,
+      isBot: true,
+    };
+
+    this.syncState();
   }
 
   removeBot(): void {
     if (!this.isHost) return;
     if (this.state.gamePhase !== "waiting") return;
-    if (this.state.players.O !== "BOT") return;
+    if (!this.state.players.O?.isBot) return;
 
     this.state.players.O = null;
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
   }
 
   // Start Game
@@ -344,8 +323,8 @@ export default class Caro extends BaseGame<CaroState> {
     if (!this.state.players.X || !this.state.players.O) return;
 
     this.state.gamePhase = "playing";
-    this.broadcastState();
-    this.setState({ ...this.state });
+
+    this.syncState();
 
     // Check if bot goes first
     this.checkBotTurn();
@@ -355,7 +334,7 @@ export default class Caro extends BaseGame<CaroState> {
     if (this.isHost) {
       this.handleStartGame();
     } else {
-      this.sendAction({ type: "START_GAME" });
+      this.sendSocketGameAction({ type: "START_GAME" });
     }
   }
 
@@ -371,12 +350,12 @@ export default class Caro extends BaseGame<CaroState> {
     if (!this.isHost) return;
     if (this.state.gamePhase !== "playing") return;
 
-    const currentPlayerId =
+    const currentPlayer =
       this.state.currentTurn === "X"
         ? this.state.players.X
         : this.state.players.O;
 
-    if (currentPlayerId === "BOT" && !this.state.gameOver) {
+    if (currentPlayer?.isBot && !this.state.gameOver) {
       setTimeout(() => this.makeBotMove(), 600);
     }
   }
@@ -386,7 +365,7 @@ export default class Caro extends BaseGame<CaroState> {
 
     const bestMove = this.getBestMove();
     if (bestMove) {
-      this.makeMove({
+      this.makeAction({
         type: "MAKE_MOVE",
         row: bestMove.row,
         col: bestMove.col,

@@ -52,7 +52,7 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
 
   // Refs
   const lastMoveRef = useRef<OAnQuanState["lastMove"] | undefined>(undefined);
-  const animationQueueRef = useRef<any[]>([]);
+  const animationQueueRef = useRef<{ move: any; state: OAnQuanState }[]>([]);
   const boardRef = useRef(displayBoard);
   const squareRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scoreRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -66,25 +66,30 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
   useEffect(() => {
     const handleUpdate = (newState: OAnQuanState) => {
       if (newState.lastMove && newState.lastMove !== lastMoveRef.current) {
-        animationQueueRef.current.push(newState.lastMove);
+        animationQueueRef.current.push({
+          move: newState.lastMove,
+          state: newState,
+        });
         lastMoveRef.current = newState.lastMove;
-        pendingStateRef.current = newState;
+
+        // Removed pendingStateRef update here because we want to use the state from the queue
+        // pendingStateRef.current = newState;
 
         if (!animating) {
           processNextAnimation();
         }
       } else {
-        if (!animating) {
+        if (!animating && animationQueueRef.current.length === 0) {
           setState(newState);
           setDisplayBoard(newState.board);
         } else {
+          // If animating or queue not empty, store as pending final state
           pendingStateRef.current = newState;
         }
       }
     };
 
-    game.onUpdate(handleUpdate);
-    return () => {};
+    return game.onUpdate(handleUpdate);
   }, [game, animating]);
 
   const processNextAnimation = async () => {
@@ -99,9 +104,16 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
     }
 
     setAnimating(true);
-    const move = animationQueueRef.current.shift();
-    if (move) {
-      await runAnimation(move);
+    const item = animationQueueRef.current.shift();
+    if (item) {
+      await runAnimation(item.move);
+      // APPLY STATE AFTER ANIMATION
+      // This ensures the UI updates to "Bot's turn" (or whatever the state was at this snapshot)
+      // right after the move completes.
+      setState(item.state);
+      setDisplayBoard(item.state.board);
+      boardRef.current = item.state.board; // Sync ref immediately
+
       processNextAnimation();
     }
   };
@@ -471,7 +483,7 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
         )}
       </div>
 
-      {game.isHostUser && (
+      {game.isHost && (
         <div className="mb-2 flex gap-4 flex-wrap justify-center">
           {state.gamePhase === "waiting" && state.players.length >= 2 && (
             <button
@@ -629,7 +641,7 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
           </div>
 
           {/* Bot Controls */}
-          {game.isHostUser && state.gamePhase === "waiting" && (
+          {game.isHost && state.gamePhase === "waiting" && (
             <div className="flex items-center justify-center gap-2 mt-1">
               {state.players.length < 2 && (
                 <button

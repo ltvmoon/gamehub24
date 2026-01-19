@@ -13,11 +13,12 @@ export interface GameResult {
 }
 
 export abstract class BaseGame<T> {
-  protected roomId: string;
-  protected socket: Socket;
-  protected isHost: boolean;
-  protected userId: string;
-  protected players: Player[];
+  public roomId: string;
+  public socket: Socket;
+  public isHost: boolean;
+  public userId: string;
+  public players: Player[];
+
   protected state: T;
   protected stateListeners: ((state: T) => void)[] = [];
 
@@ -38,11 +39,11 @@ export abstract class BaseGame<T> {
     // Bind socket listeners
     if (!this.isHost) {
       // Clients listen for state updates from host
-      this.socket.on("game:state", this.handleStateSync.bind(this));
+      this.socket.on("game:state", this.onSocketGameState.bind(this));
     }
 
     // All players listen for game actions
-    this.socket.on("game:action", this.handleAction.bind(this));
+    this.socket.on("game:action", this.onSocketGameAction.bind(this));
 
     this.init();
   }
@@ -54,21 +55,17 @@ export abstract class BaseGame<T> {
     // }
   }
 
-  public get isHostUser(): boolean {
-    return this.isHost;
-  }
-
-  public get getRoomId(): string {
-    return this.roomId;
-  }
-
   // Abstract methods that must be implemented by each game
   abstract getInitState(): T;
-  abstract handleAction(data: { action: GameAction }): void;
-  abstract makeMove(action: GameAction): void;
-  abstract checkGameEnd(): GameResult | null;
-  abstract reset(): void;
-  abstract updatePlayers(players: Player[]): void;
+  abstract makeAction(action: GameAction): void;
+  abstract onSocketGameAction(data: { action: GameAction }): void;
+
+  public updatePlayers(players: Player[]) {
+    this.players = players;
+
+    console.log(players);
+    this.syncState(); // host sync state to new players
+  }
 
   // Game persistent state name (e.g. "tictactoe")
   protected gameName: string = "unknown";
@@ -122,7 +119,7 @@ export abstract class BaseGame<T> {
   }
 
   // Send action to all players (including self via server relay)
-  protected sendAction(action: GameAction): void {
+  protected sendSocketGameAction(action: GameAction): void {
     this.socket.emit("game:action", {
       roomId: this.roomId,
       action,
@@ -130,7 +127,7 @@ export abstract class BaseGame<T> {
   }
 
   // Client receives state update from host
-  protected handleStateSync(data: { state: T }): void {
+  protected onSocketGameState(data: { state: T }): void {
     if (!this.isHost) {
       this.setState(data.state);
     }

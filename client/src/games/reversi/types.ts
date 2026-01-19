@@ -1,18 +1,13 @@
-// Cell types
-export type Cell = null | "black" | "white";
+import type { Player } from "../../stores/roomStore";
 
-// Player info
-export interface ReversiPlayer {
-  id: string | null;
-  username: string;
-  color: "black" | "white";
-  isBot: boolean;
-}
+// Cell types
+export type Turn = "black" | "white";
+export type Cell = null | Turn;
 
 // Move history for undo
 export interface MoveHistory {
   board: Cell[][];
-  currentPlayerIndex: number;
+  turn: Turn;
 }
 
 // Undo request
@@ -24,8 +19,11 @@ export interface UndoRequest {
 // Main game state
 export interface ReversiState {
   board: Cell[][]; // 8x8
-  players: [ReversiPlayer, ReversiPlayer]; // Always 2 players
-  currentPlayerIndex: number; // 0 or 1
+  players: {
+    black: Player | null;
+    white: Player | null;
+  };
+  turn: Turn;
   winner: string | null;
   gamePhase: "waiting" | "playing" | "ended";
   undoRequest: UndoRequest | null;
@@ -77,10 +75,6 @@ export interface DeclineUndoAction {
   type: "DECLINE_UNDO";
 }
 
-export interface RequestSyncAction {
-  type: "REQUEST_SYNC";
-}
-
 export type ReversiAction =
   | MakeMoveAction
   | PassAction
@@ -90,8 +84,7 @@ export type ReversiAction =
   | RemoveBotAction
   | RequestUndoAction
   | AcceptUndoAction
-  | DeclineUndoAction
-  | RequestSyncAction;
+  | DeclineUndoAction;
 
 // Directions for flipping
 export const DIRECTIONS = [

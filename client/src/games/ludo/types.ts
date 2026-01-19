@@ -89,15 +89,10 @@ export interface RemoveBotAction {
   slotIndex: number;
 }
 
-export interface RequestSyncAction {
-  type: "REQUEST_SYNC";
-}
-
 export type LudoAction =
   | RollDiceAction
   | MoveTokenAction
   | StartGameAction
   | ResetAction
   | AddBotAction
-  | RemoveBotAction
-  | RequestSyncAction;
+  | RemoveBotAction;

@@ -277,7 +277,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       let rayY = cueBallForAim.y;
       let rayAngle = angle;
       let remainingDistance = 2000; // Max Total trace distance
-      const MAX_STEPS = 1;
+      const MAX_STEPS = 4;
 
       ctx.beginPath();
       ctx.moveTo(rayX, rayY);
@@ -435,20 +435,20 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
           // Stop prediction on ball hit
           break;
         } else if (collisionType === "wall") {
-          // Reflect ray
-          // R = D - 2(D.N)N
-          // Since N is axis aligned, it's simpler.
-          // If normal.x is non-zero, invert cos. If normal.y is non-zero, invert sin.
-
-          // Actually, we need to reflect the angle.
-          // If hitting vertical wall (normal.x != 0), angle = PI - angle
-          // If hitting horizontal wall (normal.y != 0), angle = -angle
+          // Reflect ray with physics restitution (0.7) to match game physics
+          const CUSHION_RESTITUTION = 0.7;
+          let vx = Math.cos(rayAngle);
+          let vy = Math.sin(rayAngle);
 
           if (wallNormal.x !== 0) {
-            rayAngle = Math.PI - rayAngle;
+            // Vertical wall: reflect X and apply energy loss
+            vx = -vx * CUSHION_RESTITUTION;
           } else {
-            rayAngle = -rayAngle;
+            // Horizontal wall: reflect Y and apply energy loss
+            vy = -vy * CUSHION_RESTITUTION;
           }
+
+          rayAngle = Math.atan2(vy, vx);
 
           // Update origin for next step (add a tiny bit to avoid sticking to wall)
           rayX = collisionPoint.x + wallNormal.x * 0.1;
@@ -530,7 +530,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
   // Subscribe to game updates
   useEffect(() => {
-    game.onUpdate((newState) => {
+    const unsub = game.onUpdate((newState) => {
       setState(newState);
       ballsRef.current = newState.balls;
 
@@ -581,6 +581,10 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       prevPocketedRef.current = currentPocketed;
       ballsRef.current = balls;
     });
+
+    return () => {
+      unsub();
+    };
   }, [game]);
 
   // Animation loop for trails and ripples
@@ -819,7 +823,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
                   </span>
                 </div>
               </div>
-              {isBot && game.isHostUser && state.gamePhase === "waiting" && (
+              {isBot && game.isHost && state.gamePhase === "waiting" && (
                 <button
                   onClick={() => game.removeBot()}
                   className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
@@ -828,7 +832,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
                 </button>
               )}
               {!player.id &&
-                game.isHostUser &&
+                game.isHost &&
                 slot === 2 &&
                 state.gamePhase === "waiting" && (
                   <button
@@ -845,7 +849,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       </div>
 
       {/* Start Game Button */}
-      {state.gamePhase === "waiting" && game.isHostUser && (
+      {state.gamePhase === "waiting" && game.isHost && (
         <div className="flex flex-col items-center gap-2">
           {game.canStartGame() ? (
             <button
@@ -867,20 +871,18 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
       )}
 
       {/* New Game Button - for host during play */}
-      {state.gamePhase === "playing" &&
-        game.isHostUser &&
-        !state.isSimulating && (
-          <button
-            onClick={() => game.requestReset()}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            <RefreshCcw className="w-4 h-4" />
-            {ti({ en: "New Game", vi: "Ván mới" })}
-          </button>
-        )}
+      {state.gamePhase === "playing" && game.isHost && !state.isSimulating && (
+        <button
+          onClick={() => game.requestReset()}
+          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors flex items-center gap-2"
+        >
+          <RefreshCcw className="w-4 h-4" />
+          {ti({ en: "New Game", vi: "Ván mới" })}
+        </button>
+      )}
 
       {/* Waiting message for non-host */}
-      {state.gamePhase === "waiting" && !game.isHostUser && (
+      {state.gamePhase === "waiting" && !game.isHost && (
         <div className="text-sm text-slate-400">
           {ti({
             en: "Waiting for host to start the game...",

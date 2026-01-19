@@ -1,81 +1,43 @@
+import type { Player } from "../../stores/roomStore";
 import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
 import type { OAnQuanState, OAnQuanAction } from "./types";
-import { Socket } from "socket.io-client";
 
 export default class OAnQuan extends BaseGame<OAnQuanState> {
-  private state: OAnQuanState;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
+  getInitState(): OAnQuanState {
     const initialBoard = Array(12).fill(5);
     initialBoard[0] = 10; // Mandarin Left
     initialBoard[6] = 10; // Mandarin Right
 
     // Initialize state
-    this.state = {
+    const state = {
       board: initialBoard,
       playerScores: {},
       currentTurn: "", // Will be set on start
       winner: null,
       gamePhase: "waiting",
-      players: players.map((p) => ({ ...p, isBot: false })),
-    };
+      players: this.players.map((p) => ({ ...p, isBot: false })),
+    } as OAnQuanState;
 
-    if (players.length > 0) {
-      players.forEach((p) => (this.state.playerScores[p.id] = 0));
+    if (this.players.length > 0) {
+      this.players.forEach((p) => (state.playerScores[p.id] = 0));
     }
 
-    if (this.isHost) {
-      this.notifyAndBroadcast();
-    }
+    return state;
   }
 
-  init(): void {
-    // required by basegame
-  }
-
-  updatePlayers(players: { id: string; username: string }[]): void {
-    // Sync players if needed?
-    // For now, minimal implementation
-    console.log(players);
+  updatePlayers(players: Player[]): void {
     this.state = {
       ...this.state,
       players: players.map((p) => ({ ...p, isBot: false })),
     };
-    this.notifyAndBroadcast();
-  }
-
-  reset(): void {
-    this.requestResetGame();
+    this.syncState();
   }
 
   getMyPlayerIndex(): number {
     return this.state.players.findIndex((p) => p.id === this.userId);
   }
 
-  getState(): OAnQuanState {
-    return { ...this.state };
-  }
-
-  setState(state: OAnQuanState): void {
-    this.state = { ...state };
-    this.onStateChange?.(this.state);
-  }
-
-  // Create new state reference and broadcast
-  private notifyAndBroadcast() {
-    this.onStateChange?.({ ...this.state });
-    this.broadcastState();
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as OAnQuanAction;
 
     if (this.isHost) {
@@ -126,7 +88,7 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
     };
 
     this.checkPopulationIfNeeded();
-    this.notifyAndBroadcast();
+    this.syncState();
     this.checkBotTurn();
   }
 
@@ -137,15 +99,16 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
       winner: null,
       lastMove: undefined,
     };
-    this.notifyAndBroadcast();
+    this.syncState();
   }
 
   private addBot() {
     if (this.state.players.length >= 2) return;
     const botId = `bot-${Date.now()}`;
-    const newPlayer = {
+    const newPlayer: Player = {
       id: botId,
       username: "Bot Player",
+      isHost: false,
       isBot: true,
     };
 
@@ -154,7 +117,7 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
       players: [...this.state.players, newPlayer],
       playerScores: { ...this.state.playerScores, [botId]: 0 },
     };
-    this.notifyAndBroadcast();
+    this.syncState();
   }
 
   private removeBot(index: number | undefined) {
@@ -172,7 +135,7 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
         players: newPlayers,
         playerScores: newScores,
       };
-      this.notifyAndBroadcast();
+      this.syncState();
     }
   }
 
@@ -244,7 +207,7 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
       currentTurn: this.state.currentTurn, // Updated by checkPopulation possibly
     };
 
-    this.notifyAndBroadcast();
+    this.syncState();
 
     if (!this.state.winner) {
       this.checkBotTurn();
@@ -381,37 +344,37 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
     }
   }
 
-  makeMove(action: OAnQuanAction): void {
+  makeAction(action: OAnQuanAction): void {
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestStartGame() {
     if (this.isHost) this.startGame();
-    else this.sendAction({ type: "START_GAME" });
+    else this.sendSocketGameAction({ type: "START_GAME" });
   }
 
   requestResetGame() {
     if (this.isHost) this.resetGame();
-    else this.sendAction({ type: "RESET" });
+    else this.sendSocketGameAction({ type: "RESET" });
   }
 
   requestAddBot(index: number) {
     if (this.isHost) this.addBot();
-    else this.sendAction({ type: "ADD_BOT", botIndex: index });
+    else this.sendSocketGameAction({ type: "ADD_BOT", botIndex: index });
   }
 
   requestRemoveBot(index: number) {
     if (this.isHost) this.removeBot(index);
-    else this.sendAction({ type: "REMOVE_BOT", botIndex: index });
+    else this.sendSocketGameAction({ type: "REMOVE_BOT", botIndex: index });
   }
 
   requestMove(squareId: number, direction: "left" | "right") {
     if (this.isHost) this.processMove({ type: "MOVE", squareId, direction });
-    else this.sendAction({ type: "MOVE", squareId, direction });
+    else this.sendSocketGameAction({ type: "MOVE", squareId, direction });
   }
 }
 

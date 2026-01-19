@@ -173,7 +173,7 @@ export default function MonopolyUI({
     lastPositionsRef.current = initialPos;
     latestStateRef.current = game.getState();
 
-    game.onUpdate((newState) => {
+    return game.onUpdate((newState) => {
       latestStateRef.current = newState;
 
       // Detect new dice roll by comparing with last known dice values
@@ -254,15 +254,12 @@ export default function MonopolyUI({
         return [...prevLogs, ...uniqueNewLogs];
       });
     });
-
-    setState(game.getState());
-    game.requestSync();
   }, [game]);
 
   const myIndex = game.getMyPlayerIndex();
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === currentUserId;
-  const isHost = game.isHostUser;
+  const isHost = game.isHost;
 
   const canRoll =
     isMyTurn &&
@@ -528,7 +525,7 @@ export default function MonopolyUI({
           strokeLinejoin="round"
         />
         {/* Draw dots at start and end */}
-        <circle
+        {/* <circle
           cx="0"
           cy={height - padding - ((data[0] - min) / range) * effectiveHeight}
           r="2"
@@ -545,7 +542,7 @@ export default function MonopolyUI({
           r="2"
           fill={color}
           vectorEffect="non-scaling-stroke"
-        />
+        /> */}
       </svg>
     );
   };
@@ -1058,12 +1055,12 @@ export default function MonopolyUI({
                 </p>
               )}
 
-            {selectedProperty.type === "railroad" && (
+            {/* {selectedProperty.type === "railroad" && (
               <p>
                 💵 {ti({ en: "Rent", vi: "Thuê" })}:{" "}
                 {selectedProperty.baseRent.toLocaleString()}
               </p>
-            )}
+            )} */}
 
             {selectedProperty.type === "utility" && (
               <>
@@ -1463,7 +1460,7 @@ export default function MonopolyUI({
     return (
       <div
         className={`bg-slate-800 rounded-lg p-2 w-full flex flex-col transition-all duration-300 ${
-          isHistoryExpanded ? "h-40 lg:h-56" : "h-auto"
+          isHistoryExpanded ? "h-40 md:h-56" : "h-auto"
         }`}
       >
         <h3
@@ -1524,7 +1521,7 @@ export default function MonopolyUI({
         <h3 className="text-lg font-bold text-orange-400 mb-4 border-b border-orange-400/30 pb-2">
           {ti({ en: "Chance Cards", vi: "Thẻ Cơ Hội" })} (?)
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-3 gap-2">
           {CHANCE_CARDS.map((card) => (
             <div
               key={card.id}
@@ -1547,7 +1544,7 @@ export default function MonopolyUI({
         <h3 className="text-lg font-bold text-yellow-400 mb-4 border-b border-yellow-400/30 pb-2">
           {ti({ en: "Community Chest Cards", vi: "Thẻ Khí Vận" })} (chest)
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-3 gap-2">
           {CHEST_CARDS.map((card) => (
             <div
               key={card.id}
@@ -2048,7 +2045,7 @@ export default function MonopolyUI({
 
   return (
     <div
-      className="relative flex flex-col lg:flex-row gap-2 p-0 w-full max-w-6xl mx-auto"
+      className="relative flex flex-col md:flex-row gap-2 p-0 w-full max-w-6xl mx-auto"
       ref={gameContainerRef}
     >
       {renderTradeOffers()}
@@ -2091,7 +2088,7 @@ export default function MonopolyUI({
       </div>
 
       {/* Side Panel */}
-      <div className="flex flex-col gap-4 flex-shrink-0 lg:w-64 w-full">
+      <div className="flex flex-col gap-4 flex-shrink-0 md:w-64 w-full">
         {renderPlayerPanel()}
         {renderMyProperties()}
         {renderHistoryLog()}

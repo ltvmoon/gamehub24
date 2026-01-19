@@ -1,5 +1,5 @@
+import type { Player } from "../../stores/roomStore";
 import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
 import {
   type UnoState,
   type UnoAction,
@@ -42,13 +42,7 @@ export default class Uno extends BaseGame<UnoState> {
     };
   }
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as UnoAction;
 
     if (!this.isHost) return;
@@ -93,14 +87,13 @@ export default class Uno extends BaseGame<UnoState> {
         break;
       case "DECLINE_NEW_GAME":
         this.state.newGameRequest = null;
-        this.broadcastState();
-        this.setState({ ...this.state });
+        this.syncState();
         break;
     }
   }
 
-  makeMove(action: GameAction): void {
-    this.handleAction({ action });
+  makeAction(action: GameAction): void {
+    this.onSocketGameAction({ action });
   }
 
   // ============== Deck Creation ==============
@@ -283,8 +276,10 @@ export default class Uno extends BaseGame<UnoState> {
     // Add to discard pile
     this.state.discardPile.push(card);
 
-    // Reset UNO call status
-    player.calledUno = false;
+    // Reset UNO call status only if player doesn't have exactly 1 card left
+    if (player.hand.length !== 1) {
+      player.calledUno = false;
+    }
 
     // Handle card effects
     this.applyCardEffect(card, chosenColor);
@@ -293,8 +288,7 @@ export default class Uno extends BaseGame<UnoState> {
     if (player.hand.length === 0) {
       this.state.winner = playerId;
       this.state.gamePhase = "ended";
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
       this.broadcastGameEnd({ winner: playerId });
       return;
     }
@@ -312,8 +306,7 @@ export default class Uno extends BaseGame<UnoState> {
       this.advanceTurn();
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     this.checkBotTurn();
   }
@@ -359,6 +352,9 @@ export default class Uno extends BaseGame<UnoState> {
 
     const player = this.state.players[playerIndex];
 
+    // Reset UNO status on draw
+    player.calledUno = false;
+
     // If there's pending draw penalty
     if (this.state.pendingDraw > 0) {
       this.drawCards(player, this.state.pendingDraw);
@@ -384,8 +380,7 @@ export default class Uno extends BaseGame<UnoState> {
       this.advanceTurn();
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     this.checkBotTurn();
   }
@@ -420,8 +415,7 @@ export default class Uno extends BaseGame<UnoState> {
     const player = this.state.players[playerIndex];
     if (player.hand.length <= 2) {
       player.calledUno = true;
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
     }
   }
 
@@ -435,8 +429,7 @@ export default class Uno extends BaseGame<UnoState> {
     if (target.hand.length === 1 && !target.calledUno) {
       // Penalty: draw 2 cards
       this.drawCards(target, 2);
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
     }
   }
 
@@ -475,8 +468,7 @@ export default class Uno extends BaseGame<UnoState> {
     };
     this.state = { ...this.state, players: newPlayers };
 
-    this.broadcastState();
-    this.onStateChange?.(this.state);
+    this.syncState();
   }
 
   private handleJoinSlot(
@@ -500,8 +492,7 @@ export default class Uno extends BaseGame<UnoState> {
     };
     this.state = { ...this.state, players: newPlayers };
 
-    this.broadcastState();
-    this.onStateChange?.(this.state);
+    this.syncState();
   }
 
   private handleRemovePlayer(slotIndex: number): void {
@@ -522,8 +513,7 @@ export default class Uno extends BaseGame<UnoState> {
     };
     this.state = { ...this.state, players: newPlayers };
 
-    this.broadcastState();
-    this.onStateChange?.(this.state);
+    this.syncState();
   }
 
   // ============== Game Flow ==============
@@ -557,16 +547,14 @@ export default class Uno extends BaseGame<UnoState> {
       this.state.pendingDraw = 2;
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     this.checkBotTurn();
   }
 
   private handleNewGameRequest(playerId: string, playerName: string): void {
     this.state.newGameRequest = { fromId: playerId, fromName: playerName };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   reset(): void {
@@ -594,8 +582,7 @@ export default class Uno extends BaseGame<UnoState> {
       hasDrawn: false,
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   checkGameEnd(): GameResult | null {
@@ -605,7 +592,7 @@ export default class Uno extends BaseGame<UnoState> {
     return null;
   }
 
-  updatePlayers(players: { id: string; username: string }[]): void {
+  updatePlayers(players: Player[]): void {
     let playerIdx = 0;
     for (let i = 0; i < 4; i++) {
       const slot = this.state.players[i];
@@ -620,8 +607,7 @@ export default class Uno extends BaseGame<UnoState> {
         }
       }
     }
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // ============== Bot AI ==============
@@ -737,9 +723,9 @@ export default class Uno extends BaseGame<UnoState> {
       chosenColor,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -749,9 +735,9 @@ export default class Uno extends BaseGame<UnoState> {
       playerId: this.userId,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -761,9 +747,9 @@ export default class Uno extends BaseGame<UnoState> {
       playerId: this.userId,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -774,18 +760,18 @@ export default class Uno extends BaseGame<UnoState> {
       targetId,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestAddBot(slotIndex: number): void {
     const action: UnoAction = { type: "ADD_BOT", slotIndex };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -797,33 +783,33 @@ export default class Uno extends BaseGame<UnoState> {
       playerName,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestRemovePlayer(slotIndex: number): void {
     const action: UnoAction = { type: "REMOVE_PLAYER", slotIndex };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestStartGame(): void {
     const action: UnoAction = { type: "START_GAME" };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestNewGame(): void {
     if (this.isHost) {
-      this.handleAction({ action: { type: "NEW_GAME" } });
+      this.onSocketGameAction({ action: { type: "NEW_GAME" } });
     } else {
       const action: UnoAction = {
         type: "REQUEST_NEW_GAME",
@@ -832,18 +818,18 @@ export default class Uno extends BaseGame<UnoState> {
           this.state.players.find((p) => p.id === this.userId)?.username ||
           "Player",
       };
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   acceptNewGame(): void {
     const action: UnoAction = { type: "ACCEPT_NEW_GAME" };
-    this.handleAction({ action });
+    this.onSocketGameAction({ action });
   }
 
   declineNewGame(): void {
     const action: UnoAction = { type: "DECLINE_NEW_GAME" };
-    this.handleAction({ action });
+    this.onSocketGameAction({ action });
   }
 
   // ============== Helper Methods ==============

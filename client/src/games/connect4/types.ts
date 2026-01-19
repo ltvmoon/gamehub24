@@ -76,10 +76,6 @@ export interface DeclineUndoAction {
   type: "DECLINE_UNDO";
 }
 
-export interface RequestSyncAction {
-  type: "REQUEST_SYNC";
-}
-
 export type Connect4Action =
   | MakeMoveAction
   | ResetAction
@@ -88,5 +84,4 @@ export type Connect4Action =
   | RemoveBotAction
   | RequestUndoAction
   | AcceptUndoAction
-  | DeclineUndoAction
-  | RequestSyncAction;
+  | DeclineUndoAction;

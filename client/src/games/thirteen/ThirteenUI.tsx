@@ -27,8 +27,9 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const [showRules, setShowRules] = useState(false);
   const { username } = useUserStore();
   const { ti, ts } = useLanguage();
+  const { confirm: showConfirm } = useAlertStore();
 
-  const isHost = game.isHostUser;
+  const isHost = game.isHost;
   const myIndex = game.getMyPlayerIndex();
   const mySlot = myIndex >= 0 ? state.players[myIndex] : null;
   const isMyTurn = state.currentTurnIndex === myIndex;
@@ -41,7 +42,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   }, [selectedCards, mySlot, game]);
 
   useEffect(() => {
-    game.onUpdate((newState) => {
+    return game.onUpdate((newState) => {
       setState(newState);
       setSelectedCards([]);
     });
@@ -461,27 +462,27 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
         {/* Game Controls */}
         {state.gamePhase !== "waiting" && (
           <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                if (isHost && state.gamePhase === "playing") {
-                  const confirmed = await useAlertStore
-                    .getState()
-                    .confirm(
+            {mySlot && (
+              <button
+                onClick={async () => {
+                  if (isHost && state.gamePhase === "playing") {
+                    const confirmed = await showConfirm(
                       "This will reset the current game and start fresh.",
                       "Start New Game?",
                     );
-                  if (confirmed) {
+                    if (confirmed) {
+                      game.requestNewGame();
+                    }
+                  } else {
                     game.requestNewGame();
                   }
-                } else {
-                  game.requestNewGame();
-                }
-              }}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs md:text-sm flex items-center gap-1 md:gap-2"
-            >
-              <RefreshCcw className="w-3 h-3 md:w-4 md:h-4" />
-              New game
-            </button>
+                }}
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs md:text-sm flex items-center gap-1 md:gap-2"
+              >
+                <RefreshCcw className="w-3 h-3 md:w-4 md:h-4" />
+                New game
+              </button>
+            )}
           </div>
         )}
       </div>

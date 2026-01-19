@@ -35,16 +35,14 @@ export default function Connect4UI({
   const { ti, ts } = useLanguage();
 
   useEffect(() => {
-    game.onUpdate(setState);
-    setState(game.getState());
-    game.requestSync();
+    return game.onUpdate(setState);
   }, [game]);
 
   const myIndex = game.getMyPlayerIndex();
   const myColor = myIndex >= 0 ? state.players[myIndex].color : null;
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === currentUserId;
-  const isHost = game.isHostUser;
+  const isHost = game.isHost;
 
   const handleColumnClick = (col: number) => {
     if (state.gamePhase !== "playing") return;

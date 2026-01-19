@@ -91,7 +91,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
   );
 
   useEffect(() => {
-    game.onUpdate((newState) => {
+    const unsub = game.onUpdate((newState) => {
       // Detect when a new dice value comes in (someone rolled)
       const isNewRoll =
         newState.diceValue !== null &&
@@ -136,21 +136,20 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
 
       setState(newState);
     });
-    setState(game.getState());
-    game.requestSync();
 
     // Cleanup on unmount
     return () => {
       if (animationIntervalRef.current) {
         clearInterval(animationIntervalRef.current);
       }
+      unsub();
     };
   }, [game]);
 
   const myIndex = game.getMyPlayerIndex();
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === currentUserId;
-  const isHost = game.isHostUser;
+  const isHost = game.isHost;
   const canRoll =
     isMyTurn &&
     (!state.hasRolled || state.canRollAgain) &&

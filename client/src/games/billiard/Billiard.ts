@@ -74,7 +74,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     }
   }
 
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as BilliardAction;
 
     switch (action.type) {
@@ -105,17 +105,10 @@ export default class Billiard extends BaseGame<BilliardState> {
       case "REMOVE_BOT":
         if (this.isHost) this.handleRemoveBot();
         break;
-      case "SYNC_STATE":
-        if (!this.isHost) {
-          // Sync authoritative state from host
-          this.state = action.state;
-          this.syncState();
-        }
-        break;
     }
   }
 
-  makeMove(action: BilliardAction): void {
+  makeAction(action: BilliardAction): void {
     if (action.type === "SHOOT") {
       this.handleShoot(action.angle, action.power, action.playerId);
     }
@@ -142,7 +135,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     this.applyShot(angle, power);
 
     // Broadcast shot action to all clients
-    this.sendAction({
+    this.sendSocketGameAction({
       type: "SHOOT",
       angle,
       power,
@@ -213,28 +206,50 @@ export default class Billiard extends BaseGame<BilliardState> {
     this.animationFrameId = requestAnimationFrame(step);
   }
 
+  private readonly PHYSICS_SUBSTEPS = 8;
+
   private updatePhysics(): boolean {
     const activeBalls = this.state.balls.filter((b) => !b.pocketed);
     let allStopped = true;
 
-    // Update positions
-    for (const ball of activeBalls) {
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-    }
+    const dt = 1 / this.PHYSICS_SUBSTEPS;
 
-    // Run multiple collision iterations to properly separate balls
-    for (let iter = 0; iter < 3; iter++) {
-      // Ball-to-ball collisions
+    // Sub-stepping loop for movement and collisions
+    for (let step = 0; step < this.PHYSICS_SUBSTEPS; step++) {
+      // Update positions
+      for (const ball of activeBalls) {
+        if (ball.pocketed) continue;
+        ball.x += ball.vx * dt;
+        ball.y += ball.vy * dt;
+      }
+
+      // Ball-to-ball collisions (one pass per sub-step is usually sufficient)
       for (let i = 0; i < activeBalls.length; i++) {
+        const a = activeBalls[i];
+        if (a.pocketed) continue;
         for (let j = i + 1; j < activeBalls.length; j++) {
-          this.handleBallCollision(activeBalls[i], activeBalls[j]);
+          const b = activeBalls[j];
+          if (!b.pocketed) {
+            this.handleBallCollision(a, b);
+          }
         }
       }
+
+      // Wall collisions
+      for (const ball of activeBalls) {
+        if (!ball.pocketed) {
+          this.handleWallCollision(ball);
+        }
+      }
+
+      // Pocket detection (check every step to prevent tunneling)
+      this.checkPockets();
     }
 
-    // Apply friction and check if stopped
+    // Apply friction and check if stopped (once per frame)
     for (const ball of activeBalls) {
+      if (ball.pocketed) continue;
+
       ball.vx *= FRICTION;
       ball.vy *= FRICTION;
 
@@ -246,13 +261,7 @@ export default class Billiard extends BaseGame<BilliardState> {
       } else {
         allStopped = false;
       }
-
-      // Wall collisions
-      this.handleWallCollision(ball);
     }
-
-    // Pocket detection
-    this.checkPockets();
 
     return allStopped;
   }
@@ -403,9 +412,8 @@ export default class Billiard extends BaseGame<BilliardState> {
       if (result.winner) {
         this.state.winner = parseInt(result.winner) as PlayerSlot;
       }
-      this.broadcastState();
+      this.syncState();
       this.broadcastGameEnd(result);
-      this.setState({ ...this.state });
       return;
     }
 
@@ -427,8 +435,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     }
 
     // Broadcast authoritative state to all clients
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
     this.checkBotTurn();
   }
 
@@ -526,8 +533,7 @@ export default class Billiard extends BaseGame<BilliardState> {
       },
       gamePhase: "waiting",
     };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
@@ -548,8 +554,7 @@ export default class Billiard extends BaseGame<BilliardState> {
       }
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // Public methods for UI
@@ -568,7 +573,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     if (this.isHost) {
       this.handleShoot(angle, power, this.userId);
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -576,7 +581,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     if (this.isHost) {
       this.reset();
     } else {
-      this.sendAction({ type: "RESET_GAME" });
+      this.sendSocketGameAction({ type: "RESET_GAME" });
     }
   }
 
@@ -586,8 +591,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     if (this.state.gamePhase !== "waiting") return;
 
     this.state.players[2] = { id: "BOT", username: "Bot", ballType: null };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   removeBot(): void {
@@ -596,8 +600,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     if (this.state.players[2].id !== "BOT") return;
 
     this.state.players[2] = { id: null, username: null, ballType: null };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleAddBot(): void {
@@ -613,7 +616,7 @@ export default class Billiard extends BaseGame<BilliardState> {
     if (this.isHost) {
       this.handleStartGame();
     } else {
-      this.sendAction({ type: "START_GAME" });
+      this.sendSocketGameAction({ type: "START_GAME" });
     }
   }
 
@@ -623,8 +626,7 @@ export default class Billiard extends BaseGame<BilliardState> {
 
     this.state.gamePhase = "playing";
     this.state.balls = createInitialBalls();
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     this.checkBotTurn();
   }

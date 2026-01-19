@@ -21,18 +21,18 @@ interface LanguageStore {
 export const useLanguageStore = create<LanguageStore>()(
   persist(
     (set) => ({
-      language: Language.en,
+      language: Language.vi,
       setLanguage: (language: Language) => set({ language }),
     }),
     {
       name: "gamehub_language",
-    }
-  )
+    },
+  ),
 );
 
 export const trans = (
   obj: ITransable | undefined | null,
-  language = useLanguageStore.getState().language
+  language = useLanguageStore.getState().language,
 ): string | React.ReactNode => {
   if (obj == null) return "";
   if (typeof obj === "string" || typeof obj === "number") return obj;
@@ -42,7 +42,7 @@ export const trans = (
 // String-only version for attributes like placeholder, title, etc.
 export const transString = (
   obj: { vi: string; en: string } | string | undefined | null,
-  language = useLanguageStore.getState().language
+  language = useLanguageStore.getState().language,
 ): string => {
   if (obj == null) return "";
   if (typeof obj === "string") return obj;

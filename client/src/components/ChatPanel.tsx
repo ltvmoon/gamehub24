@@ -39,7 +39,7 @@ export default function ChatPanel() {
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = () => {

@@ -140,6 +140,10 @@ export default function GameContainer({
           }
         }
 
+        // guest sync state from host
+        else {
+        }
+
         // Tag instance for change detection
         (game as any).assignedGameType = gameType;
 

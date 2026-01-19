@@ -25,9 +25,7 @@ export default function DotsAndBoxesUI({
   const { ti, ts } = useLanguage();
 
   useEffect(() => {
-    game.onUpdate(setState);
-    setState(game.getState());
-    game.requestSync();
+    return game.onUpdate(setState);
   }, [game]);
 
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -148,42 +146,11 @@ export default function DotsAndBoxesUI({
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 p-4 w-full max-w-2xl mx-auto">
+    <div className="flex flex-col items-center gap-6 p-4 w-full max-w-2xl mx-auto pb-10">
       {renderGameRules()}
       {/* Header Info */}
       <div className="flex flex-col items-center gap-2">
         <h2 className="text-3xl font-bold text-white">Dots & Boxes</h2>
-
-        {!isGameEnded && state.gamePhase === "playing" ? (
-          <div className="text-lg">
-            {isMyTurn ? (
-              <span className="text-green-400 font-bold animate-pulse">
-                {ti({ en: "Your Turn!", vi: "Lượt của bạn!" })}
-              </span>
-            ) : (
-              <span className="text-gray-300">
-                {ti({ en: "Waiting for", vi: "Đang chờ" })}{" "}
-                <span
-                  className={`${
-                    PLAYER_TEXT_COLORS[currentPlayer.color]
-                  } font-bold`}
-                >
-                  {currentPlayer.username}
-                </span>
-                ...
-              </span>
-            )}
-          </div>
-        ) : isGameEnded ? (
-          <div className="text-2xl font-bold text-white mb-2">
-            Game Over!{" "}
-            {state.winner === "draw"
-              ? ti({ en: "It's a Draw!", vi: "Hòa!" })
-              : `${
-                  state.players.find((p) => p.id === state.winner)?.username
-                } ${ti({ en: "Wins!", vi: "Thắng!" })}`}
-          </div>
-        ) : null}
 
         {/* Score Board & Player List */}
         <div className="flex gap-4 md:gap-8 bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700 w-full justify-center">
@@ -193,30 +160,30 @@ export default function DotsAndBoxesUI({
               className={`flex flex-col items-center gap-2 p-2 rounded-lg transition-all ${
                 state.currentPlayerIndex === index && !isGameEnded
                   ? "bg-slate-700 scale-105 shadow-md border-2 " +
-                    (p.color === "red" ? "border-red-500" : "border-blue-500")
+                    (p?.color === "red" ? "border-red-500" : "border-blue-500")
                   : "border-2 border-transparent"
-              } ${!p.id ? "opacity-60" : ""}`}
+              } ${!p?.id ? "opacity-60" : ""}`}
             >
               <div className="flex items-center gap-2">
                 <div
                   className={`w-3 h-3 rounded-full ${
-                    p.color === "red" ? "bg-red-500" : "bg-blue-500"
+                    p?.color === "red" ? "bg-red-500" : "bg-blue-500"
                   }`}
                 />
                 <div
                   className={`text-sm font-bold ${
-                    p.color === "red" ? "text-red-500" : "text-blue-500"
+                    p?.color === "red" ? "text-red-500" : "text-blue-500"
                   }`}
                 >
-                  {p.id ? p.username : ti({ en: "Empty", vi: "Trống" })}
+                  {p?.id ? p.username : ti({ en: "Empty", vi: "Trống" })}
                 </div>
               </div>
 
-              {p.id ? (
+              {p?.id ? (
                 <div className="flex flex-col items-center">
                   <div
                     className={`text-3xl font-black ${
-                      p.color === "red" ? "text-red-500" : "text-blue-500"
+                      p?.color === "red" ? "text-red-500" : "text-blue-500"
                     }`}
                   >
                     {p.score}
@@ -231,11 +198,11 @@ export default function DotsAndBoxesUI({
               )}
 
               {/* Host Controls */}
-              {game.isHostUser &&
+              {game.isHost &&
                 !isGameEnded &&
                 state.boxes.every((r) => r.every((c) => c === null)) && (
                   <div className="mt-1">
-                    {p.isBot ? (
+                    {p?.isBot ? (
                       <button
                         onClick={() => game.requestRemoveBot(index)}
                         className="text-xs bg-red-900 hover:bg-red-800 text-red-100 px-2 py-1 rounded"
@@ -243,7 +210,7 @@ export default function DotsAndBoxesUI({
                         {ti({ en: "Remove Bot", vi: "Xóa Bot" })}
                       </button>
                     ) : (
-                      !p.id && (
+                      !p?.id && (
                         <button
                           onClick={() => game.requestAddBot(index)}
                           className="text-xs bg-cyan-900 hover:bg-cyan-800 text-cyan-100 px-2 py-1 rounded"
@@ -257,11 +224,43 @@ export default function DotsAndBoxesUI({
             </div>
           ))}
         </div>
+
+        {/* Turn Info */}
+        {!isGameEnded && state.gamePhase === "playing" ? (
+          <div className="text-lg">
+            {isMyTurn ? (
+              <span className="text-green-400 font-bold animate-pulse">
+                {ti({ en: "Your Turn!", vi: "Lượt của bạn!" })}
+              </span>
+            ) : (
+              <span className="text-gray-300">
+                {ti({ en: "Waiting for", vi: "Đang chờ" })}{" "}
+                <span
+                  className={`${
+                    PLAYER_TEXT_COLORS[currentPlayer?.color || "red"]
+                  } font-bold`}
+                >
+                  {currentPlayer?.username}
+                </span>
+                ...
+              </span>
+            )}
+          </div>
+        ) : isGameEnded ? (
+          <div className="text-2xl font-bold text-white mb-2">
+            Game Over!{" "}
+            {state.winner === "draw"
+              ? ti({ en: "It's a Draw!", vi: "Hòa!" })
+              : `${
+                  state.players.find((p) => p?.id === state.winner)?.username
+                } ${ti({ en: "Wins!", vi: "Thắng!" })}`}
+          </div>
+        ) : null}
       </div>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3 justify-center">
-        {!isGameEnded && state.gamePhase === "waiting" && game.isHostUser && (
+        {!isGameEnded && state.gamePhase === "waiting" && game.isHost && (
           <button
             onClick={() => game.requestStartGame()}
             disabled={!game.canStartGame()}
@@ -273,7 +272,7 @@ export default function DotsAndBoxesUI({
         )}
 
         {/* Reset / New Game (Host only) */}
-        {game.isHostUser && state.gamePhase !== "waiting" && (
+        {game.isHost && state.gamePhase !== "waiting" && (
           <button
             onClick={() => game.requestNewGame()}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
@@ -297,37 +296,54 @@ export default function DotsAndBoxesUI({
       </div>
 
       {/* Undo Request Modal */}
-      {state.undoRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-slate-800 p-4 rounded-lg shadow-xl border border-slate-600 flex flex-col gap-3">
-            <p className="text-white">
-              {
-                state.players.find(
-                  (p) => p.id === state.undoRequest?.requesterId,
-                )?.username
-              }{" "}
-              {ti({
-                en: "requested to undo the last move.",
-                vi: "muốn hoàn tác nước đi vừa rồi.",
-              })}
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => game.rejectUndo()}
-                className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded"
-              >
-                {ti({ en: "Reject", vi: "Từ chối" })}
-              </button>
-              <button
-                onClick={() => game.approveUndo()}
-                className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded"
-              >
-                {ti({ en: "Approve", vi: "Đồng ý" })}
-              </button>
+      {state.undoRequest &&
+        (() => {
+          const requester = state.players.find(
+            (p) => p?.id === state.undoRequest?.requesterId,
+          );
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-slate-800 p-4 rounded-lg shadow-xl border border-slate-600 flex flex-col gap-3">
+                <p className="text-white">
+                  {requester?.username}{" "}
+                  {ti({
+                    en: "requested to undo the last move.",
+                    vi: "muốn hoàn tác nước đi vừa rồi.",
+                  })}
+                </p>
+                {requester?.id != game.userId ? (
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => game.rejectUndo()}
+                      className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded"
+                    >
+                      {ti({ en: "Reject", vi: "Từ chối" })}
+                    </button>
+                    <button
+                      onClick={() => game.approveUndo()}
+                      className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded"
+                    >
+                      {ti({ en: "Approve", vi: "Đồng ý" })}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-white">
+                    {ti({
+                      en: "Waiting for approval...",
+                      vi: "Đang chờ phê duyệt...",
+                    })}
+                    <button
+                      onClick={() => game.rejectUndo()}
+                      className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded"
+                    >
+                      {ti({ en: "Cancel", vi: "Hủy" })}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {/* Rules Button */}
       <button
@@ -344,7 +360,7 @@ export default function DotsAndBoxesUI({
           {/* 1. Render Boxes (Backgrounds) */}
           {state.boxes.map((rowBoxes, r) =>
             rowBoxes.map((ownerId, c) => {
-              const owner = state.players.find((p) => p.id === ownerId);
+              const owner = state.players.find((p) => p?.id === ownerId);
               if (!owner) return null;
               return (
                 <div
@@ -401,7 +417,7 @@ export default function DotsAndBoxesUI({
                             ? "bg-yellow-400 shadow-[0_0_12px_4px_rgba(250,204,21,0.7)] animate-pulse"
                             : "bg-white shadow-[0_0_8px_2px_rgba(255,255,255,0.4)]"
                           : state.gamePhase === "playing"
-                            ? "bg-slate-700 hover:bg-slate-400"
+                            ? "bg-slate-800 hover:bg-slate-400"
                             : "bg-slate-800 cursor-default"
                       }`}
                     style={{

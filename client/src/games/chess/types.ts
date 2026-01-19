@@ -1,3 +1,5 @@
+import type { Player } from "../../stores/roomStore";
+
 export interface ChessState {
   fen: string;
   turn: "w" | "b";
@@ -5,8 +7,8 @@ export interface ChessState {
   isDraw: boolean;
   check: boolean;
   players: {
-    white: string | null;
-    black: string | null;
+    white: Player | null;
+    black: Player | null;
   };
   gameOver: boolean;
   history: string[]; // List of FENs or moves? keeping simple FEN for now but for undo we might need moves
@@ -28,8 +30,6 @@ export type ChessAction =
       promotion?: string;
       playerId: string;
     }
-  | { type: "UNDO_REQUEST"; playerId: string }
-  | { type: "UNDO_RESPONSE"; accepted: boolean }
   | { type: "NEW_GAME_REQUEST"; playerId: string }
   | { type: "NEW_GAME_RESPONSE"; accepted: boolean }
   | { type: "RESET_GAME" };

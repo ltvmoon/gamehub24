@@ -69,18 +69,12 @@ export interface RemoveBotAction {
   type: "REMOVE_BOT";
 }
 
-export interface SyncStateAction {
-  type: "SYNC_STATE";
-  state: BilliardState;
-}
-
 export type BilliardAction =
   | ShootAction
   | ResetGameAction
   | StartGameAction
   | AddBotAction
-  | RemoveBotAction
-  | SyncStateAction;
+  | RemoveBotAction;
 
 // Physics constants
 export const TABLE_WIDTH = 800;

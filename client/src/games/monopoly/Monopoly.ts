@@ -1,5 +1,4 @@
-import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
+import { BaseGame, type GameAction } from "../BaseGame";
 import {
   type MonopolyState,
   type MonopolyAction,
@@ -18,31 +17,20 @@ import {
   type TradeOffer,
 } from "./types";
 import { trans } from "../../stores/languageStore";
+import type { Player } from "../../stores/roomStore";
 
 export default class Monopoly extends BaseGame<MonopolyState> {
-  private state: MonopolyState;
-  private chanceCards: Card[];
-  private chestCards: Card[];
-  private getOutOfJailCards: Map<string, number>; // playerId -> count
+  private chanceCards: Card[] = [...CHANCE_CARDS].sort(
+    () => Math.random() - 0.5,
+  );
+  private chestCards: Card[] = [...CHEST_CARDS].sort(() => Math.random() - 0.5);
+  private getOutOfJailCards: Map<string, number> = new Map(); // playerId -> count
 
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    // Shuffle cards
-    this.chanceCards = [...CHANCE_CARDS].sort(() => Math.random() - 0.5);
-    this.chestCards = [...CHEST_CARDS].sort(() => Math.random() - 0.5);
-    this.getOutOfJailCards = new Map();
-
+  getInitState(): MonopolyState {
     // Initialize 4 player slots
     const initialPlayers: MonopolyPlayer[] = [];
     for (let i = 0; i < 4; i++) {
-      const player = players[i];
+      const player = this.players[i];
       initialPlayers.push({
         id: player?.id || null,
         username: player?.username || `Player ${i + 1}`,
@@ -57,7 +45,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
       });
     }
 
-    this.state = {
+    return {
       players: initialPlayers,
       currentPlayerIndex: 0,
       properties: [],
@@ -72,26 +60,6 @@ export default class Monopoly extends BaseGame<MonopolyState> {
       logs: [],
       tradeOffers: [],
     };
-  }
-
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  getState(): MonopolyState {
-    return this.state;
-  }
-
-  setState(state: MonopolyState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-
-    // Resume bot if it's their turn
-    if (this.isHost) {
-      this.checkBotTurn();
-    }
   }
 
   // Notify UI and broadcast - creates new state reference for React
@@ -111,20 +79,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
         }
       }
     });
-
-    // Create new state object to trigger React re-render
-    this.state = {
-      ...this.state,
-      players: this.state.players.map((p) => ({
-        ...p,
-        moneyHistory: [...(p.moneyHistory || [])],
-      })),
-      properties: this.state.properties.map((p) => ({ ...p })),
-      logs: [...this.state.logs],
-      tradeOffers: this.state.tradeOffers.map((t) => ({ ...t })),
-    };
-    this.onStateChange?.(this.state);
-    this.broadcastState();
+    this.syncState();
   }
 
   // === Trading ===
@@ -547,7 +502,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
     this.notifyAndBroadcast();
   }
 
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as MonopolyAction;
 
     switch (action.type) {
@@ -586,11 +541,6 @@ export default class Monopoly extends BaseGame<MonopolyState> {
         break;
       case "REMOVE_BOT":
         this.handleRemoveBot(action.slotIndex);
-        break;
-      case "REQUEST_SYNC":
-        if (this.isHost) {
-          this.broadcastState();
-        }
         break;
       case "OFFER_TRADE":
         this.handleOfferTrade(
@@ -645,13 +595,13 @@ export default class Monopoly extends BaseGame<MonopolyState> {
     this.state.lastAction = message;
   }
 
-  makeMove(action: MonopolyAction): void {
+  makeAction(action: MonopolyAction): void {
     if (this.isHost) {
       // Process action locally immediately for host
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
       // Non-host sends action to host via socket
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -1774,63 +1724,55 @@ export default class Monopoly extends BaseGame<MonopolyState> {
   // === Request Methods (Client -> Host) ===
 
   requestRollDice(): void {
-    this.makeMove({ type: "ROLL_DICE", playerId: this.userId });
+    this.makeAction({ type: "ROLL_DICE", playerId: this.userId });
   }
 
   requestBuyProperty(spaceId: number): void {
-    this.makeMove({ type: "BUY_PROPERTY", playerId: this.userId, spaceId });
+    this.makeAction({ type: "BUY_PROPERTY", playerId: this.userId, spaceId });
   }
 
   requestDeclineProperty(): void {
-    this.makeMove({ type: "DECLINE_PROPERTY", playerId: this.userId });
+    this.makeAction({ type: "DECLINE_PROPERTY", playerId: this.userId });
   }
 
   requestBuildHouse(spaceId: number): void {
-    this.makeMove({ type: "BUILD_HOUSE", playerId: this.userId, spaceId });
+    this.makeAction({ type: "BUILD_HOUSE", playerId: this.userId, spaceId });
   }
 
   requestPayRent(): void {
-    this.makeMove({ type: "PAY_RENT", playerId: this.userId });
+    this.makeAction({ type: "PAY_RENT", playerId: this.userId });
   }
 
   requestPayTax(): void {
-    this.makeMove({ type: "PAY_TAX", playerId: this.userId });
+    this.makeAction({ type: "PAY_TAX", playerId: this.userId });
   }
 
   requestUseCard(): void {
-    this.makeMove({ type: "USE_CARD", playerId: this.userId });
+    this.makeAction({ type: "USE_CARD", playerId: this.userId });
   }
 
   requestPayJailFine(): void {
-    this.makeMove({ type: "PAY_JAIL_FINE", playerId: this.userId });
+    this.makeAction({ type: "PAY_JAIL_FINE", playerId: this.userId });
   }
 
   requestEndTurn(): void {
-    this.makeMove({ type: "END_TURN", playerId: this.userId });
+    this.makeAction({ type: "END_TURN", playerId: this.userId });
   }
 
   requestStartGame(): void {
-    this.makeMove({ type: "START_GAME" });
+    this.makeAction({ type: "START_GAME" });
   }
 
   requestAddBot(slotIndex: number): void {
-    this.makeMove({ type: "ADD_BOT", slotIndex });
+    this.makeAction({ type: "ADD_BOT", slotIndex });
   }
 
   requestRemoveBot(slotIndex: number): void {
-    this.makeMove({ type: "REMOVE_BOT", slotIndex });
-  }
-
-  requestSync(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    } else {
-      this.sendAction({ type: "REQUEST_SYNC" });
-    }
+    this.makeAction({ type: "REMOVE_BOT", slotIndex });
   }
 
   requestOfferTrade(toPlayerId: string, spaceId: number, price: number): void {
-    this.makeMove({
+    this.makeAction({
       type: "OFFER_TRADE",
       fromPlayerId: this.userId,
       toPlayerId,
@@ -1844,7 +1786,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
     accepted: boolean,
     message?: string,
   ): void {
-    this.makeMove({
+    this.makeAction({
       type: "RESPOND_TRADE",
       offerId,
       accepted,
@@ -1854,16 +1796,16 @@ export default class Monopoly extends BaseGame<MonopolyState> {
 
   requestResetGame(): void {
     if (this.isHost) {
-      this.makeMove({ type: "RESET_GAME" });
+      this.makeAction({ type: "RESET_GAME" });
     }
   }
 
   requestCancelTrade(offerId: string): void {
-    this.makeMove({ type: "CANCEL_TRADE", offerId });
+    this.makeAction({ type: "CANCEL_TRADE", offerId });
   }
 
   requestSellHouse(spaceId: number): void {
-    this.makeMove({
+    this.makeAction({
       type: "SELL_HOUSE",
       playerId: this.userId,
       spaceId,
@@ -1871,7 +1813,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
   }
 
   requestMortgage(spaceId: number): void {
-    this.makeMove({
+    this.makeAction({
       type: "MORTGAGE",
       playerId: this.userId,
       spaceId,
@@ -1879,7 +1821,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
   }
 
   requestUnmortgage(spaceId: number): void {
-    this.makeMove({
+    this.makeAction({
       type: "UNMORTGAGE",
       playerId: this.userId,
       spaceId,
@@ -1923,17 +1865,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
     this.notifyAndBroadcast();
   }
 
-  checkGameEnd(): GameResult | null {
-    const activePlayers = this.state.players.filter(
-      (p) => p.id && !p.isBankrupt,
-    );
-    if (activePlayers.length <= 1 && this.state.gamePhase === "playing") {
-      return { winner: activePlayers[0]?.id || undefined };
-    }
-    return null;
-  }
-
-  updatePlayers(players: { id: string; username: string }[]): void {
+  updatePlayers(players: Player[]): void {
     // Reset human slots first to ensure sync
     this.state.players.forEach((p, i) => {
       if (!p.isBot) {
@@ -1954,10 +1886,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
       }
     }
 
-    this.onStateChange?.(this.state);
-    if (this.isHost) {
-      this.broadcastState();
-    }
+    this.syncState();
   }
 
   getMyPlayerIndex(): number {

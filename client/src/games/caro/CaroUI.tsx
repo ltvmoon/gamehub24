@@ -6,7 +6,6 @@ import {
   Circle,
   Target,
   Undo,
-  RotateCcw,
   RefreshCcw,
   Bot,
   Play,
@@ -15,6 +14,7 @@ import {
 import { useUserStore } from "../../stores/userStore";
 import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
+import { useAlertStore } from "../../stores/alertStore";
 
 const BOARD_SIZE = 50;
 const CELL_SIZE = 40;
@@ -22,7 +22,8 @@ const CELL_SIZE = 40;
 export default function CaroUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Caro;
   const [state, setState] = useState<CaroState>(game.getState());
-  const { userId, username: myUsername } = useUserStore();
+  const { userId } = useUserStore();
+  const { confirm: showConfirm } = useAlertStore();
   const { ti, ts } = useLanguage();
   const [showRules, setShowRules] = useState(false);
 
@@ -32,7 +33,7 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
   // Game logic handles turn validation, UI just needs to reflect it.
 
   useEffect(() => {
-    game.onUpdate((newState) => setState(newState));
+    return game.onUpdate((newState) => setState(newState));
   }, [game]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -487,14 +488,8 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
           const player = state.players[symbol];
           const isCurrentTurn = state.currentTurn === symbol && !state.gameOver;
           const isMe = symbol === mySymbol;
-          const isBot = player === "BOT";
-          const playerName = isBot
-            ? "Bot"
-            : isMe
-              ? myUsername
-              : player
-                ? ti({ en: "Opponent", vi: "Đối thủ" })
-                : null;
+          const isBot = player?.isBot;
+          const playerName = isBot ? "Bot" : player?.username;
 
           return (
             <div
@@ -527,33 +522,33 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
                   {isMe && player && ti({ en: " (You)", vi: " (Bạn)" })}
                 </span>
               </div>
-              {isBot && game.isHostUser && !state.gameOver && (
-                <button
-                  onClick={() => game.removeBot()}
-                  className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
-                >
-                  {ti({ en: "Remove", vi: "Xóa" })}
-                </button>
-              )}
-              {!player &&
-                game.isHostUser &&
+              {isBot &&
+                game.isHost &&
                 !state.gameOver &&
-                symbol === "O" && (
+                state.gamePhase !== "playing" && (
                   <button
-                    onClick={() => game.addBot()}
-                    className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
+                    onClick={() => game.removeBot()}
+                    className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
                   >
-                    <Bot className="w-3 h-3" />{" "}
-                    {ti({ en: "Add Bot", vi: "Thêm Bot" })}
+                    {ti({ en: "Remove", vi: "Xóa" })}
                   </button>
                 )}
+              {!player && game.isHost && !state.gameOver && symbol === "O" && (
+                <button
+                  onClick={() => game.addBot()}
+                  className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
+                >
+                  <Bot className="w-3 h-3" />{" "}
+                  {ti({ en: "Add Bot", vi: "Thêm Bot" })}
+                </button>
+              )}
             </div>
           );
         })}
       </div>
 
       {/* Start Game Button - only show when waiting and both players ready */}
-      {state.gamePhase === "waiting" && game.isHostUser && (
+      {state.gamePhase === "waiting" && game.isHost && (
         <div className="flex flex-col items-center gap-2">
           {game.canStartGame() ? (
             <button
@@ -574,8 +569,36 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
         </div>
       )}
 
+      {/* Reset game button */}
+      {state.gamePhase === "playing" && game.isHost && (
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={async () => {
+              if (
+                state.gameOver ||
+                (await showConfirm(
+                  ts({
+                    en: "Are you sure you want to reset the game?",
+                    vi: "Bạn có chắc chắn muốn chơi lại?",
+                  }),
+                  ts({
+                    en: "Reset Game",
+                    vi: "Chơi lại",
+                  }),
+                ))
+              )
+                game.reset();
+            }}
+            className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+          >
+            <RefreshCcw className="w-4 h-4" />
+            {ti({ en: "Reset Game", vi: "Chơi lại" })}
+          </button>
+        </div>
+      )}
+
       {/* Start Game message for non-host */}
-      {state.gamePhase === "waiting" && !game.isHostUser && (
+      {state.gamePhase === "waiting" && !game.isHost && (
         <div className="text-sm text-slate-400">
           {ti({
             en: "Waiting for host to start the game...",
@@ -586,51 +609,40 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
 
       {/* Game Status - only show during playing */}
       {state.gamePhase === "playing" && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-sm font-semibold">
-              {state.gameOver ? (
-                state.winner ? (
-                  <span
-                    className={
-                      state.winner === mySymbol
-                        ? "text-green-400"
-                        : "text-red-400"
-                    }
-                  >
-                    {state.winner === mySymbol
-                      ? ti({ en: "You Won!", vi: "Bạn thắng!" })
-                      : ti({ en: "Opponent Won!", vi: "Đối thủ thắng!" })}
-                  </span>
-                ) : (
-                  <span className="text-yellow-400">
-                    {ti({ en: "Draw!", vi: "Hòa!" })}
-                  </span>
-                )
-              ) : (
+        <div className="flex flex-col items-center justify-between">
+          <div className="text-md font-semibold">
+            {state.gameOver ? (
+              state.winner ? (
                 <span
-                  className={isMyTurn ? "text-primary-400" : "text-slate-400"}
+                  className={
+                    state.winner === mySymbol
+                      ? "text-green-400"
+                      : "text-red-400"
+                  }
                 >
-                  {isMyTurn
-                    ? ti({ en: "Your Turn", vi: "Lượt của bạn" })
-                    : ti({ en: "Opponent's Turn", vi: "Lượt đối thủ" })}
+                  {state.winner === mySymbol
+                    ? ti({ en: "You Won!", vi: "Bạn thắng!" })
+                    : ti({ en: "Opponent Won!", vi: "Đối thủ thắng!" })}
                 </span>
-              )}
-            </div>
+              ) : (
+                <span className="text-yellow-400">
+                  {ti({ en: "Draw!", vi: "Hòa!" })}
+                </span>
+              )
+            ) : (
+              <span
+                className={isMyTurn ? "text-primary-400" : "text-slate-400"}
+              >
+                {isMyTurn
+                  ? ti({ en: "Your Turn", vi: "Lượt của bạn" })
+                  : ti({ en: "Opponent's Turn", vi: "Lượt đối thủ" })}
+              </span>
+            )}
           </div>
 
           {/* Controls */}
           <div className="flex gap-1 md:gap-2 text-xs">
-            {state.gameOver ? (
-              <button
-                onClick={() => game.requestReset()}
-                className="px-2 py-1 bg-primary-600 hover:bg-primary-500 rounded text-white flex items-center gap-1"
-                title={ti({ en: "New game", vi: "Ván mới" }) as string}
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>{ti({ en: "New Game", vi: "Ván mới" })}</span>
-              </button>
-            ) : Object.keys(board).length > 0 ? (
+            {!state.gameOver && Object.keys(board).length > 0 ? (
               <button
                 onClick={focusLastMove}
                 disabled={Object.keys(board).length === 0}

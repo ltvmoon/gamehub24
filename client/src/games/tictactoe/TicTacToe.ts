@@ -20,11 +20,11 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     };
   }
 
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as TicTacToeAction;
 
     if (action.type === "MAKE_MOVE" && this.isHost) {
-      this.makeMove(action);
+      this.makeAction(action);
     } else if (action.type === "RESET_GAME" && this.isHost) {
       this.reset();
     } else if (action.type === "SWITCH_TURN" && this.isHost) {
@@ -34,7 +34,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     }
   }
 
-  makeMove(action: TicTacToeAction): void {
+  makeAction(action: TicTacToeAction): void {
     if (action.type !== "MAKE_MOVE") return;
 
     const { cellIndex, playerId } = action;
@@ -148,9 +148,9 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     };
 
     if (this.isHost) {
-      this.makeMove(action);
+      this.makeAction(action);
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -159,7 +159,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     if (this.isHost) {
       this.reset();
     } else {
-      this.sendAction({
+      this.sendSocketGameAction({
         type: "RESET_GAME",
       });
     }
@@ -182,7 +182,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     if (this.isHost) {
       this.handleSwitchTurn();
     } else {
-      this.sendAction({
+      this.sendSocketGameAction({
         type: "SWITCH_TURN",
       });
     }
@@ -228,7 +228,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     if (this.isHost) {
       this.handleStartGame();
     } else {
-      this.sendAction({ type: "START_GAME" });
+      this.sendSocketGameAction({ type: "START_GAME" });
     }
   }
 
@@ -260,7 +260,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     // Simple Minimax or Random for now, let's do Minimax
     const bestMove = this.getBestMove();
     if (bestMove !== -1) {
-      this.makeMove({
+      this.makeAction({
         type: "MAKE_MOVE",
         cellIndex: bestMove,
         playerId: "BOT",

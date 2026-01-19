@@ -21,6 +21,7 @@ import type { ComponentType } from "react";
 
 import type { BaseGame } from "./BaseGame";
 import type { GameUIProps } from "./types";
+import type { Player } from "../stores/roomStore";
 
 // Localized string type
 export type LocalizedString = { en: string; vi: string };
@@ -79,7 +80,7 @@ export interface GameModule {
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: { id: string; username: string }[],
+    players: Player[],
   ) => Promise<BaseGame<any>>;
   loadUI: () => Promise<ComponentType<GameUIProps>>;
 }
@@ -364,26 +365,6 @@ games.set("oanquan", {
     return new OAnQuan(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./oanquan/OAnQuanUI").then((m) => m.default),
-});
-
-// Register Werewolf (Ma Sói)
-games.set("werewolf", {
-  id: "werewolf",
-  name: { en: "Werewolf", vi: "Ma Sói" },
-  description: {
-    en: "Social deduction game. Find the wolves before it's too late!",
-    vi: "Trò chơi ẩn vai. Tìm ra ma sói trước khi quá muộn!",
-  },
-  icon: Moon,
-  categories: ["party", "strategy"],
-  minPlayers: 3,
-  maxPlayers: 20,
-  isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
-    const { default: Werewolf } = await import("./werewolf/Werewolf");
-    return new Werewolf(roomId, socket, isHost, userId, players);
-  },
-  loadUI: () => import("./werewolf/WerewolfUI").then((m) => m.default),
 });
 
 // Registry functions

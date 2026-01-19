@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { GameUIProps } from "../types";
 import useLanguage from "../../stores/languageStore";
+import { useAlertStore } from "../../stores/alertStore";
 
 // CSS for flip animation
 const flipStyle = `
@@ -30,24 +31,21 @@ export default function ReversiUI({
   const [state, setState] = useState<ReversiState>(game.getState());
   const [showRules, setShowRules] = useState(false);
   const { ti, ts } = useLanguage();
+  const { confirm: showConfirm } = useAlertStore();
 
   useEffect(() => {
-    game.onUpdate(setState);
-    setState(game.getState());
-    // Request sync from host when joining
-    game.requestSync();
+    return game.onUpdate(setState);
   }, [game]);
 
-  const myIndex = game.getMyPlayerIndex();
-  const myColor = myIndex >= 0 ? state.players[myIndex].color : null;
-  const currentPlayer = state.players[state.currentPlayerIndex];
-  const isMyTurn = currentPlayer?.id === currentUserId;
+  const myColor = game.getMyColor();
+  const currentTurn = state.turn;
+  const isMyTurn = currentTurn === myColor;
   const validMoves =
     state.gamePhase === "playing" && isMyTurn
       ? game.getValidMoves(myColor)
       : [];
   const pieceCount = game.getPieceCount();
-  const isHost = game.isHostUser;
+  const isHost = game.isHost;
 
   const isValidMove = (row: number, col: number) =>
     validMoves.some(([r, c]) => r === row && c === col);
@@ -204,48 +202,59 @@ export default function ReversiUI({
       {renderGameRules()}
       {/* Inject flip animation CSS */}
       <style dangerouslySetInnerHTML={{ __html: flipStyle }} />
+
       {/* Player List */}
       <div className="flex flex-col gap-2 p-4 bg-slate-800 rounded-lg w-full max-w-md">
         <h3 className="text-sm font-medium text-gray-400 mb-1">
           {ti({ en: "Players", vi: "Người chơi" })}
         </h3>
-        {state.players.map((player, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-between p-2 bg-slate-700 rounded-lg"
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-6 h-6 rounded-full ${
-                  player.color === "black" ? "bg-gray-900" : "bg-white"
-                } ${player.color === "black" ? "text-white" : "text-black"}`}
-              >
-                {player.color === "black" ? pieceCount.black : pieceCount.white}
+        {[state.players.black, state.players.white].map((player, index) => {
+          const c = ["black", "white"];
+          const isCurrentTurn = state.turn === c[index];
+
+          return (
+            <div
+              key={index}
+              className={
+                "flex items-center justify-between p-2 rounded-lg " +
+                (isCurrentTurn
+                  ? "bg-slate-600 ring-2 ring-yellow-400"
+                  : "bg-slate-700")
+              }
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-6 h-6 rounded-full ${
+                    c[index] === "black" ? "bg-gray-900" : "bg-white"
+                  } ${c[index] === "black" ? "text-white" : "text-black"}`}
+                >
+                  {c[index] === "black" ? pieceCount.black : pieceCount.white}
+                </div>
+                <span className="text-white">
+                  {player ? player.username : "(waiting...)"}
+                  {player?.isBot && " 🤖"}
+                </span>
               </div>
-              <span className="text-white">
-                {player.id ? player.username : "(waiting...)"}
-                {player.isBot && " 🤖"}
-              </span>
+              {player?.isBot && isHost && (
+                <button
+                  onClick={() => game.requestRemoveBot()}
+                  className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
+                >
+                  {ti({ en: "Remove", vi: "Xóa" })}
+                </button>
+              )}
+              {isHost && !player && (
+                <button
+                  onClick={() => game.requestAddBot()}
+                  className="flex items-center gap-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                >
+                  <Bot className="w-4 h-4" />
+                  {ti({ en: "Add Bot", vi: "Thêm Bot" })}
+                </button>
+              )}
             </div>
-            {player.isBot && isHost && (
-              <button
-                onClick={() => game.requestRemoveBot()}
-                className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
-              >
-                {ti({ en: "Remove", vi: "Xóa" })}
-              </button>
-            )}
-            {isHost && !state.players[index].id && (
-              <button
-                onClick={() => game.requestAddBot()}
-                className="flex items-center gap-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
-              >
-                <Bot className="w-4 h-4" />
-                {ti({ en: "Add Bot", vi: "Thêm Bot" })}
-              </button>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Turn Indicator */}
@@ -258,7 +267,8 @@ export default function ReversiUI({
           ) : (
             <span>
               {ti({ en: "Waiting for", vi: "Đang chờ" })}{" "}
-              {currentPlayer?.username} {ti({ en: "...", vi: "..." })}
+              {state.players[currentTurn]?.username}{" "}
+              {ti({ en: "...", vi: "..." })}
             </span>
           )}
           {validMoves.length === 0 && isMyTurn && (
@@ -326,7 +336,7 @@ export default function ReversiUI({
               ? ti({ en: "It's a draw!", vi: "Hòa!" })
               : state.winner === currentUserId
                 ? ti({ en: "🎉 You won!", vi: "🎉 Bạn đã thắng!" })
-                : `${state.players.find((p) => p.id === state.winner)?.username}{" "}
+                : `${[state.players.black, state.players.white].find((p) => p?.id === state.winner)?.username}{" "}
                   ${ti({ en: "wins!", vi: "thắng!" })}`}
           </p>
           <p className="text-gray-400">
@@ -350,6 +360,14 @@ export default function ReversiUI({
                 {ti({ en: "Start Game", vi: "Bắt đầu" })}
               </button>
             )}
+            {!isHost && (
+              <div>
+                {ti({
+                  en: "Waiting for host to start game...",
+                  vi: "Đang chờ chủ phòng bắt đầu trò chơi...",
+                })}
+              </div>
+            )}
           </>
         )}
 
@@ -364,17 +382,39 @@ export default function ReversiUI({
                 {ti({ en: "Pass Turn", vi: "Bỏ lượt" })}
               </button>
             )}
-            {myIndex >= 0 &&
-              state.moveHistory.length > 0 &&
-              !state.undoRequest && (
-                <button
-                  onClick={() => game.requestUndo()}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
-                >
-                  <RotateCcw className="w-4 h-4" />{" "}
-                  {ti({ en: "Undo", vi: "Hoàn tác" })}
-                </button>
-              )}
+            {state.moveHistory.length > 0 && !state.undoRequest && (
+              <button
+                onClick={() => game.requestUndo()}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />{" "}
+                {ti({ en: "Undo", vi: "Hoàn tác" })}
+              </button>
+            )}
+            {/* reset game */}
+            {isHost && (
+              <button
+                onClick={async () => {
+                  if (
+                    await showConfirm(
+                      ts({
+                        en: "Are you sure you want to reset the game?",
+                        vi: "Bạn có chắc chắn muốn reset trò chơi?",
+                      }),
+                      ts({
+                        en: "Reset Game",
+                        vi: "Chơi lại",
+                      }),
+                    )
+                  )
+                    game.requestNewGame();
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />{" "}
+                {ti({ en: "Play Again", vi: "Chơi lại" })}
+              </button>
+            )}
           </>
         )}
 

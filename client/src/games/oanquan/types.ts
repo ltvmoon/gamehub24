@@ -1,3 +1,5 @@
+import type { Player } from "../../stores/roomStore";
+
 export interface OAnQuanState {
   // 12 squares:
   // 0: Mandarin (Left)
@@ -25,7 +27,7 @@ export interface OAnQuanState {
   currentTurn: string; // userId
   winner: string | null;
   gamePhase: "waiting" | "playing" | "ended";
-  players: { id: string; username: string; isBot: boolean }[];
+  players: Player[];
   lastMove?: {
     player: string;
     squareId: number;

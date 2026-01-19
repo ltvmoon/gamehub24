@@ -1,5 +1,4 @@
-import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
+import { BaseGame, type GameAction } from "../BaseGame";
 
 export interface YouTubeWatchState {
   videoId: string;
@@ -10,71 +9,26 @@ export interface YouTubeWatchState {
 }
 
 export interface YouTubeWatchAction extends GameAction {
-  type: "SET_VIDEO" | "SYNC_STATE" | "REQUEST_SYNC" | "TOGGLE_GUEST_CONTROL";
+  type: "SET_VIDEO" | "TOGGLE_GUEST_CONTROL";
   payload?: any;
 }
 
 export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
-  private state: YouTubeWatchState;
-  private players: string[] = []; // Track active players for access control
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    _players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    this.state = {
+  getInitState(): YouTubeWatchState {
+    return {
       videoId: "",
       isPlaying: false,
       timestamp: 0,
       lastUpdate: Date.now(),
       allowGuestControl: false,
     };
-
-    this.init();
   }
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  getState(): YouTubeWatchState {
-    return { ...this.state };
-  }
-
-  setState(state: YouTubeWatchState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as YouTubeWatchAction;
 
     if (action.type === "SET_VIDEO") {
       this.handleSetVideo(action.payload);
-    } else if (action.type === "SYNC_STATE") {
-      // Only allow sync if Host or Guest Control is enabled
-      // Note: Host calls handleSyncState directly in makeMove, so this path is for Remote Actions.
-      // Remote Actions come from Clients.
-      if (this.isHost) {
-        // I am Host, receiving a request from a Client
-        if (this.state.allowGuestControl) {
-          // Verify requester is a player (not just a spectator)
-          if (this.players.includes(action.playerId)) {
-            this.handleSyncState(action.payload);
-          }
-        }
-      }
-    } else if (action.type === "REQUEST_SYNC") {
-      if (this.isHost) {
-        this.broadcastState();
-      }
     } else if (action.type === "TOGGLE_GUEST_CONTROL") {
       if (this.isHost) {
         this.handleToggleGuestControl(action.payload);
@@ -82,15 +36,20 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
     }
   }
 
-  makeMove(action: YouTubeWatchAction): void {
+  makeAction(action: YouTubeWatchAction): void {
     if (this.isHost) {
       if (action.type === "SET_VIDEO") this.handleSetVideo(action.payload);
-      if (action.type === "SYNC_STATE") this.handleSyncState(action.payload);
       if (action.type === "TOGGLE_GUEST_CONTROL")
         this.handleToggleGuestControl(action.payload);
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
+  }
+
+  sync(playing: boolean, currentTime: number) {
+    this.state.isPlaying = playing;
+    this.state.timestamp = currentTime;
+    this.syncState();
   }
 
   private handleSetVideo(videoId: string) {
@@ -100,26 +59,13 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
     this.state.timestamp = 0;
     this.state.lastUpdate = Date.now();
 
-    this.broadcastState();
-    this.setState({ ...this.state });
-  }
-
-  private handleSyncState(payload: { isPlaying: boolean; timestamp: number }) {
-    if (!this.isHost) return;
-
-    this.state.isPlaying = payload.isPlaying;
-    this.state.timestamp = payload.timestamp;
-    this.state.lastUpdate = Date.now();
-
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleToggleGuestControl(allow: boolean) {
     if (!this.isHost) return;
     this.state.allowGuestControl = allow;
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // Public methods
@@ -132,26 +78,7 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
       type: "SET_VIDEO",
       payload: videoId,
     };
-    this.makeMove(action);
-  }
-
-  public sync(isPlaying: boolean, timestamp: number) {
-    const action: YouTubeWatchAction = {
-      type: "SYNC_STATE",
-      payload: { isPlaying, timestamp },
-    };
-    this.makeMove(action);
-  }
-
-  public requestSync() {
-    const action: YouTubeWatchAction = {
-      type: "REQUEST_SYNC",
-    };
-    if (this.isHost) {
-      this.broadcastState();
-    } else {
-      this.sendAction(action);
-    }
+    this.makeAction(action);
   }
 
   public toggleGuestControl(allow: boolean) {
@@ -159,7 +86,7 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
       type: "TOGGLE_GUEST_CONTROL",
       payload: allow,
     };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   private extractVideoId(url: string): string | null {
@@ -173,25 +100,5 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
       if (match) return match[1];
     }
     return null;
-  }
-
-  checkGameEnd(): GameResult | null {
-    return null;
-  }
-
-  reset(): void {
-    this.state = {
-      videoId: "",
-      isPlaying: false,
-      timestamp: 0,
-      lastUpdate: Date.now(),
-      allowGuestControl: false,
-    };
-    this.broadcastState();
-    this.setState({ ...this.state });
-  }
-
-  updatePlayers(players: { id: string; username: string }[]): void {
-    this.players = players.map((p) => p.id);
   }
 }

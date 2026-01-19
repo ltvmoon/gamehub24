@@ -24,24 +24,26 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
 
   // Sync state
   useEffect(() => {
-    game.onUpdate((newState) => setState(newState));
+    return game.onUpdate((newState) => setState(newState));
   }, [game]);
 
-  const myColor = game.getPlayerColor() === "w" ? "white" : "black";
-  const isMyTurn = state.turn === (myColor === "white" ? "w" : "b");
+  const myColorCode = game.getPlayerColor();
+  const isMyTurn = myColorCode ? state.turn === myColorCode : false;
   const inCheck = state.check;
 
   // Initialize/Update Chessground
   useEffect(() => {
     if (!boardRef.current) return;
 
+    const _myColor = myColorCode === "w" ? "white" : "black";
+
     const config = {
       fen: state.fen,
-      orientation: myColor as "white" | "black",
+      orientation: _myColor,
       turnColor: state.turn === "w" ? "white" : "black",
       movable: {
         free: false,
-        color: isMyTurn ? myColor : undefined,
+        color: isMyTurn ? myColorCode : undefined,
         dests: getValidMoves(state.fen),
       },
       events: {
@@ -80,7 +82,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
         turnColor: state.turn === "w" ? "white" : "black",
         movable: {
           free: false,
-          color: isMyTurn && !state.gameOver ? myColor : undefined,
+          color: isMyTurn && !state.gameOver ? _myColor : undefined,
           dests: isMyTurn ? getValidMoves(state.fen) : new Map(),
         },
         check: inCheck ? (state.turn === "w" ? "white" : "black") : undefined,
@@ -93,7 +95,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
     return () => {
       // cleanup if needed
     };
-  }, [state.fen, isMyTurn, state.gameOver, myColor]);
+  }, [state.fen, isMyTurn, state.gameOver, myColorCode]);
 
   // Helper to get valid moves using a temp chess instance
   const getValidMoves = (fen: string): Map<Key, Key[]> => {
@@ -234,143 +236,193 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
       >
         <BookOpen size={24} />
       </button>
+
       {/* Status Header */}
-      <div className="w-full flex items-center justify-between">
-        <div className="flex flex-col gap-1">
-          {state.gameOver ? (
-            <div className="text-lg font-bold">
-              {state.winner ? (
-                <span
-                  className={
-                    state.winner === (myColor === "white" ? "white" : "black")
-                      ? "text-green-400"
-                      : "text-red-400"
-                  }
+      <div className="flex flex-col gap-2 p-4 bg-slate-800 rounded-lg w-full max-w-[400px] mx-auto">
+        <h3 className="text-sm font-medium text-gray-400 mb-1">
+          {ti({ en: "Players", vi: "Người chơi" })}
+        </h3>
+        {(["white", "black"] as const).map((color) => {
+          const player = state.players[color];
+          const isBot = player?.isBot;
+          const isCurrentTurn =
+            state.turn === (color === "white" ? "w" : "b") && !state.gameOver;
+          const isMe = player?.id === userId;
+
+          return (
+            <div
+              key={color}
+              className={`
+                flex items-center justify-between p-2 rounded-lg
+                ${
+                  isCurrentTurn
+                    ? "bg-slate-600 ring-2 ring-yellow-400"
+                    : "bg-slate-700"
+                }
+              `}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    color === "white" ? "bg-white" : "bg-black"
+                  }`}
+                ></div>
+                <span className="text-white">
+                  {isBot
+                    ? "Bot"
+                    : player
+                      ? player.username
+                      : ti({ en: "(waiting...)", vi: "(đang chờ...)" })}
+                  {isBot && " 🤖"}
+                  {isMe && player && ti({ en: " (You)", vi: " (Bạn)" })}
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              {isBot && game.isHost && !state.gameOver && (
+                <button
+                  onClick={() => game.removeBot()}
+                  className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
                 >
-                  {/* Adjust winner logic carefully. winner is 'white' or 'black' string */}
-                  {state.winner ===
-                  (userId === state.players.white ? "white" : "black")
-                    ? ti({ en: "You Won!", vi: "Bạn thắng!" })
-                    : ti({ en: "Opponent Won!", vi: "Đối thủ thắng!" })}
-                </span>
-              ) : (
-                <span className="text-yellow-400">
-                  {ti({ en: "Draw!", vi: "Hòa!" })}
-                </span>
+                  {ti({ en: "Remove", vi: "Xóa" })}
+                </button>
+              )}
+              {!player && game.isHost && !state.gameOver && (
+                <button
+                  onClick={() => game.addBot()}
+                  disabled={state.isBotLoading}
+                  className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
+                >
+                  {state.isBotLoading ? (
+                    <span className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Bot className="w-3 h-3" />
+                  )}
+                  {ti({ en: "Add Bot", vi: "Thêm Bot" })}
+                </button>
               )}
             </div>
+          );
+        })}
+      </div>
+
+      {/* Game Status Message */}
+      {state.gameOver ? (
+        <div className="text-lg font-bold text-center my-2">
+          {state.winner ? (
+            <span
+              className={
+                state.winner === (myColorCode === "w" ? "white" : "black")
+                  ? "text-green-400"
+                  : "text-red-400"
+              }
+            >
+              {state.winner ===
+              (userId === state.players.white?.id ? "white" : "black")
+                ? ti({ en: "You Won!", vi: "Bạn thắng!" })
+                : ti({ en: "Opponent Won!", vi: "Đối thủ thắng!" })}
+            </span>
           ) : (
-            <>
-              <div
-                className={`text-lg font-bold ${
-                  isMyTurn ? "text-primary-400" : "text-slate-400"
-                }`}
-              >
-                {isMyTurn
-                  ? ti({ en: "Your Turn", vi: "Lượt của bạn" })
-                  : ti({ en: "Opponent's Turn", vi: "Lượt đối thủ" })}
-              </div>
-              {inCheck && state.turn === (myColor === "white" ? "w" : "b") && (
-                <div className="text-sm text-red-400 font-semibold">
-                  {ti({ en: "You are in check!", vi: "Bạn bị chiếu!" })}
-                </div>
-              )}
-            </>
+            <span className="text-yellow-400">
+              {ti({ en: "Draw!", vi: "Hòa!" })}
+            </span>
           )}
-          <div className="text-xs text-slate-500">
-            {ti({ en: "Playing as", vi: "Đang chơi với quân" })}{" "}
-            {myColor === "white"
-              ? ti({ en: "White", vi: "Trắng" })
-              : ti({ en: "Black", vi: "Đen" })}
+        </div>
+      ) : (
+        inCheck &&
+        state.turn === myColorCode && (
+          <div className="text-center my-2">
+            <div className="text-red-400 font-bold animate-pulse">
+              {ti({ en: "Check!", vi: "Chiếu!" })}
+            </div>
           </div>
-        </div>
+        )
+      )}
 
-        <div className="flex gap-2">
-          {!state.gameOver && !state.pendingNewGameRequest && (
-            <button
-              onClick={() => game.requestReset()}
-              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              {ti({ en: "New Game", vi: "Ván mới" })}
-            </button>
-          )}
-
-          {state.gameOver && (
-            <button
-              onClick={() => game.requestReset()}
-              className="px-3 py-2 bg-primary-600 hover:bg-primary-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              {ti({ en: "Play Again", vi: "Chơi lại" })}
-            </button>
-          )}
-
-          {!state.gameOver && !state.players.black && game.isHostUser && (
-            <button
-              onClick={() => game.addBot()}
-              disabled={state.isBotLoading}
-              className={`px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2 ${
-                state.isBotLoading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {state.isBotLoading ? (
-                <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Bot className="w-4 h-4" />
-              )}
-              {state.isBotLoading
-                ? ti({ en: "Loading Bot...", vi: "Đang tải Bot..." })
-                : ti({ en: "Play vs Bot", vi: "Chơi với Bot" })}
-            </button>
+      {/* Global Game Controls */}
+      <div className="flex flex-col gap-2 justify-center items-center w-full">
+        {/* Turn Indicator */}
+        <div className="text-lg text-gray-400">
+          {isMyTurn ? (
+            <span className="text-green-400">
+              {ti({ en: "Your turn!", vi: "Lượt của bạn!" })}
+            </span>
+          ) : (
+            <span>
+              {ti({ en: "Waiting for", vi: "Đang chờ" })}{" "}
+              {state.players[myColorCode === "w" ? "black" : "white"]?.username}{" "}
+              {ti({ en: "...", vi: "..." })}
+            </span>
           )}
         </div>
 
-        {/* New Game Request Handling */}
-        {state.pendingNewGameRequest &&
-          state.pendingNewGameRequest !== userId && (
-            <div className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700 absolute top-20 left-1/2 -translate-x-1/2 z-10 shadow-xl">
-              <div className="text-sm text-white font-medium whitespace-nowrap">
+        {!state.gameOver && !state.pendingNewGameRequest && (
+          <button
+            onClick={() => game.requestReset()}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            {ti({ en: "New Game", vi: "Ván mới" })}
+          </button>
+        )}
+
+        {state.gameOver && (
+          <button
+            onClick={() => game.requestReset()}
+            className="px-6 py-2 bg-primary-600 hover:bg-primary-500 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            {ti({ en: "Play Again", vi: "Chơi lại" })}
+          </button>
+        )}
+      </div>
+
+      {/* New Game Request Handling Popup */}
+      {state.pendingNewGameRequest &&
+        state.pendingNewGameRequest !== userId && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl flex flex-col gap-4 max-w-sm w-full">
+              <div className="text-lg text-white font-medium text-center">
                 {ti({
-                  en: "Opponent wants New Game",
+                  en: "Opponent wants to start a new game",
                   vi: "Đối thủ muốn chơi ván mới",
                 })}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={() =>
-                    game.handleAction({
+                    game.onSocketGameAction({
                       action: { type: "NEW_GAME_RESPONSE", accepted: true },
                     })
                   }
-                  className="flex-1 bg-green-600 hover:bg-green-500 text-xs py-1 px-2 rounded text-white"
+                  className="flex-1 bg-green-600 hover:bg-green-500 py-2 rounded-lg text-white font-medium"
                 >
                   {ti({ en: "Accept", vi: "Đồng ý" })}
                 </button>
                 <button
                   onClick={() =>
-                    game.handleAction({
+                    game.onSocketGameAction({
                       action: { type: "NEW_GAME_RESPONSE", accepted: false },
                     })
                   }
-                  className="flex-1 bg-red-600 hover:bg-red-500 text-xs py-1 px-2 rounded text-white"
+                  className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-lg text-white font-medium"
                 >
                   {ti({ en: "Decline", vi: "Từ chối" })}
                 </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-        {state.pendingNewGameRequest &&
-          state.pendingNewGameRequest === userId && (
-            <div className="text-sm text-yellow-400 animate-pulse flex items-center">
-              {ti({
-                en: "Requesting New Game...",
-                vi: "Đang yêu cầu ván mới...",
-              })}
-            </div>
-          )}
-      </div>
+      {state.pendingNewGameRequest &&
+        state.pendingNewGameRequest === userId && (
+          <div className="text-sm text-yellow-400 animate-pulse flex items-center justify-center">
+            {ti({
+              en: "Requesting New Game...",
+              vi: "Đang yêu cầu ván mới...",
+            })}
+          </div>
+        )}
 
       {/* Chessboard */}
       <div className="w-full max-w-xl">
@@ -383,8 +435,8 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
 
       {/* Captured Pieces */}
       <div className="w-full flex justify-between gap-4 text-sm">
-        <div className="bg-slate-800 rounded-lg p-2 flex-1">
-          <div className="text-xs text-slate-400 mb-1">
+        <div className="bg-slate-800 rounded-lg p-2 flex-1 bg-slate-400">
+          <div className="text-xs text-slate-100 mb-1">
             {ti({ en: "White captured:", vi: "Trắng bắt:" })}{" "}
           </div>
           <div className="flex flex-wrap gap-1">

@@ -1,5 +1,4 @@
 import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
 import {
   type ThirteenState,
   type ThirteenAction,
@@ -10,24 +9,15 @@ import {
   Rank,
   CombinationType,
 } from "./types";
+import type { Player } from "../../stores/roomStore";
 
 export default class Thirteen extends BaseGame<ThirteenState> {
-  private state: ThirteenState;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
+  getInitState(): ThirteenState {
     // Initialize 4 player slots
     const slots: PlayerSlot[] = Array(4)
       .fill(null)
       .map((_, i) => {
-        const player = players[i];
+        const player = this.players[i];
         return {
           id: player?.id || null,
           username: player?.username || `Slot ${i + 1}`,
@@ -39,7 +29,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         };
       });
 
-    this.state = {
+    return {
       players: slots,
       currentTrick: [],
       currentTurnIndex: 0,
@@ -49,26 +39,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       gamePhase: "waiting",
       newGameRequest: null,
     };
-
-    this.init();
   }
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  getState(): ThirteenState {
-    return { ...this.state };
-  }
-
-  setState(state: ThirteenState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as ThirteenAction;
 
     if (!this.isHost) return; // Only host processes actions
@@ -107,15 +80,14 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         break;
       case "DECLINE_NEW_GAME":
         this.state.newGameRequest = null;
-        this.broadcastState();
-        this.setState({ ...this.state });
+        this.syncState();
         break;
     }
   }
 
-  makeMove(action: GameAction): void {
+  makeAction(action: GameAction): void {
     // Delegate to handleAction for consistency
-    this.handleAction({ action });
+    this.onSocketGameAction({ action });
   }
 
   // ============== Card Logic ==============
@@ -351,16 +323,14 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     if (player.hand.length === 0) {
       this.state.winner = playerId;
       this.state.gamePhase = "ended";
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
       this.broadcastGameEnd({ winner: playerId });
       return;
     }
 
     // Move to next player
     this.advanceTurn();
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     // Check for bot turn
     this.checkBotTurn();
@@ -399,8 +369,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       this.advanceTurn();
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     this.checkBotTurn();
   }
@@ -458,8 +427,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     };
     this.state = { ...this.state, players: newPlayers };
 
-    this.broadcastState();
-    this.onStateChange?.(this.state);
+    this.syncState();
   }
 
   private handleJoinSlot(
@@ -485,8 +453,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     };
     this.state = { ...this.state, players: newPlayers };
 
-    this.broadcastState();
-    this.onStateChange?.(this.state);
+    this.syncState();
   }
 
   private handleRemovePlayer(slotIndex: number): void {
@@ -509,8 +476,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     };
     this.state = { ...this.state, players: newPlayers };
 
-    this.broadcastState();
-    this.onStateChange?.(this.state);
+    this.syncState();
   }
 
   // ============== Game Flow ==============
@@ -529,8 +495,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     this.state.lastCombination = null;
     this.state.lastPlayedBy = null;
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     this.checkBotTurn();
   }
@@ -552,8 +517,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
 
   private handleNewGameRequest(playerId: string, playerName: string): void {
     this.state.newGameRequest = { fromId: playerId, fromName: playerName };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   reset(): void {
@@ -578,8 +542,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       newGameRequest: null,
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   checkGameEnd(): GameResult | null {
@@ -589,7 +552,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     return null;
   }
 
-  updatePlayers(players: { id: string; username: string }[]): void {
+  updatePlayers(players: Player[]): void {
     // Reset non-bot/guest slots
     this.state.players.forEach((p, i) => {
       if (!p.isBot && !p.isGuest) {
@@ -609,8 +572,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         }
       }
     }
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // ============== Bot AI ==============
@@ -754,9 +716,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       cards,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -766,18 +728,18 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       playerId: this.userId,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestAddBot(slotIndex: number): void {
     const action: ThirteenAction = { type: "ADD_BOT", slotIndex };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -789,33 +751,33 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       playerName,
     };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestRemovePlayer(slotIndex: number): void {
     const action: ThirteenAction = { type: "REMOVE_PLAYER", slotIndex };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestStartGame(): void {
     const action: ThirteenAction = { type: "START_GAME" };
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   requestNewGame(): void {
     if (this.isHost) {
-      this.handleAction({ action: { type: "NEW_GAME" } });
+      this.onSocketGameAction({ action: { type: "NEW_GAME" } });
     } else {
       // Guest requests - send to host for approval
       const player = this.state.players.find((p) => p.id === this.userId);
@@ -824,18 +786,18 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         playerId: this.userId,
         playerName: player?.username || "Guest",
       };
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
   acceptNewGame(): void {
     if (!this.isHost) return;
-    this.handleAction({ action: { type: "ACCEPT_NEW_GAME" } });
+    this.onSocketGameAction({ action: { type: "ACCEPT_NEW_GAME" } });
   }
 
   declineNewGame(): void {
     if (!this.isHost) return;
-    this.handleAction({ action: { type: "DECLINE_NEW_GAME" } });
+    this.onSocketGameAction({ action: { type: "DECLINE_NEW_GAME" } });
   }
 
   getMyPlayerIndex(): number {

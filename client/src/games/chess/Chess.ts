@@ -1,32 +1,22 @@
-import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
+import { useAlertStore } from "../../stores/alertStore";
+import type { Player } from "../../stores/roomStore";
+import { BaseGame, type GameAction } from "../BaseGame";
 import { type ChessState, type ChessAction } from "./types";
 import { Chess } from "chess.js";
 
+const chess = new Chess();
+
 export default class ChessGame extends BaseGame<ChessState> {
-  private state: ChessState;
-  private chess: Chess;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    this.chess = new Chess();
-
-    this.state = {
-      fen: this.chess.fen(),
+  getInitState(): ChessState {
+    return {
+      fen: chess.fen(),
       turn: "w",
       winner: null,
       isDraw: false,
       check: false,
       players: {
-        white: players[0]?.id || null,
-        black: players[1]?.id || null,
+        white: this.players[0] || null,
+        black: this.players[1] || null,
       },
       gameOver: false,
       history: [],
@@ -39,40 +29,16 @@ export default class ChessGame extends BaseGame<ChessState> {
       pendingNewGameRequest: null,
       isBotLoading: false,
     };
-
-    this.init();
   }
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-      this.checkBotTurn();
-    }
-  }
-
-  getState(): ChessState {
-    return { ...this.state };
-  }
-
-  setState(state: ChessState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as ChessAction;
     console.log("[Chess] handleAction:", action, "isHost:", this.isHost);
 
     if (this.isHost) {
       switch (action.type) {
         case "MAKE_MOVE":
-          this.makeMove(action);
-          break;
-        case "UNDO_REQUEST":
-          // this.handleUndoRequest(action.playerId);
-          break;
-        case "UNDO_RESPONSE":
-          // this.handleUndoResponse(action.accepted);
+          this.makeAction(action);
           break;
         case "RESET_GAME": // Legacy or direct reset
           this.reset();
@@ -87,7 +53,7 @@ export default class ChessGame extends BaseGame<ChessState> {
     }
   }
 
-  makeMove(action: GameAction): void {
+  makeAction(action: GameAction): void {
     const { from, to, promotion, playerId } = action as {
       from: string;
       to: string;
@@ -110,8 +76,8 @@ export default class ChessGame extends BaseGame<ChessState> {
 
     // Validate turn
     let playerColor: "w" | "b" | null = null;
-    if (this.state.players.white === playerId) playerColor = "w";
-    else if (this.state.players.black === playerId) playerColor = "b";
+    if (this.state.players.white?.id === playerId) playerColor = "w";
+    else if (this.state.players.black?.id === playerId) playerColor = "b";
 
     console.log("[Chess] Player color resolved:", playerColor);
 
@@ -132,7 +98,7 @@ export default class ChessGame extends BaseGame<ChessState> {
 
       if (move) {
         // Apply move
-        this.chess.load(tempChess.fen());
+        chess.load(tempChess.fen());
         this.updateStateFromChess(move);
         this.broadcastState();
         this.checkBotTurn();
@@ -145,17 +111,17 @@ export default class ChessGame extends BaseGame<ChessState> {
   }
 
   private updateStateFromChess(move: any) {
-    this.state.fen = this.chess.fen();
-    this.state.turn = this.chess.turn();
-    this.state.gameOver = this.chess.isGameOver();
-    this.state.check = this.chess.inCheck();
-    this.state.isDraw = this.chess.isDraw();
+    this.state.fen = chess.fen();
+    this.state.turn = chess.turn();
+    this.state.gameOver = chess.isGameOver();
+    this.state.check = chess.inCheck();
+    this.state.isDraw = chess.isDraw();
     this.state.lastMove = { from: move.from, to: move.to };
     this.state.history.push(this.state.fen);
 
     if (this.state.gameOver) {
-      if (this.chess.isCheckmate()) {
-        this.state.winner = this.chess.turn() === "w" ? "black" : "white";
+      if (chess.isCheckmate()) {
+        this.state.winner = chess.turn() === "w" ? "black" : "white";
       } else {
         this.state.winner = null; // Draw
       }
@@ -171,19 +137,13 @@ export default class ChessGame extends BaseGame<ChessState> {
         }
       }
     }
-    this.setState({ ...this.state });
-  }
-
-  checkGameEnd(): GameResult | null {
-    return this.state.gameOver
-      ? { winner: this.state.winner || undefined }
-      : null;
+    this.syncState();
   }
 
   reset(): void {
-    this.chess.reset();
+    chess.reset();
     this.state = {
-      fen: this.chess.fen(),
+      fen: chess.fen(),
       turn: "w",
       winner: null,
       isDraw: false,
@@ -200,12 +160,9 @@ export default class ChessGame extends BaseGame<ChessState> {
       pendingNewGameRequest: null,
       isBotLoading: false,
     };
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
     this.checkBotTurn();
   }
-
-  // --- Actions ---
 
   // --- Actions ---
 
@@ -217,15 +174,22 @@ export default class ChessGame extends BaseGame<ChessState> {
       promotion,
       playerId: this.userId,
     };
-    this.isHost ? this.makeMove(action) : this.sendAction(action);
+    this.isHost ? this.makeAction(action) : this.sendSocketGameAction(action);
   }
 
-  requestReset(): void {
+  async requestReset(): Promise<void> {
     // If bot game -> Reset immediately
     const isBotGame =
-      this.state.players.black === "BOT" || this.state.players.white === "BOT";
-    if (isBotGame) {
-      if (this.isHost) this.reset();
+      this.state.players.black?.isBot || this.state.players.white?.isBot;
+    if (
+      this.isHost ||
+      isBotGame ||
+      !this.state.players.white ||
+      !this.state.players.black
+    ) {
+      if (await useAlertStore.getState().confirm("You can't reset the game")) {
+        this.reset();
+      }
       return;
     }
 
@@ -236,19 +200,14 @@ export default class ChessGame extends BaseGame<ChessState> {
     };
     this.isHost
       ? this.handleNewGameRequest(this.userId)
-      : this.sendAction(action);
-  }
-
-  requestUndo(): void {
-    // TODO: Implement Undo
+      : this.sendSocketGameAction(action);
   }
 
   // --- Handlers ---
 
   private handleNewGameRequest(playerId: string): void {
     this.state.pendingNewGameRequest = playerId;
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleNewGameResponse(accepted: boolean): void {
@@ -256,35 +215,33 @@ export default class ChessGame extends BaseGame<ChessState> {
       this.reset();
     } else {
       this.state.pendingNewGameRequest = null;
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
     }
   }
 
   public getPlayerColor(): "w" | "b" | null {
-    if (this.state.players.white === this.userId) return "w";
-    if (this.state.players.black === this.userId) return "b";
+    if (this.state.players.white?.id === this.userId) return "w";
+    if (this.state.players.black?.id === this.userId) return "b";
     return null;
   }
 
-  updatePlayers(players: { id: string; username: string }[]): void {
+  updatePlayers(players: Player[]): void {
     // Prioritize preserving existing assignment if possible, or just overwrite?
     // Simple overwrite based on room list order (Host=0, Guest=1)
     // Slot 0 (Host / White)
-    this.state.players.white = players[0]?.id || null;
+    this.state.players.white = players[0] || null;
 
     // Slot 1 (Guest / Black or Bot)
     if (players[1]) {
-      this.state.players.black = players[1].id;
+      this.state.players.black = players[1];
     } else {
       // No guest. Keep Bot if it was Bot, otherwise clear.
-      if (this.state.players.black !== "BOT") {
+      if (!this.state.players.black?.isBot) {
         this.state.players.black = null;
       }
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // --- Bot Logic (Stockfish) ---
@@ -295,14 +252,23 @@ export default class ChessGame extends BaseGame<ChessState> {
     if (!this.isHost) return;
     // Assign bot to empty slot, prioritize Black
     if (!this.state.players.black) {
-      this.state.players.black = "BOT";
+      this.state.players.black = {
+        id: "BOT",
+        username: "BOT",
+        isHost: false,
+        isBot: true,
+      };
     } else if (!this.state.players.white) {
-      this.state.players.white = "BOT";
+      this.state.players.white = {
+        id: "BOT",
+        username: "BOT",
+        isHost: false,
+        isBot: true,
+      };
     }
 
     this.state.isBotLoading = true;
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     // Initialize Stockfish
     if (!this.stockfishWorker) {
@@ -331,10 +297,20 @@ export default class ChessGame extends BaseGame<ChessState> {
     } else {
       // Already loaded, just ready check
       this.state.isBotLoading = false;
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
+
       this.checkBotTurn();
     }
+  }
+
+  removeBot(): void {
+    if (!this.isHost) return;
+    if (this.state.players.black?.isBot) {
+      this.state.players.black = null;
+    } else if (this.state.players.white?.isBot) {
+      this.state.players.white = null;
+    }
+    this.syncState();
   }
 
   private onBotReady?: () => void;
@@ -349,7 +325,7 @@ export default class ChessGame extends BaseGame<ChessState> {
         : this.state.players.black;
 
     // Check if current player is BOT
-    if (currentPlayerId === "BOT" && !this.isBotThinking) {
+    if (currentPlayerId?.isBot && !this.isBotThinking) {
       this.makeBotMove();
     }
   }
@@ -373,8 +349,7 @@ export default class ChessGame extends BaseGame<ChessState> {
 
     if (message === "readyok") {
       this.state.isBotLoading = false;
-      this.broadcastState();
-      this.setState({ ...this.state });
+      this.syncState();
       this.checkBotTurn();
       if (this.onBotReady) {
         this.onBotReady();
@@ -394,7 +369,7 @@ export default class ChessGame extends BaseGame<ChessState> {
         const promotion =
           bestMove.length > 4 ? bestMove.substring(4, 5) : undefined;
 
-        this.makeMove({
+        this.makeAction({
           type: "MAKE_MOVE",
           from,
           to,

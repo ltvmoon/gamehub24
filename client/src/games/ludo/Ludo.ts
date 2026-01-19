@@ -1,5 +1,4 @@
-import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { Socket } from "socket.io-client";
+import { BaseGame, type GameAction } from "../BaseGame";
 import {
   type LudoState,
   type LudoAction,
@@ -19,22 +18,11 @@ import {
 const PLAYER_COLORS: PlayerColor[] = ["red", "green", "yellow", "blue"];
 
 export default class Ludo extends BaseGame<LudoState> {
-  private state: LudoState;
-
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: { id: string; username: string }[],
-  ) {
-    super(roomId, socket, isHost, userId);
-
-    // Initialize 4 player slots
-    this.state = {
+  getInitState(): LudoState {
+    return {
       players: PLAYER_COLORS.map((color, index) => ({
-        id: players[index]?.id || null,
-        username: players[index]?.username || `Player ${index + 1}`,
+        id: this.players[index]?.id || null,
+        username: this.players[index]?.username || `Player ${index + 1}`,
         color,
         isBot: false,
         tokens: this.createInitialTokens(),
@@ -49,8 +37,6 @@ export default class Ludo extends BaseGame<LudoState> {
       lastMove: null,
       consecutiveSixes: 0,
     };
-
-    this.init();
   }
 
   private createInitialTokens(): Token[] {
@@ -62,22 +48,7 @@ export default class Ludo extends BaseGame<LudoState> {
       }));
   }
 
-  init(): void {
-    if (this.isHost) {
-      this.broadcastState();
-    }
-  }
-
-  getState(): LudoState {
-    return { ...this.state };
-  }
-
-  setState(state: LudoState): void {
-    this.state = state;
-    this.onStateChange?.(this.state);
-  }
-
-  handleAction(data: { action: GameAction }): void {
+  onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as LudoAction;
     if (!this.isHost) return;
 
@@ -100,17 +71,14 @@ export default class Ludo extends BaseGame<LudoState> {
       case "REMOVE_BOT":
         this.handleRemoveBot(action.slotIndex);
         break;
-      case "REQUEST_SYNC":
-        this.broadcastState();
-        break;
     }
   }
 
-  makeMove(action: LudoAction): void {
+  makeAction(action: LudoAction): void {
     if (this.isHost) {
-      this.handleAction({ action });
+      this.onSocketGameAction({ action });
     } else {
-      this.sendAction(action);
+      this.sendSocketGameAction(action);
     }
   }
 
@@ -138,8 +106,7 @@ export default class Ludo extends BaseGame<LudoState> {
     this.state.lastMove = null;
     this.state.consecutiveSixes = 0;
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
     this.checkBotTurn();
   }
 
@@ -175,14 +142,12 @@ export default class Ludo extends BaseGame<LudoState> {
       // if (this.state.consecutiveSixes >= 3) {
       //   // Three 6s in a row = lose turn, but show dice first
       //   this.state.consecutiveSixes = 0;
-      //   this.broadcastState();
-      //   this.setState({ ...this.state });
+      // this.syncState();
 
       //   // Delay turn change so animation can play (3 seconds total)
       //   setTimeout(() => {
       //     this.nextTurn();
-      //     this.broadcastState();
-      //     this.setState({ ...this.state });
+      // this.syncState();
       //     this.checkBotTurn();
       //   }, 3000);
       //   return;
@@ -195,15 +160,13 @@ export default class Ludo extends BaseGame<LudoState> {
     const movableTokens = this.getMovableTokens(currentPlayer, dice);
 
     // Broadcast the dice result first so animation plays for everyone
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
 
     if (movableTokens.length === 0) {
       // No valid moves, delay then end turn (3 seconds for animation + viewing)
       setTimeout(() => {
         this.nextTurn();
-        this.broadcastState();
-        this.setState({ ...this.state });
+        this.syncState();
         this.checkBotTurn();
       }, 3000);
     } else if (movableTokens.length === 1 && !currentPlayer.isBot) {
@@ -258,8 +221,7 @@ export default class Ludo extends BaseGame<LudoState> {
         this.state.winner = playerId;
         this.state.gamePhase = "ended";
         this.broadcastGameEnd({ winner: playerId });
-        this.broadcastState();
-        this.setState({ ...this.state });
+        this.syncState();
         return;
       }
     }
@@ -273,8 +235,7 @@ export default class Ludo extends BaseGame<LudoState> {
       this.nextTurn();
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
     this.checkBotTurn();
   }
 
@@ -417,8 +378,7 @@ export default class Ludo extends BaseGame<LudoState> {
       isBot: true,
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private handleRemoveBot(slotIndex: number): void {
@@ -433,8 +393,7 @@ export default class Ludo extends BaseGame<LudoState> {
       isBot: false,
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   private checkBotTurn(): void {
@@ -556,7 +515,7 @@ export default class Ludo extends BaseGame<LudoState> {
 
   requestRollDice(): void {
     const action: LudoAction = { type: "ROLL_DICE", playerId: this.userId };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestMoveToken(tokenId: number): void {
@@ -565,36 +524,27 @@ export default class Ludo extends BaseGame<LudoState> {
       playerId: this.userId,
       tokenId,
     };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestStartGame(): void {
     const action: LudoAction = { type: "START_GAME" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestAddBot(slotIndex: number): void {
     const action: LudoAction = { type: "ADD_BOT", slotIndex };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   requestRemoveBot(slotIndex: number): void {
     const action: LudoAction = { type: "REMOVE_BOT", slotIndex };
-    this.makeMove(action);
-  }
-
-  requestSync(): void {
-    const action: LudoAction = { type: "REQUEST_SYNC" };
-    if (this.isHost) {
-      this.broadcastState();
-    } else {
-      this.sendAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestNewGame(): void {
     const action: LudoAction = { type: "RESET" };
-    this.makeMove(action);
+    this.makeAction(action);
   }
 
   reset(): void {
@@ -615,15 +565,7 @@ export default class Ludo extends BaseGame<LudoState> {
       consecutiveSixes: 0,
     };
 
-    this.broadcastState();
-    this.setState({ ...this.state });
-  }
-
-  checkGameEnd(): GameResult | null {
-    if (this.state.winner) {
-      return { winner: this.state.winner };
-    }
-    return null;
+    this.syncState();
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
@@ -648,8 +590,7 @@ export default class Ludo extends BaseGame<LudoState> {
       }
     }
 
-    this.broadcastState();
-    this.setState({ ...this.state });
+    this.syncState();
   }
 
   // ============== Helper Methods ==============

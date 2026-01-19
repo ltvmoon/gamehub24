@@ -34,6 +34,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const [showRules, setShowRules] = useState(false);
   const { username } = useUserStore();
   const { ti, ts } = useLanguage();
+  const { confirm: showConfirm } = useAlertStore();
 
   // Flying card animation state
   const [flyingCard, setFlyingCard] = useState<{
@@ -66,7 +67,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const myHandRef = useRef<HTMLDivElement>(null);
 
-  const isHost = game.isHostUser;
+  const isHost = game.isHost;
   const myIndex = game.getMyPlayerIndex();
   const mySlot = myIndex >= 0 ? state.players[myIndex] : null;
   const isMyTurn = state.currentTurnIndex === myIndex;
@@ -76,9 +77,11 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const prevDiscardLengthRef = useRef(state.discardPile.length);
   // Track previous hand lengths for all players to detect drawn cards
   const prevHandLengthsRef = useRef(state.players.map((p) => p.hand.length));
+  // Track previous turn index to know who played the card
+  const prevTurnIndexRef = useRef(state.currentTurnIndex);
 
   useEffect(() => {
-    game.onUpdate((newState) => {
+    return game.onUpdate((newState) => {
       // Detect if a card was played (discard pile grew)
       if (
         newState.discardPile.length > prevDiscardLengthRef.current &&
@@ -86,9 +89,8 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
       ) {
         const newCard = newState.discardPile[newState.discardPile.length - 1];
 
-        // Find which player played the card
-        const prevTurnIndex =
-          (newState.currentTurnIndex - newState.turnDirection + 4) % 4;
+        // Use the previous turn index to know who played the card
+        const fromPlayerIndex = prevTurnIndexRef.current;
 
         // Hide the top card while animating
         setHideTopDiscard(true);
@@ -96,7 +98,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         // Trigger flying animation
         setFlyingCard({
           card: newCard,
-          fromPlayerIndex: prevTurnIndex,
+          fromPlayerIndex: fromPlayerIndex,
           direction: "toDiscard",
         });
 
@@ -144,6 +146,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
       // Update refs for next comparison
       prevDiscardLengthRef.current = newState.discardPile.length;
       prevHandLengthsRef.current = newState.players.map((p) => p.hand.length);
+      prevTurnIndexRef.current = newState.currentTurnIndex;
 
       setState(newState);
       setSelectedCard(null);
@@ -249,7 +252,10 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
             <span
               className={isMobile ? "text-slate-400 text-sm" : "text-slate-400"}
             >
-              Waiting for players...
+              {ti({
+                en: "Waiting for players...",
+                vi: "Đang chờ người chơi...",
+              })}
             </span>
             {isHost && canStart && (
               <button
@@ -259,12 +265,15 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 }`}
               >
                 <Play className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
-                {isMobile ? "Start" : "Start Game"}
+                {ti({ en: "Start", vi: "Bắt đầu" })}
               </button>
             )}
             {isHost && !canStart && (
               <span className="text-sm text-slate-500">
-                Need at least 2 players to start
+                {ti({
+                  en: "Need at least 2 players to start",
+                  vi: "Cần ít nhất 2 người chơi để bắt đầu",
+                })}
               </span>
             )}
           </div>
@@ -341,7 +350,8 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
             {/* Pending Draw Indicator */}
             {state.pendingDraw > 0 && (
               <div className="text-lg font-bold text-red-400 animate-pulse">
-                +{state.pendingDraw} cards pending!
+                +{state.pendingDraw}{" "}
+                {ti({ en: "cards pending!", vi: "bài chờ!" })}
               </div>
             )}
 
@@ -350,12 +360,23 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
             <div className={`text-sm ${isMobile ? "hidden" : "block"}`}>
               {isMyTurn ? (
                 <span className="text-primary-400 font-medium">
-                  Your Turn
-                  {state.hasDrawn && " - Play drawn card or pass"}
+                  {ti({ en: "Your Turn", vi: "Lượt của BẠN" })}
+                  {state.hasDrawn &&
+                    ts({
+                      en: " - Play drawn card or pass",
+                      vi: " - Chọn bài đã rút hoặc bỏ lượt",
+                    })}
                 </span>
               ) : (
                 <span className="text-slate-400">
-                  {state.players[state.currentTurnIndex]?.username}'s Turn
+                  {ti({
+                    en:
+                      state.players[state.currentTurnIndex]?.username +
+                      "'s Turn",
+                    vi:
+                      "Lượt chơi của " +
+                      state.players[state.currentTurnIndex]?.username,
+                  })}
                 </span>
               )}
             </div>
@@ -365,7 +386,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 isMobile ? "hidden" : "block"
               }`}
             >
-              Direction:{" "}
+              {ti({ en: "Direction", vi: "Hướng" })}:{" "}
               {state.turnDirection === 1
                 ? "→ Clockwise"
                 : "← Counter-clockwise"}
@@ -385,7 +406,8 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 isMobile ? "text-lg" : "text-xl"
               } font-bold text-yellow-400`}
             >
-              {state.players.find((p) => p.id === state.winner)?.username} Won!
+              {state.players.find((p) => p.id === state.winner)?.username}{" "}
+              {ti({ en: "Won!", vi: "Thắng!" })}
             </span>
           </div>
         )}
@@ -598,13 +620,13 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         {/* Action Buttons */}
         {state.gamePhase === "playing" && isMyTurn && (
           <div className="flex gap-2">
-            {state.pendingDraw > 0 && (
+            {(state.pendingDraw > 0 || !game.hasPlayableCardCheck()) && (
               <button
                 onClick={handleDraw}
                 className="px-4 py-1.5 md:px-6 md:py-2 bg-red-600 hover:bg-red-500 rounded-lg font-medium flex items-center gap-1 md:gap-2 text-sm"
               >
                 <Layers className="w-4 h-4" />
-                Draw {state.pendingDraw}
+                {ti({ en: "Draw", vi: "Rút" })} {state.pendingDraw || ""}
               </button>
             )}
             {state.hasDrawn && (
@@ -612,7 +634,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 onClick={handleDraw}
                 className="px-4 py-1.5 md:px-6 md:py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-1 md:gap-2 text-sm"
               >
-                Pass
+                {ti({ en: "Pass", vi: "Bỏ qua" })}
               </button>
             )}
             {mySlot && mySlot.hand.length <= 2 && !mySlot.calledUno && (
@@ -630,27 +652,33 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         {/* Game Controls */}
         {state.gamePhase !== "waiting" && (
           <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                if (isHost && state.gamePhase === "playing") {
-                  const confirmed = await useAlertStore
-                    .getState()
-                    .confirm(
-                      "This will reset the current game and start fresh.",
-                      "Start New Game?",
+            {mySlot && (
+              <button
+                onClick={async () => {
+                  if (isHost && state.gamePhase === "playing") {
+                    const confirmed = await showConfirm(
+                      ts({
+                        en: "This will reset the current game and start fresh.",
+                        vi: "Bạn có chắc muốn bắt đầu lại trò chơi?",
+                      }),
+                      ts({
+                        en: "Start New Game?",
+                        vi: "Bắt đầu trò chơi mới?",
+                      }),
                     );
-                  if (confirmed) {
+                    if (confirmed) {
+                      game.requestNewGame();
+                    }
+                  } else {
                     game.requestNewGame();
                   }
-                } else {
-                  game.requestNewGame();
-                }
-              }}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs md:text-sm flex items-center gap-1 md:gap-2"
-            >
-              <RefreshCcw className="w-3 h-3 md:w-4 md:h-4" />
-              New game
-            </button>
+                }}
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs md:text-sm flex items-center gap-1 md:gap-2"
+              >
+                <RefreshCcw className="w-3 h-3 md:w-4 md:h-4" />
+                {ti({ en: "New Game", vi: "Chơi lại" })}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -660,7 +688,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl p-4 md:p-6 shadow-xl">
             <h3 className="text-base md:text-lg font-bold mb-4 text-center">
-              Choose Color
+              {ti({ en: "Choose Color", vi: "Chọn Màu" })}
             </h3>
             <div className="grid grid-cols-2 gap-3">
               {[Colors.RED, Colors.BLUE, Colors.GREEN, Colors.YELLOW].map(
@@ -680,7 +708,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
               }}
               className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm"
             >
-              Cancel
+              {ti({ en: "Cancel", vi: "Hủy" })}
             </button>
           </div>
         </div>
@@ -691,13 +719,13 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl p-4 md:p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-base md:text-lg font-bold mb-3 md:mb-4">
-              New Game Request
+              {ti({ en: "New Game Request", vi: "Yêu cầu chơi lại" })}
             </h3>
             <p className="text-slate-300 mb-4 md:mb-6 text-sm md:text-base">
               <span className="font-medium text-white">
                 {state.newGameRequest.fromName}
               </span>{" "}
-              wants to start a new game.
+              {ti({ en: "wants to start a new game.", vi: "muốn chơi lại" })}
             </p>
             <div className="flex gap-2 md:gap-3">
               <button
@@ -705,14 +733,14 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium flex items-center justify-center gap-2 text-sm"
               >
                 <X className="w-4 h-4" />
-                Decline
+                {ti({ en: "Decline", vi: "Từ chối" })}
               </button>
               <button
                 onClick={() => game.acceptNewGame()}
                 className="flex-1 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium flex items-center justify-center gap-2 text-sm"
               >
                 <Check className="w-4 h-4" />
-                Accept
+                {ti({ en: "Accept", vi: "Đồng ý" })}
               </button>
             </div>
           </div>
@@ -731,7 +759,10 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base md:text-lg font-bold">
-                Discard Pile ({state.discardPile.length} cards)
+                {ti({
+                  en: `Discard Pile (${state.discardPile.length} cards)`,
+                  vi: `Lịch sử (${state.discardPile.length} lá bài)`,
+                })}
               </h3>
               <button
                 onClick={() => setShowDiscardHistory(false)}

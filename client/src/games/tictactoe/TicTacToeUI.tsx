@@ -81,7 +81,7 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
                   {isMe && player && ti({ en: " (You)", vi: " (Bạn)" })}
                 </span>
               </div>
-              {isBot && game.isHostUser && !state.gameOver && (
+              {isBot && game.isHost && !state.gameOver && (
                 <button
                   onClick={() => game.removeBot()}
                   className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
@@ -89,25 +89,22 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
                   {ti({ en: "Remove", vi: "Xóa" })}
                 </button>
               )}
-              {!player &&
-                game.isHostUser &&
-                !state.gameOver &&
-                symbol === "O" && (
-                  <button
-                    onClick={() => game.addBot()}
-                    className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
-                  >
-                    <Bot className="w-3 h-3" />{" "}
-                    {ti({ en: "Add Bot", vi: "Thêm Bot" })}
-                  </button>
-                )}
+              {!player && game.isHost && !state.gameOver && symbol === "O" && (
+                <button
+                  onClick={() => game.addBot()}
+                  className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors flex items-center gap-1"
+                >
+                  <Bot className="w-3 h-3" />{" "}
+                  {ti({ en: "Add Bot", vi: "Thêm Bot" })}
+                </button>
+              )}
             </div>
           );
         })}
       </div>
 
       {/* Start Game Button - only show when waiting and both players ready */}
-      {state.gamePhase === "waiting" && game.isHostUser && (
+      {state.gamePhase === "waiting" && game.isHost && (
         <div className="flex flex-col items-center gap-2">
           {game.canStartGame() ? (
             <button
@@ -129,7 +126,7 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
       )}
 
       {/* Start Game message for non-host */}
-      {state.gamePhase === "waiting" && !game.isHostUser && (
+      {state.gamePhase === "waiting" && !game.isHost && (
         <div className="text-sm text-slate-400">
           {ti({
             en: "Waiting for host to start the game...",

@@ -1,11 +1,10 @@
+import type { Player } from "../../stores/roomStore";
+
 export type PlayerColor = "red" | "blue";
 
-export interface DotsAndBoxesPlayer {
-  id: string | null;
-  username: string;
+export interface DotsAndBoxesPlayer extends Player {
   color: PlayerColor;
   score: number;
-  isBot: boolean;
 }
 
 export interface DotsAndBoxesState {
@@ -13,7 +12,7 @@ export interface DotsAndBoxesState {
   horizontalLines: boolean[][]; // [row][col]
   verticalLines: boolean[][]; // [row][col]
   boxes: (string | null)[][]; // [row][col], stores playerId of owner
-  players: DotsAndBoxesPlayer[];
+  players: [DotsAndBoxesPlayer | null, DotsAndBoxesPlayer | null];
   currentPlayerIndex: number;
   winner: string | null;
   isGameEnded: boolean;
@@ -36,7 +35,6 @@ export type DotsAndBoxesAction =
     }
   | { type: "START_GAME" }
   | { type: "RESET" }
-  | { type: "REQUEST_SYNC" }
   | { type: "ADD_BOT"; slotIndex: number }
   | { type: "REMOVE_BOT"; slotIndex: number }
   | { type: "REQUEST_UNDO"; playerId: string }

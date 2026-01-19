@@ -27,9 +27,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
     const handleStateChange = (newState: YouTubeWatchState) => {
       setState(newState);
     };
-    game.onUpdate(handleStateChange);
-    setState(game.getState());
-    game.requestSync();
+    return game.onUpdate(handleStateChange);
   }, [game]);
 
   useEffect(() => {
@@ -64,7 +62,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
   }, [state.isPlaying, state.timestamp, state.videoId, player]);
 
   useEffect(() => {
-    if (!game.isHostUser || !player || !state.isPlaying) return;
+    if (!game.isHost || !player || !state.isPlaying) return;
 
     const interval = setInterval(() => {
       try {
@@ -88,7 +86,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
     const pState = event.data;
     const currentTime = event.target.getCurrentTime();
 
-    const canControl = game.isHostUser || state.allowGuestControl;
+    const canControl = game.isHost || state.allowGuestControl;
 
     if (!canControl) {
       // Revert changes if user tries to control but is not allowed?
@@ -140,7 +138,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
     <div className="flex flex-col items-center w-full h-full p-1 md:p-4 gap-4">
       {/* Host Controls */}
       <div className="flex flex-col gap-2 w-full max-w-4xl">
-        {game.isHostUser && (
+        {game.isHost && (
           <div className="flex gap-2 w-full items-center">
             <div className="relative flex-1">
               <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -187,7 +185,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
             </span>
           </div>
 
-          {game.isHostUser && (
+          {game.isHost && (
             <button
               onClick={handleToggleGuest}
               className={`
@@ -242,7 +240,7 @@ export default function YouTubeWatchUI({ game: baseGame }: GameUIProps) {
                 vi: "Chờ chủ phòng chọn video...",
               })}
             </p>
-            <p className="text-xs text-gray-600">ID: {game.getRoomId}</p>
+            <p className="text-xs text-gray-600">ID: {game.roomId}</p>
           </div>
         )}
       </div>
