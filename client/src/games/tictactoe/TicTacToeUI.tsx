@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import TicTacToe from "./TicTacToe";
-import type { TicTacToeState } from "./types";
+import type { TicTacToeAction, TicTacToeState } from "./types";
 import { RefreshCcw, X, Circle, Bot, Play } from "lucide-react";
 import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
@@ -28,7 +28,13 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
     if (state.board[index] !== null) return;
     if (!isMyTurn) return;
 
-    game.requestMove(index);
+    const action: TicTacToeAction = {
+      type: "MAKE_MOVE",
+      cellIndex: index,
+      playerId: game.userId,
+    };
+
+    game.makeMove(action);
   };
 
   const onSwitchTurn = () => {

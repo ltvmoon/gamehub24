@@ -74,14 +74,6 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     }
   }
 
-  makeAction(action: DotsAndBoxesAction): void {
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
-  }
-
   //ByType =======================
 
   private handleAddBot(slotIndex: number): void {

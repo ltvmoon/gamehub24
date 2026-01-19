@@ -367,6 +367,26 @@ games.set("oanquan", {
   loadUI: () => import("./oanquan/OAnQuanUI").then((m) => m.default),
 });
 
+// Register Werewolf (Ma Sói)
+games.set("werewolf", {
+  id: "werewolf",
+  name: { en: "Werewolf", vi: "Ma Sói" },
+  description: {
+    en: "Chat-only social deduction game. Find the wolves!",
+    vi: "Trò chơi suy luận xã hội. Tìm ra ma sói!",
+  },
+  icon: Moon,
+  categories: ["party", "strategy"],
+  minPlayers: 5,
+  maxPlayers: 12,
+  isAvailable: true,
+  createGame: async (roomId, socket, isHost, userId, players) => {
+    const { default: Werewolf } = await import("./werewolf/Werewolf");
+    return new Werewolf(roomId, socket, isHost, userId, players);
+  },
+  loadUI: () => import("./werewolf/WerewolfUI").then((m) => m.default),
+});
+
 // Registry functions
 export const getGame = (gameType: string): GameModule | undefined => {
   console.log(games, gameType);

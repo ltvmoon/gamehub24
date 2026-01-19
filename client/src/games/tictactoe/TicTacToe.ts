@@ -1,6 +1,6 @@
 import type { Player } from "../../stores/roomStore";
 import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
-import type { TicTacToeState, TicTacToeAction } from "./types";
+import type { TicTacToeState, TicTacToeAction, MakeMoveAction } from "./types";
 
 export default class TicTacToe extends BaseGame<TicTacToeState> {
   getInitState(): TicTacToeState {
@@ -22,21 +22,25 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
 
   onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as TicTacToeAction;
+    if (!this.isHost) return;
 
-    if (action.type === "MAKE_MOVE" && this.isHost) {
-      this.makeAction(action);
-    } else if (action.type === "RESET_GAME" && this.isHost) {
-      this.reset();
-    } else if (action.type === "SWITCH_TURN" && this.isHost) {
-      this.handleSwitchTurn();
-    } else if (action.type === "START_GAME" && this.isHost) {
-      this.handleStartGame();
+    switch (action.type) {
+      case "MAKE_MOVE":
+        this.makeMove(action as MakeMoveAction);
+        break;
+      case "RESET_GAME":
+        this.reset();
+        break;
+      case "SWITCH_TURN":
+        this.handleSwitchTurn();
+        break;
+      case "START_GAME":
+        this.handleStartGame();
+        break;
     }
   }
 
-  makeAction(action: TicTacToeAction): void {
-    if (action.type !== "MAKE_MOVE") return;
-
+  makeMove(action: MakeMoveAction): void {
     const { cellIndex, playerId } = action;
 
     // Validate move
@@ -137,21 +141,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     }
 
     this.syncState();
-  }
-
-  // Request a move (client-side)
-  requestMove(cellIndex: number): void {
-    const action: TicTacToeAction = {
-      type: "MAKE_MOVE",
-      cellIndex,
-      playerId: this.userId,
-    };
-
-    if (this.isHost) {
-      this.makeAction(action);
-    } else {
-      this.sendSocketGameAction(action);
-    }
   }
 
   // Request reset (client-side)
@@ -260,7 +249,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     // Simple Minimax or Random for now, let's do Minimax
     const bestMove = this.getBestMove();
     if (bestMove !== -1) {
-      this.makeAction({
+      this.makeMove({
         type: "MAKE_MOVE",
         cellIndex: bestMove,
         playerId: "BOT",

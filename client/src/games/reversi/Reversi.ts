@@ -74,14 +74,6 @@ export default class Reversi extends BaseGame<ReversiState> {
     }
   }
 
-  makeAction(action: ReversiAction): void {
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
-  }
-
   // ============== Game Logic ==============
 
   private handleStartGame(): void {

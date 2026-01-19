@@ -75,14 +75,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
     }
   }
 
-  makeAction(action: Connect4Action): void {
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
-  }
-
   // ============== Game Logic ==============
 
   private handleStartGame(): void {

@@ -74,14 +74,6 @@ export default class Ludo extends BaseGame<LudoState> {
     }
   }
 
-  makeAction(action: LudoAction): void {
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
-  }
-
   // ============== Game Logic ==============
 
   private handleStartGame(): void {

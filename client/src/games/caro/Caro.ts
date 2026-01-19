@@ -30,7 +30,7 @@ export default class Caro extends BaseGame<CaroState> {
     if (this.isHost) {
       switch (action.type) {
         case "MAKE_MOVE":
-          this.makeAction(action);
+          this.makeMove(action);
           break;
         case "UNDO_REQUEST":
           this.handleUndoRequest(action.playerId);
@@ -51,7 +51,7 @@ export default class Caro extends BaseGame<CaroState> {
     }
   }
 
-  makeAction(action: GameAction): void {
+  makeMove(action: GameAction): void {
     const { row, col, playerId } = action as {
       row: number;
       col: number;
@@ -197,7 +197,7 @@ export default class Caro extends BaseGame<CaroState> {
       col,
       playerId: this.userId,
     };
-    this.isHost ? this.makeAction(action) : this.sendSocketGameAction(action);
+    this.isHost ? this.makeMove(action) : this.sendSocketGameAction(action);
   }
 
   requestUndo(): void {
@@ -365,7 +365,7 @@ export default class Caro extends BaseGame<CaroState> {
 
     const bestMove = this.getBestMove();
     if (bestMove) {
-      this.makeAction({
+      this.makeMove({
         type: "MAKE_MOVE",
         row: bestMove.row,
         col: bestMove.col,

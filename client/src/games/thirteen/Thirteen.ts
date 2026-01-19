@@ -85,11 +85,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     }
   }
 
-  makeAction(action: GameAction): void {
-    // Delegate to handleAction for consistency
-    this.onSocketGameAction({ action });
-  }
-
   // ============== Card Logic ==============
 
   private createDeck(): Card[] {

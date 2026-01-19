@@ -57,8 +57,15 @@ export abstract class BaseGame<T> {
 
   // Abstract methods that must be implemented by each game
   abstract getInitState(): T;
-  abstract makeAction(action: GameAction): void;
   abstract onSocketGameAction(data: { action: GameAction }): void;
+
+  public makeAction(action: GameAction) {
+    if (this.isHost) {
+      this.onSocketGameAction({ action });
+    } else {
+      this.sendSocketGameAction(action);
+    }
+  }
 
   public updatePlayers(players: Player[]) {
     this.players = players;

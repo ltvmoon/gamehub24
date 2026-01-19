@@ -595,16 +595,6 @@ export default class Monopoly extends BaseGame<MonopolyState> {
     this.state.lastAction = message;
   }
 
-  makeAction(action: MonopolyAction): void {
-    if (this.isHost) {
-      // Process action locally immediately for host
-      this.onSocketGameAction({ action });
-    } else {
-      // Non-host sends action to host via socket
-      this.sendSocketGameAction(action);
-    }
-  }
-
   // === Game Flow ===
 
   private handleStartGame(): void {

@@ -108,12 +108,6 @@ export default class Billiard extends BaseGame<BilliardState> {
     }
   }
 
-  makeAction(action: BilliardAction): void {
-    if (action.type === "SHOOT") {
-      this.handleShoot(action.angle, action.power, action.playerId);
-    }
-  }
-
   private handleShoot(angle: number, power: number, playerId: string): void {
     if (this.state.gamePhase !== "playing") return;
     if (this.state.isSimulating) return;

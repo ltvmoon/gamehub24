@@ -92,10 +92,6 @@ export default class Uno extends BaseGame<UnoState> {
     }
   }
 
-  makeAction(action: GameAction): void {
-    this.onSocketGameAction({ action });
-  }
-
   // ============== Deck Creation ==============
 
   private createDeck(): UnoCard[] {

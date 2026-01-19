@@ -344,14 +344,6 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
     }
   }
 
-  makeAction(action: OAnQuanAction): void {
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
-  }
-
   requestStartGame() {
     if (this.isHost) this.startGame();
     else this.sendSocketGameAction({ type: "START_GAME" });
