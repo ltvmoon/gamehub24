@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 interface UserStore {
   userId: string;
   username: string;
+  hasHydrated: boolean;
   generateNewId: () => void;
   setUsername: (username: string) => void;
 }
@@ -233,38 +234,66 @@ function toUpperCaseFirstLetter(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// Generate short, readable, memorable IDs like "swift-tiger-42"
-export const generateRandomUsername = (): string => {
+// Generate random 3-digit suffix (001-999)
+export const generateSuffix = (): string => {
+  return String(Math.floor(1 + Math.random() * 999)).padStart(3, "0");
+};
+
+export const cleanName = (name: string) =>
+  name.trim().replace(/\d+$/, "").replace(/\s+/g, "");
+
+// Generate username with suffix - accepts optional custom name
+export const generateUsernameWithSuffix = (customName?: string): string => {
+  if (customName) {
+    return `${cleanName(customName)}${generateSuffix()}`;
+  }
+
+  // Fallback to random adjective-noun combination
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  const num = Math.floor(100 + Math.random() * 900);
-  return `${toUpperCaseFirstLetter(adj)}${toUpperCaseFirstLetter(noun)}${num}`;
+  return `${toUpperCaseFirstLetter(adj)}${toUpperCaseFirstLetter(noun)}${generateSuffix()}`;
 };
+
+// Generate short, readable, memorable IDs like "swift-tiger-42" (deprecated, use generateUsernameWithSuffix)
+export const generateRandomUsername = (): string => {
+  return generateUsernameWithSuffix();
+};
+
+export const STORAGE_KEY = "gamehub_username";
 
 export const useUserStore = create<UserStore>()(
   persist(
     (set) => {
-      const username =
-        localStorage.getItem("gamehub_user") || generateRandomUsername();
-      localStorage.setItem("gamehub_user", username);
-
       return {
-        userId: "user_" + username,
-        username: username,
+        userId: "",
+        username: "",
+        hasHydrated: false,
 
         generateNewId: () => {
           const u = generateRandomUsername();
-          localStorage.setItem("gamehub_user", u);
+          // Zustand persist will auto-save to localStorage
           return set({
             userId: "user_" + u,
             username: u,
           });
         },
-        setUsername: (username: string) => set({ username }),
+        setUsername: (username: string) => {
+          // Zustand persist will auto-save to localStorage
+          return set({
+            userId: "user_" + username,
+            username: username,
+          });
+        },
       };
     },
     {
-      name: "gamehub_user",
-    }
-  )
+      name: STORAGE_KEY,
+      onRehydrateStorage: () => (state) => {
+        // This runs after hydration is complete
+        if (state) {
+          state.hasHydrated = true;
+        }
+      },
+    },
+  ),
 );

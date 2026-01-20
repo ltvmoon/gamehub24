@@ -52,6 +52,7 @@ export default function RoomPage() {
 
     let isJoining = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const attemptJoin = () => {
       if (isJoining) return;
@@ -63,6 +64,14 @@ export default function RoomPage() {
       timeoutId = setTimeout(() => {
         console.log("Join timeout - callback never received");
         isJoining = false;
+        showAlert(
+          ts({
+            en: "Failed to join room - connection timeout",
+            vi: "Không thể vào phòng - kết nối quá lâu",
+          }),
+          { type: "error" },
+        );
+        navigate("/");
       }, 5000);
 
       socket.emit(
@@ -92,8 +101,21 @@ export default function RoomPage() {
 
     const handleConnect = () => {
       console.log("Socket connected, will attempt join");
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId);
       // Small delay to ensure socket is fully ready
       setTimeout(attemptJoin, 100);
+    };
+
+    const handleConnectError = (error: Error) => {
+      console.error("Socket connection error:", error);
+      showAlert(
+        ts({
+          en: "Failed to connect to server. Please check your internet connection.",
+          vi: "Không thể kết nối server. Vui lòng kiểm tra kết nối internet.",
+        }),
+        { type: "error" },
+      );
+      navigate("/");
     };
 
     if (socket.connected) {
@@ -101,13 +123,29 @@ export default function RoomPage() {
     } else {
       console.log("Socket not connected, waiting...");
       socket.on("connect", handleConnect);
+      socket.on("connect_error", handleConnectError);
+
+      // Timeout for waiting for connection (10 seconds)
+      connectionTimeoutId = setTimeout(() => {
+        console.log("Connection timeout - socket never connected");
+        showAlert(
+          ts({
+            en: "Connection timeout. Please try again.",
+            vi: "Kết nối quá lâu. Vui lòng thử lại.",
+          }),
+          { type: "error" },
+        );
+        navigate("/");
+      }, 10000);
     }
 
     return () => {
       socket.off("connect", handleConnect);
+      socket.off("connect_error", handleConnectError);
       if (timeoutId) clearTimeout(timeoutId);
+      if (connectionTimeoutId) clearTimeout(connectionTimeoutId);
     };
-  }, [roomId, socket, navigate, setCurrentRoom]);
+  }, [roomId, socket, navigate, setCurrentRoom, showAlert, ts]);
 
   // Effect for room event listeners
   useEffect(() => {

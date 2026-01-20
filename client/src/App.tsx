@@ -2,11 +2,116 @@ import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { initSocket, connectSocket } from "./services/socket";
 import { canBecomeActiveTab, acquireTabLock } from "./services/tabLock";
+import { useUserStore } from "./stores/userStore";
 import useLanguage from "./stores/languageStore";
 import AlertModal from "./components/AlertModal";
+import UsernameModal from "./components/UsernameModal";
 import Lobby from "./pages/Lobby";
 import Room from "./pages/Room";
+
 import "./App.css";
+
+export default function App() {
+  const [isChecking, setIsChecking] = useState(true);
+  const [isDuplicateTab, setIsDuplicateTab] = useState(false);
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const { username, setUsername, hasHydrated } = useUserStore();
+  const { ti } = useLanguage();
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    // Check for duplicate tabs before connecting
+    const checkTab = async () => {
+      const canConnect = await canBecomeActiveTab();
+
+      if (canConnect) {
+        // Acquire the lock
+        const acquired = acquireTabLock();
+        if (acquired) {
+          setIsDuplicateTab(false);
+
+          // check username
+          const store = useUserStore.getState();
+          if (!store.username) {
+            setShowUsernameModal(true);
+          }
+        } else {
+          setIsDuplicateTab(true);
+        }
+      } else {
+        setIsDuplicateTab(true);
+      }
+
+      setIsChecking(false);
+    };
+
+    checkTab();
+  }, [hasHydrated]);
+
+  // Connect socket when username is available
+  useEffect(() => {
+    if (username && !isDuplicateTab) {
+      initSocket();
+      connectSocket();
+    }
+  }, [username, isDuplicateTab]);
+
+  // Show loading while checking
+  if (isChecking || !hasHydrated) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white">
+          {ti({ en: "Loading...", vi: "Đang tải..." })}
+        </div>
+      </div>
+    );
+  }
+
+  // Show duplicate tab warning
+  if (isDuplicateTab) {
+    return <DuplicateTabWarning />;
+  }
+
+  // Show username modal if no username
+  if (showUsernameModal) {
+    return (
+      <div className="min-h-screen bg-background-primary">
+        <UsernameModal
+          onSubmit={(newUsername) => {
+            setUsername(newUsername);
+            setShowUsernameModal(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Only render app when username is set
+  if (!username) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white">
+          {ti({
+            en: "Waiting for enter username...",
+            vi: "Đang chờ nhập tên...",
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <HashRouter>
+      <AlertModal />
+      <Routes>
+        <Route path="/" element={<Lobby />} />
+        <Route path="/room/:roomId" element={<Room />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </HashRouter>
+  );
+}
 
 function DuplicateTabWarning() {
   const { ti } = useLanguage();
@@ -33,63 +138,3 @@ function DuplicateTabWarning() {
     </div>
   );
 }
-
-function App() {
-  const [isChecking, setIsChecking] = useState(true);
-  const [isDuplicateTab, setIsDuplicateTab] = useState(false);
-  const { ti } = useLanguage();
-
-  useEffect(() => {
-    // Check for duplicate tabs before connecting
-    const checkTab = async () => {
-      const canConnect = await canBecomeActiveTab();
-
-      if (canConnect) {
-        // Acquire the lock and connect
-        const acquired = acquireTabLock();
-        if (acquired) {
-          initSocket();
-          connectSocket();
-          setIsDuplicateTab(false);
-        } else {
-          setIsDuplicateTab(true);
-        }
-      } else {
-        setIsDuplicateTab(true);
-      }
-
-      setIsChecking(false);
-    };
-
-    checkTab();
-  }, []);
-
-  // Show loading while checking
-  if (isChecking) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-white">
-          {ti({ en: "Loading...", vi: "Đang tải..." })}
-        </div>
-      </div>
-    );
-  }
-
-  // Show duplicate tab warning
-  if (isDuplicateTab) {
-    return <DuplicateTabWarning />;
-  }
-
-  return (
-    <HashRouter>
-      <AlertModal />
-      <Routes>
-        <Route path="/" element={<Lobby />} />
-        <Route path="/room/:roomId" element={<Room />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </HashRouter>
-  );
-}
-
-export default App;

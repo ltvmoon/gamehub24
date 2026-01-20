@@ -1,19 +1,32 @@
 import { useState, useEffect, useRef } from "react";
-import { Settings, RefreshCw, Wifi, WifiOff, Save } from "lucide-react";
+import {
+  Settings,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Save,
+  Dices,
+  X,
+} from "lucide-react";
 import { useSocketStore } from "../stores/socketStore";
-import { useUserStore } from "../stores/userStore";
+import {
+  generateRandomUsername,
+  generateSuffix,
+  useUserStore,
+} from "../stores/userStore";
 import useLanguage, { Language } from "../stores/languageStore";
 import { getServerUrl, setServerUrl } from "../services/socket";
 import { useAlertStore } from "../stores/alertStore";
 
 export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const { isConnected } = useSocketStore();
-  const { generateNewId, userId, username } = useUserStore();
-  const { show: showAlert, confirm: confirmAction } = useAlertStore();
+  const { username, setUsername } = useUserStore();
+  const { show: showAlert } = useAlertStore();
   const { ti, ts, language, setLanguage } = useLanguage();
 
   const [url, setUrl] = useState(getServerUrl());
-  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [previewUsername, setPreviewUsername] = useState("");
 
   const waitReConnectRef = useRef(false);
 
@@ -55,20 +68,42 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const handleRegenerateIdentity = async () => {
-    if (
-      await confirmAction(
-        ts({
-          en: "Are you sure? This will generate a new random ID and username. The page will reload.",
-          vi: "Bạn có chắc không? Điều này sẽ tạo ID và tên người dùng mới. Trang sẽ tải lại.",
-        }),
-        ts({ en: "Regenerate Identity", vi: "Tạo danh tính mới" }),
-      )
-    ) {
-      setIsRegenerating(true);
-      generateNewId();
-      window.location.reload();
+  // Update preview when newUsername changes
+  useEffect(() => {
+    if (newUsername.trim()) {
+      const cleanName = newUsername.trim().replace(/\d+$/, "");
+      setPreviewUsername(`${cleanName}${generateSuffix()}`);
+    } else {
+      setPreviewUsername("");
     }
+  }, [newUsername]);
+
+  const handleChangeUsername = () => {
+    const trimmed = newUsername.trim();
+    if (!trimmed || trimmed.length < 2 || trimmed.length > 20) {
+      showAlert(
+        ts({
+          en: "Username must be 2-20 characters",
+          vi: "Tên phải từ 2-20 ký tự",
+        }),
+        { type: "error" },
+      );
+      return;
+    }
+
+    const cleanName = trimmed.replace(/\d+$/, "");
+    const finalUsername = `${cleanName}${generateSuffix()}`;
+    setUsername(finalUsername);
+    setNewUsername("");
+    showAlert(
+      ts({
+        en: "Username updated. Reconnecting...",
+        vi: "Đã cập nhật tên. Đang kết nối lại...",
+      }),
+      { type: "success" },
+    );
+    waitReConnectRef.current = true;
+    window.location.reload();
   };
 
   return (
@@ -77,9 +112,17 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl mx-4 animate-scaleIn max-h-[90vh] overflow-y-auto overflow-x-hidden"
+        className="relative bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl mx-4 animate-scaleIn max-h-[90vh] overflow-y-auto overflow-x-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button top-left */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
           <Settings className="w-6 h-6 text-primary" />
           <h2 className="font-display text-2xl text-text-primary">
@@ -90,31 +133,23 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-6">
           {/* Language Switcher */}
           <div className="space-y-2">
-            {/* <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              {ti({ en: "Language", vi: "Ngôn ngữ" })}
-            </label> */}
             <div className="flex gap-2">
-              <button
-                onClick={() => setLanguage(Language.en)}
-                className={`flex-1 px-4 py-2.5 rounded-lg border transition-all ${
-                  language === Language.en
-                    ? "bg-primary/20 border-primary/50 text-primary"
-                    : "bg-white/5 border-white/10 text-text-secondary hover:bg-white/10"
-                }`}
-              >
-                🇺🇸 English
-              </button>
-              <button
-                onClick={() => setLanguage(Language.vi)}
-                className={`flex-1 px-4 py-2.5 rounded-lg border transition-all ${
-                  language === Language.vi
-                    ? "bg-primary/20 border-primary/50 text-primary"
-                    : "bg-white/5 border-white/10 text-text-secondary hover:bg-white/10"
-                }`}
-              >
-                🇻🇳 Tiếng Việt
-              </button>
+              {[
+                { value: Language.en, label: "🇺🇸 English" },
+                { value: Language.vi, label: "🇻🇳 Tiếng Việt" },
+              ].map((lang) => (
+                <button
+                  key={lang.value}
+                  onClick={() => setLanguage(lang.value)}
+                  className={`flex-1 px-4 py-2.5 rounded-lg border transition-all ${
+                    language === lang.value
+                      ? "bg-primary/20 border-primary/50 text-primary"
+                      : "bg-white/5 border-white/10 text-text-secondary hover:bg-white/10"
+                  }`}
+                >
+                  {lang.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -159,67 +194,91 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                 <RefreshCw className="w-4 h-4" />
               </button>
             </div>
-          </div>
 
-          {/* Connection Status */}
-          <div className="bg-white/5 rounded-xl p-4 flex items-center justify-between">
-            <span className="text-sm font-medium text-text-secondary">
-              {ti({ en: "Status", vi: "Trạng thái" })}
-            </span>
-            <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                isConnected
-                  ? "bg-green-500/20 text-green-500 border border-green-500/30"
-                  : "bg-red-500/20 text-red-500 border border-red-500/30"
-              }`}
-            >
-              {isConnected ? (
-                <Wifi className="w-3 h-3" />
-              ) : (
-                <WifiOff className="w-3 h-3" />
-              )}
-              {isConnected
-                ? ti({ en: "Connected", vi: "Đã kết nối" })
-                : ti({ en: "Disconnected", vi: "Mất kết nối" })}
+            {/* Connection Status */}
+            <div className="bg-white/5 rounded-xl p-4 flex items-center justify-between">
+              <span className="text-sm font-medium text-text-secondary">
+                {ti({ en: "Status", vi: "Trạng thái" })}
+              </span>
+              <div
+                className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                  isConnected
+                    ? "bg-green-500/20 text-green-500 border border-green-500/30"
+                    : "bg-red-500/20 text-red-500 border border-red-500/30"
+                }`}
+              >
+                {isConnected ? (
+                  <Wifi className="w-3 h-3" />
+                ) : (
+                  <WifiOff className="w-3 h-3" />
+                )}
+                {isConnected
+                  ? ti({ en: "Connected", vi: "Đã kết nối" })
+                  : ti({ en: "Disconnected", vi: "Mất kết nối" })}
+              </div>
             </div>
           </div>
 
           <div className="h-px bg-white/10 my-4" />
 
-          {/* Identity */}
+          {/* Username Change */}
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-medium text-text-secondary mb-1">
+              <div className="text-sm font-medium text-text-secondary mb-2">
                 {ti({ en: "Your Identity", vi: "Danh tính của bạn" })}
               </div>
-              <div className="text-xs text-text-muted break-all font-mono bg-black/20 p-2 rounded">
-                ID: {userId}
-              </div>
-              <div className="text-xs text-text-muted mt-1 font-mono bg-black/20 p-2 rounded">
-                {ti({ en: "Username", vi: "Tên người dùng" })}: {username}
+              <div className="text-md text-text-muted mt-1 font-mono bg-black/20 p-2 rounded">
+                {username}
               </div>
             </div>
 
-            <button
-              onClick={handleRegenerateIdentity}
-              disabled={isRegenerating}
-              className="w-full px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-2 font-medium"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${isRegenerating ? "animate-spin" : ""}`}
-              />
-              {ti({ en: "Generate New Identity", vi: "Tạo danh tính mới" })}
-            </button>
-          </div>
-        </div>
+            <div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder={ts({
+                    en: "Enter new username",
+                    vi: "Nhập tên mới",
+                  })}
+                  maxLength={20}
+                  className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary min-w-0"
+                />
+                <button
+                  onClick={handleChangeUsername}
+                  disabled={
+                    !newUsername.trim() || newUsername.trim().length < 2
+                  }
+                  className="px-3 py-2 bg-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  title={ts({ en: "Save Username", vi: "Lưu tên" })}
+                >
+                  <Save className="w-4 h-4" />
+                </button>
+                {/* Random btn */}
+                <button
+                  onClick={() => {
+                    setNewUsername(generateRandomUsername());
+                  }}
+                  className="px-3 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  <Dices className="w-4 h-4" />
+                </button>
+              </div>
 
-        <div className="mt-8 pt-4 border-t border-white/10 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
-          >
-            {ti({ en: "Close", vi: "Đóng" })}
-          </button>
+              {/* Preview */}
+              {previewUsername && (
+                <div className="mt-2 bg-primary/10 border border-primary/20 rounded-lg p-2">
+                  <p className="text-xs text-text-muted">
+                    {ti({ en: "Preview:", vi: "Xem trước:" })}
+                  </p>
+                  <p className="text-sm font-bold font-mono text-primary">
+                    {previewUsername}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

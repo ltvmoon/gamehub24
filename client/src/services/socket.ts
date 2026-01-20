@@ -38,7 +38,7 @@ export const initSocket = (): Socket => {
       userId,
       username,
     },
-    autoConnect: true,
+    autoConnect: false, // Don't auto-connect, wait for manual connection after username is set
   });
 
   // Connection event handlers
