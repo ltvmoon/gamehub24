@@ -433,6 +433,169 @@ const PlayerHistoryModal: React.FC<{
   );
 };
 
+// SVG Overlay for relationship lines
+const RelationshipOverlay: React.FC<{
+  players: WerewolfPlayer[];
+  hoveredPlayerId: string | null;
+  suspicionMarkers: any[];
+  votes: any[];
+  playerRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
+}> = ({ players, hoveredPlayerId, suspicionMarkers, votes, playerRefs }) => {
+  const [lines, setLines] = useState<
+    {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      color: string;
+      moving: boolean;
+    }[]
+  >([]);
+
+  useEffect(() => {
+    if (!hoveredPlayerId) {
+      setLines([]);
+      return;
+    }
+
+    const updateLines = () => {
+      const newLines: any[] = [];
+      const gridRect = playerRefs.current
+        .get(hoveredPlayerId)
+        ?.parentElement?.getBoundingClientRect();
+
+      if (!gridRect) return;
+
+      // Helper to get center of a player card
+      const getCenter = (id: string) => {
+        const el = playerRefs.current.get(id);
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width / 2 - gridRect.left,
+          y: rect.top + rect.height / 2 - gridRect.top,
+        };
+      };
+
+      const hoveredCenter = getCenter(hoveredPlayerId);
+      if (!hoveredCenter) return;
+
+      // Suspicion Lines (Orange)
+      suspicionMarkers.forEach((marker) => {
+        if (
+          marker.fromPlayerId === hoveredPlayerId ||
+          marker.toPlayerId === hoveredPlayerId
+        ) {
+          const fromCenter = getCenter(marker.fromPlayerId);
+          const toCenter = getCenter(marker.toPlayerId);
+          if (fromCenter && toCenter) {
+            newLines.push({
+              x1: fromCenter.x,
+              y1: fromCenter.y,
+              x2: toCenter.x,
+              y2: toCenter.y,
+              color: "#fb923c", // orange-400
+              moving: true, // Animated dash
+            });
+          }
+        }
+      });
+
+      // Vote Lines (Red)
+      votes.forEach((vote) => {
+        // Check local votes structure or adjusted based on phase
+        const fromId = vote.playerId || vote.voterId;
+        const toId = vote.targetId;
+
+        if (fromId === hoveredPlayerId || toId === hoveredPlayerId) {
+          const fromCenter = getCenter(fromId);
+          const toCenter = getCenter(toId);
+          if (fromCenter && toCenter) {
+            newLines.push({
+              x1: fromCenter.x,
+              y1: fromCenter.y,
+              x2: toCenter.x,
+              y2: toCenter.y,
+              color: "#ef4444", // red-500
+              moving: false, // Solid line
+            });
+          }
+        }
+      });
+
+      setLines(newLines);
+    };
+
+    updateLines();
+    // Re-calculate on resize/scroll mainly
+    window.addEventListener("resize", updateLines);
+    window.addEventListener("scroll", updateLines);
+
+    // Also minimal polling for animation smoothness if layout shifts
+    const interval = setInterval(updateLines, 100);
+
+    return () => {
+      window.removeEventListener("resize", updateLines);
+      window.removeEventListener("scroll", updateLines);
+      clearInterval(interval);
+    };
+  }, [hoveredPlayerId, players, suspicionMarkers, votes]);
+
+  if (!hoveredPlayerId || lines.length === 0) return null;
+
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible">
+      {lines.map((line, idx) => (
+        <React.Fragment key={idx}>
+          {/* Main Line */}
+          <line
+            x1={line.x1}
+            y1={line.y1}
+            x2={line.x2}
+            y2={line.y2}
+            stroke={line.color}
+            strokeWidth="2"
+            strokeDasharray={line.moving ? "5,5" : "none"}
+            className={line.moving ? "animate-[dash_0.3s_linear_infinite]" : ""}
+            markerEnd={`url(#arrowhead-${line.color.replace("#", "")})`}
+          />
+          {/* Start Point Circle */}
+          <circle cx={line.x1} cy={line.y1} r="3" fill={line.color} />
+        </React.Fragment>
+      ))}
+      <defs>
+        <marker
+          id="arrowhead-fb923c"
+          markerWidth="10"
+          markerHeight="7"
+          refX="9"
+          refY="3.5"
+          orient="auto"
+        >
+          <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+        </marker>
+        <marker
+          id="arrowhead-ef4444"
+          markerWidth="10"
+          markerHeight="7"
+          refX="9"
+          refY="3.5"
+          orient="auto"
+        >
+          <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+        </marker>
+      </defs>
+      <style>{`
+        @keyframes dash {
+          to {
+            stroke-dashoffset: -10;
+          }
+        }
+      `}</style>
+    </svg>
+  );
+};
+
 // Unified Player Card - shows all status indicators consistently
 const UnifiedPlayerCard: React.FC<{
   player: WerewolfPlayer;
@@ -447,6 +610,9 @@ const UnifiedPlayerCard: React.FC<{
   isProtected?: boolean;
   onViewHistory?: () => void;
   onClick?: () => void;
+  innerRef?: React.Ref<HTMLDivElement>;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }> = ({
   player,
   isMe,
@@ -460,13 +626,24 @@ const UnifiedPlayerCard: React.FC<{
   isProtected,
   onViewHistory,
   onClick,
+  innerRef,
+  onMouseEnter,
+  onMouseLeave,
 }) => {
   const { ti, ts } = useLanguage();
   const roleInfo = player.role ? ROLE_INFO[player.role] : null;
   const isDead = !player.isAlive;
 
   return (
-    <div className="relative group/card">
+    <div
+      ref={innerRef}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onTouchStart={onMouseEnter}
+      onTouchEnd={onMouseLeave}
+      onTouchCancel={onMouseLeave}
+      className="relative group/card"
+    >
       <button
         onClick={onClick}
         disabled={!canSelect}
@@ -616,6 +793,8 @@ const PlayerGrid: React.FC<{
   const [historyPlayer, setHistoryPlayer] = useState<WerewolfPlayer | null>(
     null,
   );
+  const [hoveredPlayerId, setHoveredPlayerId] = useState<string | null>(null);
+  const playerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const activePlayers = state.players.filter((p) => p.id !== null);
   const myPlayer = state.players.find((p) => p.id === currentUserId);
@@ -638,8 +817,32 @@ const PlayerGrid: React.FC<{
     return 0;
   };
 
+  // Collect all active votes for visualization
+  const allVotes = useMemo(() => {
+    let votes: any[] = [];
+    if (state.phase === "night" && iAmWolf) {
+      votes = [...state.nightActions.wolfVotes];
+    } else if (state.phase === "voting" || state.phase === "hunterRevenge") {
+      votes = [...state.eliminationVotes];
+    }
+    return votes;
+  }, [
+    state.phase,
+    state.nightActions.wolfVotes,
+    state.eliminationVotes,
+    iAmWolf,
+  ]);
+
   return (
     <div className="relative flex flex-wrap justify-center gap-1 md:gap-2 md:p-2">
+      <RelationshipOverlay
+        players={activePlayers}
+        hoveredPlayerId={hoveredPlayerId}
+        suspicionMarkers={state.suspicionMarkers}
+        votes={allVotes}
+        playerRefs={playerRefs}
+      />
+
       {/* Player History Modal */}
       {historyPlayer && (
         <PlayerHistoryModal
@@ -686,6 +889,12 @@ const PlayerGrid: React.FC<{
               setHistoryPlayer(player);
             }}
             onClick={() => canSelect && player.id && onPlayerClick?.(player.id)}
+            innerRef={(el) => {
+              if (el && player.id) playerRefs.current.set(player.id, el);
+              else if (player.id) playerRefs.current.delete(player.id);
+            }}
+            onMouseEnter={() => player.id && setHoveredPlayerId(player.id)}
+            onMouseLeave={() => setHoveredPlayerId(null)}
           />
         );
       })}
