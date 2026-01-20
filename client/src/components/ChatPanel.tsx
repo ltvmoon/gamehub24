@@ -4,6 +4,7 @@ import { useChatStore, type ChatMessage } from "../stores/chatStore";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { getSocket } from "../services/socket";
+import useLanguage from "../stores/languageStore";
 
 export default function ChatPanel() {
   const [message, setMessage] = useState("");
@@ -11,6 +12,7 @@ export default function ChatPanel() {
   const { messages, addMessage } = useChatStore();
   const { currentRoom } = useRoomStore();
   const { userId, username } = useUserStore();
+  const { ti } = useLanguage();
   const socket = getSocket();
 
   useEffect(() => {
@@ -68,6 +70,11 @@ export default function ChatPanel() {
     <div className="flex flex-col h-full w-full">
       {/* Messages */}
       <div className="flex-1 p-4 overflow-y-auto space-y-3">
+        {messages.length === 0 && (
+          <p className="text-text-muted text-sm text-center">
+            {ti({ en: "No messages yet.", vi: "Không có tin nhắn" })}
+          </p>
+        )}
         {messages.map((msg) =>
           msg.type === "system" ? (
             <SystemMessage key={msg.id} message={msg} />

@@ -230,7 +230,7 @@ const NOUNS = [
   "way",
 ];
 
-function toUpperCaseFirstLetter(str: string): string {
+export function toUpperCaseFirstLetter(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 

@@ -10,6 +10,8 @@ import {
   Lock,
   Languages,
   Star,
+  MessageSquare,
+  Play,
 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useChatStore } from "../stores/chatStore";
@@ -22,6 +24,8 @@ import { useGameFavorites } from "../hooks/useGameFavorites";
 import GameCategoryFilter from "../components/GameCategoryFilter";
 import { type Room } from "../stores/roomStore";
 import SidePanel from "../components/SidePanel";
+import ChatPanel from "../components/ChatPanel";
+import UserList from "../components/UserList";
 import GameContainer from "../games/GameContainer";
 import ShareModal from "../components/ShareModal";
 
@@ -30,7 +34,7 @@ export default function RoomPage() {
   const navigate = useNavigate();
   const { currentRoom, setCurrentRoom, updatePlayers, updateSpectators } =
     useRoomStore();
-  const { clearMessages } = useChatStore();
+  const { clearMessages, messages } = useChatStore();
   const { userId, username } = useUserStore();
   const { show: showAlert, confirm: showConfirm } = useAlertStore();
   const { ti, ts, language, setLanguage } = useLanguage();
@@ -46,6 +50,8 @@ export default function RoomPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   // Helper to check for desktop view
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+  // Mobile tab state (game or chat)
+  const [mobileTab, setMobileTab] = useState<string>("game");
 
   const isSpectator = currentRoom?.spectators?.some((p) => p.id === userId);
   const isHost = currentRoom?.ownerId === userId;
@@ -379,7 +385,7 @@ export default function RoomPage() {
       <div className="min-h-screen bg-background-primary flex flex-col">
         {/* Room Header */}
         <header className="z-40 glass-card border-b border-white/10 flex-shrink-0">
-          <div className="w-full px-3 md:px-4 py-3 md:py-4">
+          <div className="w-full px-3 md:px-4 py-2">
             <div className="flex items-center justify-between gap-2">
               {/* Left side: Back button + Room info */}
               <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
@@ -415,14 +421,14 @@ export default function RoomPage() {
                     </div>
                   )}
                   {/* Game type - visible on all screens */}
-                  <div className="flex items-center gap-1.5 text-xs md:text-sm">
+                  <div className="flex items-center gap-1.5 text-xs md:text-sm mt-1">
                     <button
                       onClick={
                         isHost ? () => setShowChangeGameModal(true) : undefined
                       }
                       className={`flex items-center gap-1.5 ${
                         isHost
-                          ? "bg-white/5 hover:bg-white/10 cursor-pointer px-2 py-0.5 rounded transition-colors text-primary"
+                          ? "bg-white/5 hover:bg-white/10 cursor-pointer px-2 py-1 rounded transition-colors text-primary"
                           : "text-text-muted cursor-default"
                       }`}
                       title={
@@ -524,14 +530,69 @@ export default function RoomPage() {
           </div>
         </header>
 
+        {/* Mobile Tabs (visible only on mobile) */}
+        {!isDesktop && (
+          <div className="flex border-b border-white/10 bg-transparent">
+            {[
+              {
+                value: "game",
+                icon: Play,
+                label: { en: "Game", vi: "Game" },
+              },
+              {
+                value: "chat",
+                icon: MessageSquare,
+                label: { en: "Chat", vi: "Chat" },
+                badge: messages.length,
+              },
+              {
+                value: "user",
+                icon: User,
+                label: { en: "Users", vi: "Users" },
+                badge:
+                  (currentRoom?.players.length || 0) <
+                  (currentRoom?.players.length || 0) +
+                    (currentRoom?.spectators.length || 0)
+                    ? `${currentRoom?.players.length}/${(currentRoom?.players.length || 0) + (currentRoom?.spectators.length || 0)}`
+                    : `${currentRoom?.players.length}`,
+              },
+            ].map(({ value, icon: Icon, label, badge }) => (
+              <button
+                key={value}
+                onClick={() => setMobileTab(value)}
+                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${
+                  mobileTab === value
+                    ? "text-primary"
+                    : "text-text-secondary hover:text-text-primary hover:bg-white/5"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {ti(label)}
+                {badge !== undefined && (
+                  <span className="bg-white/10 text-xs py-0.5 px-1.5 rounded-md text-text-muted">
+                    {badge}
+                  </span>
+                )}
+                {mobileTab === value && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Main Content */}
-        <main className="flex-1 w-full px-2 py-6 overflow-hidden">
+        <main className="flex-1 w-full px-2 py-6 overflow-hidden lg:py-6 py-0">
           <div
             className="flex flex-col lg:flex-row md:gap-1 gap-4 h-full"
             ref={containerRef}
           >
             {/* Game Container */}
-            <div className="flex-1 min-w-0 glass-card rounded-2xl p-2 md:p-4 overflow-hidden flex flex-col relative">
+            <div
+              className={`flex-1 min-w-0 glass-card rounded-2xl p-2 md:p-4 overflow-hidden flex-col relative ${
+                isDesktop ? "flex" : mobileTab === "game" ? "flex" : "hidden"
+              }`}
+            >
               {isSpectator && (
                 <div className="absolute top-0 left-0 right-0 bg-blue-500/80 text-white text-xs py-1 px-4 text-center z-50 backdrop-blur-sm">
                   {ti({
@@ -546,25 +607,50 @@ export default function RoomPage() {
             </div>
 
             {/* Resize Handle (Desktop Only) */}
-            <div
-              className={`hidden lg:flex w-4 cursor-col-resize items-center justify-center hover:bg-white/10 rounded transition-colors flex-shrink-0 ${
-                isResizing ? "bg-white/10" : ""
-              }`}
-              onMouseDown={startResizing}
-            >
-              <div className="w-1 h-8 bg-white/20 rounded-full" />
-            </div>
+            {isDesktop && (
+              <div
+                className={`flex w-4 cursor-col-resize items-center justify-center hover:bg-white/10 rounded transition-colors flex-shrink-0 ${
+                  isResizing ? "bg-white/10" : ""
+                }`}
+                onMouseDown={startResizing}
+              >
+                <div className="w-1 h-8 bg-white/20 rounded-full" />
+              </div>
+            )}
 
-            {/* Chat Panel & Spectators */}
-            <div
-              className="flex-shrink-0 glass-card rounded-2xl flex flex-col overflow-hidden"
-              style={{
-                width: isDesktop ? chatPanelWidth : "100%",
-                height: isDesktop ? "auto" : "600px",
-              }}
-            >
-              <SidePanel />
-            </div>
+            {/* Side Panel (Desktop only: chat + users with internal tabs) */}
+            {isDesktop && (
+              <div
+                className="flex-shrink-0 glass-card rounded-2xl flex flex-col overflow-hidden"
+                style={{
+                  width: chatPanelWidth,
+                }}
+              >
+                <SidePanel />
+              </div>
+            )}
+
+            {/* Chat Panel (Mobile only: tab content) */}
+            {!isDesktop && (
+              <div
+                className={`flex-shrink-0 glass-card rounded-2xl flex-col overflow-hidden w-full ${
+                  mobileTab === "chat" ? "flex" : "hidden"
+                }`}
+              >
+                <ChatPanel />
+              </div>
+            )}
+
+            {/* User List (Mobile only: tab content) */}
+            {!isDesktop && (
+              <div
+                className={`flex-shrink-0 glass-card rounded-2xl flex-col overflow-hidden w-full ${
+                  mobileTab === "user" ? "flex" : "hidden"
+                }`}
+              >
+                <UserList />
+              </div>
+            )}
           </div>
         </main>
 
