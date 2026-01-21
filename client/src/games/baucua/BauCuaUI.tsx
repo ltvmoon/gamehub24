@@ -31,6 +31,7 @@ import {
   Eye,
   BookOpen,
   X,
+  Star,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -209,6 +210,7 @@ export default function BauCuaUI({
       double_down: <Zap className="w-4 h-4" />,
       insurance: <Shield className="w-4 h-4" />,
       reveal_one: <Eye className="w-4 h-4" />,
+      lucky_star: <Star className="w-4 h-4" />,
     };
     return iconMap[type];
   };
@@ -1014,7 +1016,7 @@ export default function BauCuaUI({
                 <h3 className="text-sm font-semibold mb-3 text-slate-300">
                   {ti({ vi: "Kỹ năng", en: "Power-ups" })}
                 </h3>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-wrap gap-2 justify-center">
                   {(
                     Object.keys(state.playerPowerUps[userId]) as PowerUpType[]
                   ).map((powerUpType) => {
@@ -1072,7 +1074,7 @@ export default function BauCuaUI({
                 {selectedPowerUpType && (
                   <div className="p-3 bg-purple-600/20 border border-purple-500 rounded-lg">
                     <p className="text-xs text-purple-300 font-semibold mb-1">
-                      ⚡ {ti(POWERUP_NAMES[selectedPowerUpType])}
+                      {ti(POWERUP_NAMES[selectedPowerUpType])}
                     </p>
                     <p className="text-xs text-slate-300">
                       {ti(POWERUP_DESCRIPTIONS[selectedPowerUpType])}

@@ -60,11 +60,13 @@ export default class BauCua extends BaseGame<BauCuaState> {
     double_down: PowerUp;
     insurance: PowerUp;
     reveal_one: PowerUp;
+    lucky_star: PowerUp;
   } {
     return {
       double_down: { type: "double_down", cooldown: 0, lastUsedRound: -1 },
       insurance: { type: "insurance", cooldown: 0, lastUsedRound: -1 },
       reveal_one: { type: "reveal_one", cooldown: 0, lastUsedRound: -1 },
+      lucky_star: { type: "lucky_star", cooldown: 0, lastUsedRound: -1 },
     };
   }
 
@@ -307,45 +309,56 @@ export default class BauCua extends BaseGame<BauCuaState> {
       diceRoll[0] === diceRoll[1] && diceRoll[1] === diceRoll[2];
     const jackpotSymbol = isTripleMatch ? diceRoll[0] : null;
 
-    // Calculate total bets for jackpot pool contribution
-    let totalAllBets = 0;
+    // Pre-calculate jackpot winners count
+    let jackpotWinnersCount = 0;
+    if (this.state.isMegaRound && jackpotSymbol) {
+      jackpotWinnersCount = Object.values(this.state.currentBets).filter(
+        (bets) => bets.some((b) => b.symbol === jackpotSymbol),
+      ).length;
+    }
 
     // Calculate winnings for each player
+    let totalAllBetsAcrossPlayers = 0;
+
     Object.keys(this.state.currentBets).forEach((playerId) => {
       const bets = this.state.currentBets[playerId] || [];
       const playerBalance = this.state.playerBalances[playerId];
 
       if (!playerBalance) return;
 
-      let totalWinnings = 0;
+      let totalReturnFromBets = 0; // Total money returned (Capital + Profit)
       let totalBetAmount = 0;
       let totalLosses = 0;
+
+      const activePowerUp = this.state.activePowerUps[playerId];
 
       bets.forEach((bet) => {
         totalBetAmount += bet.amount;
         const matches = symbolCounts[bet.symbol];
 
         if (matches > 0) {
-          // Win: bet amount × number of matches
-          let winAmount = bet.amount * matches;
+          // 1. Return Capital
+          let returnAmount = bet.amount;
 
-          // Apply double_down power-up
-          const activePowerUp = this.state.activePowerUps[playerId];
+          // 2. Profit = Bet * Matches
+          let profit = bet.amount * matches;
+
+          // Power-up: Double Profit
           if (activePowerUp === "double_down") {
-            winAmount *= 2;
+            profit *= 2;
           }
 
-          totalWinnings += winAmount;
+          returnAmount += profit;
+          totalReturnFromBets += returnAmount;
 
-          // Mega round jackpot bonus for matching symbol
-          if (this.state.isMegaRound && jackpotSymbol === bet.symbol) {
-            totalWinnings += Math.floor(
-              this.state.jackpotPool /
-                Object.keys(this.state.currentBets).filter((id) =>
-                  (this.state.currentBets[id] || []).some(
-                    (b) => b.symbol === jackpotSymbol,
-                  ),
-                ).length,
+          // 3. Jackpot bonus
+          if (
+            this.state.isMegaRound &&
+            jackpotSymbol === bet.symbol &&
+            jackpotWinnersCount > 0
+          ) {
+            totalReturnFromBets += Math.floor(
+              this.state.jackpotPool / jackpotWinnersCount,
             );
           }
         } else {
@@ -353,24 +366,32 @@ export default class BauCua extends BaseGame<BauCuaState> {
         }
       });
 
-      totalAllBets += totalBetAmount;
+      totalAllBetsAcrossPlayers += totalBetAmount;
 
-      // Apply insurance power-up (refund 50% of losses)
-      const activePowerUp = this.state.activePowerUps[playerId];
+      // Insurance: Refund 50% of losses
       if (activePowerUp === "insurance" && totalLosses > 0) {
-        totalWinnings += Math.floor(totalLosses * 0.5);
+        totalReturnFromBets += Math.floor(totalLosses * 0.5);
       }
 
-      // Update balance: remove total bet, add total winnings
+      // Lucky Star: Random multiplier for total winnings
+      if (activePowerUp === "lucky_star" && totalReturnFromBets > 0) {
+        const multiplier = Math.random() * 3.5 + 1.5; // 1.5x - 5.0x
+        totalReturnFromBets = Math.floor(totalReturnFromBets * multiplier);
+      }
+
+      // Update balance: (Old Balance - Total Bet) + Total Return
+
       const newBalance =
-        playerBalance.currentBalance - totalBetAmount + totalWinnings;
+        playerBalance.currentBalance - totalBetAmount + totalReturnFromBets;
       playerBalance.currentBalance = Math.max(0, newBalance);
       playerBalance.balanceHistory.push(playerBalance.currentBalance);
       playerBalance.totalBet = 0;
     });
 
     // Add to jackpot pool
-    this.state.jackpotPool += Math.floor(totalAllBets * JACKPOT_PERCENTAGE);
+    this.state.jackpotPool += Math.floor(
+      totalAllBetsAcrossPlayers * JACKPOT_PERCENTAGE,
+    );
 
     // Reset jackpot if mega round was won
     if (this.state.isMegaRound && isTripleMatch) {
@@ -395,6 +416,7 @@ export default class BauCua extends BaseGame<BauCuaState> {
 
     this.state.gamePhase = "results";
     this.state.currentRound++;
+    this.state.isMegaRound = this.state.currentRound % 5 === 0;
 
     // Check if any player is out of money
     this.checkGameOver();

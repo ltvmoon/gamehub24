@@ -55,7 +55,11 @@ export type DiceRoll = [BauCuaSymbol, BauCuaSymbol, BauCuaSymbol];
 export type GamePhase = "waiting" | "betting" | "rolling" | "results" | "ended";
 
 // Power-up types
-export type PowerUpType = "double_down" | "insurance" | "reveal_one";
+export type PowerUpType =
+  | "double_down"
+  | "insurance"
+  | "reveal_one"
+  | "lucky_star";
 
 export interface PowerUp {
   type: PowerUpType;
@@ -85,6 +89,7 @@ export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
   double_down: { cooldown: 3, timing: "post_roll" },
   insurance: { cooldown: 2, timing: "post_roll" },
   reveal_one: { cooldown: 3, timing: "pre_roll", accuracy: [0.6, 0.9] },
+  lucky_star: { cooldown: 4, timing: "post_roll" },
 };
 
 // Power-up display names
@@ -92,6 +97,7 @@ export const POWERUP_NAMES: Record<PowerUpType, { en: string; vi: string }> = {
   double_down: { en: "Double Down", vi: "Nhân Đôi" },
   insurance: { en: "Insurance", vi: "Bảo Hiểm" },
   reveal_one: { en: "God Eyes", vi: "Mắt Thần" },
+  lucky_star: { en: "Lucky Star", vi: "Sao May Mắn" },
 };
 
 // Power-up descriptions
@@ -110,6 +116,10 @@ export const POWERUP_DESCRIPTIONS: Record<
   reveal_one: {
     en: `Predict result (60-90% accuracy). Cooldown: ${POWERUP_CONFIG.reveal_one.cooldown} rounds`,
     vi: `Dự đoán kết quả (60-90% chính xác). Hồi chiêu: ${POWERUP_CONFIG.reveal_one.cooldown} vòng`,
+  },
+  lucky_star: {
+    en: `Multiply winnings by 1.5x - 5x. Cooldown: ${POWERUP_CONFIG.lucky_star.cooldown} rounds`,
+    vi: `Nhân tiền thắng ngẫu nhiên 1.5x - 5x. Hồi chiêu: ${POWERUP_CONFIG.lucky_star.cooldown} vòng`,
   },
 };
 
@@ -148,6 +158,7 @@ export interface BauCuaState {
       double_down: PowerUp;
       insurance: PowerUp;
       reveal_one: PowerUp;
+      lucky_star: PowerUp;
     }
   >;
 

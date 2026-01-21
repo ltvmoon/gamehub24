@@ -123,7 +123,12 @@ io.on("connection", (socket: Socket) => {
       );
 
       // If room not found, auto create
-      if (!result.success && result.error === "Room not found") {
+      if (
+        !result.success &&
+        result.error === "Room not found" &&
+        // only allow auto join if user own this room
+        data.roomId === username
+      ) {
         const savedSettings = roomManager.getRoomSettings(data.roomId);
         const room = roomManager.createRoom(
           {
