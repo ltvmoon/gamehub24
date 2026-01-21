@@ -65,6 +65,7 @@ export interface PowerUp {
   type: PowerUpType;
   cooldown: number; // Rounds until available again
   lastUsedRound: number; // Track when it was last used
+  lastMultiplier?: number; // For lucky_star
 }
 
 // Power-up activation timing

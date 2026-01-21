@@ -532,7 +532,7 @@ export default function BauCuaUI({
         <h3 className="text-lg font-semibold mb-4 text-center">
           {ti({ vi: "Kết quả xúc xắc", en: "Dice Roll" })}
         </h3>
-        <div className="flex justify-center gap-4 mb-4">
+        <div className="flex justify-center gap-2 mb-4">
           {/* Slot machine style reels */}
           {isRolling || state.diceRoll ? (
             slotReels.map((reel, reelIndex) => {
@@ -609,7 +609,7 @@ export default function BauCuaUI({
 
   return (
     <div
-      className={`relative w-full h-full flex flex-col @md:gap-4 gap-2 @md:p-2 pb-20 overflow-y-auto ${state.isMegaRound && state.gamePhase === "betting" ? "animate-pulse" : ""}`}
+      className={`relative w-full h-full flex flex-col @md:gap-4 gap-2 @md:p-2 pb-20 overflow-y-auto`}
     >
       {/* Game Ended */}
       {state.gamePhase === "ended" && (
@@ -931,10 +931,6 @@ export default function BauCuaUI({
                       hasAllIn && state.gamePhase === "betting"
                         ? "ring-4 ring-red-500 ring-opacity-75 shadow-lg shadow-red-500/50 animate-pulse"
                         : ""
-                    } ${
-                      state.isMegaRound && state.gamePhase === "betting"
-                        ? "shadow-lg shadow-yellow-500/30"
-                        : ""
                     }`}
                   >
                     <div className="text-4xl mb-2">
@@ -955,8 +951,8 @@ export default function BauCuaUI({
                                 : "text-slate-300"
                           }
                         >
-                          {/* {streakCount}/{totalRolls} */}
-                          {Math.round((streakCount / totalRolls) * 100)}%
+                          {streakCount}/{totalRolls}
+                          {/* {Math.round((streakCount / totalRolls) * 100)}% */}
                         </span>
                       </div>
                     )}
@@ -1162,6 +1158,28 @@ export default function BauCuaUI({
                     </div>
                   </div>
                 )}
+                {/* Show result for Lucky Star */}
+                {state.playerPowerUps[userId]?.lucky_star?.lastMultiplier &&
+                  state.playerPowerUps[userId].lucky_star.lastUsedRound ===
+                    state.currentRound - 1 && (
+                    <div className="p-3 bg-yellow-600/20 border border-yellow-500 rounded-lg mt-2">
+                      <p className="text-xs text-yellow-300 font-semibold mb-2">
+                        🌟{" "}
+                        {ti({
+                          vi: "Kết quả Sao May Mắn",
+                          en: "Lucky Star Result",
+                        })}
+                      </p>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-yellow-300">
+                          x
+                          {state.playerPowerUps[
+                            userId
+                          ].lucky_star.lastMultiplier?.toFixed(1)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
           </div>

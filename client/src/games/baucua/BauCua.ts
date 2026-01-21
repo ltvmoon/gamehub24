@@ -377,6 +377,12 @@ export default class BauCua extends BaseGame<BauCuaState> {
       if (activePowerUp === "lucky_star" && totalReturnFromBets > 0) {
         const multiplier = Math.random() * 3.5 + 1.5; // 1.5x - 5.0x
         totalReturnFromBets = Math.floor(totalReturnFromBets * multiplier);
+
+        // Save multiplier for display
+        if (this.state.playerPowerUps[playerId]?.lucky_star) {
+          this.state.playerPowerUps[playerId].lucky_star.lastMultiplier =
+            multiplier;
+        }
       }
 
       // Update balance: (Old Balance - Total Bet) + Total Return
