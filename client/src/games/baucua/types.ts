@@ -1,4 +1,9 @@
-// Player type from roomStore (not directly used in types.ts)
+// Game constants
+export const INITIAL_BALANCE = 1000;
+export const MIN_BET = 10;
+export const MAX_BET = 500;
+export const JACKPOT_PERCENTAGE = 0.1;
+export const MEGA_ROUND_INTERVAL = 5;
 
 // The 6 traditional Bầu Cua symbols
 export type BauCuaSymbol =
@@ -82,45 +87,52 @@ export interface PowerUpPrediction {
 export interface PowerUpConfig {
   cooldown: number;
   timing: PowerUpTiming;
+  name: { en: string; vi: string };
+  description: { en: string; vi: string };
+
   accuracy?: [number, number]; // For prediction-based powers
+  luckyMultiplier?: [number, number]; // For lucky_star
 }
 
 // Power-up configuration (centralized)
 export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
-  double_down: { cooldown: 3, timing: "post_roll" },
-  insurance: { cooldown: 2, timing: "post_roll" },
-  reveal_one: { cooldown: 3, timing: "pre_roll", accuracy: [0.6, 0.9] },
-  lucky_star: { cooldown: 4, timing: "post_roll" },
-};
-
-// Power-up display names
-export const POWERUP_NAMES: Record<PowerUpType, { en: string; vi: string }> = {
-  double_down: { en: "Double Down", vi: "Nhân Đôi" },
-  insurance: { en: "Insurance", vi: "Bảo Hiểm" },
-  reveal_one: { en: "God Eyes", vi: "Mắt Thần" },
-  lucky_star: { en: "Lucky Star", vi: "Sao May Mắn" },
-};
-
-// Power-up descriptions
-export const POWERUP_DESCRIPTIONS: Record<
-  PowerUpType,
-  { en: string; vi: string }
-> = {
   double_down: {
-    en: `2x payout if you win. Cooldown: ${POWERUP_CONFIG.double_down.cooldown} rounds`,
-    vi: `Gấp đôi tiền thắng. Hồi chiêu: ${POWERUP_CONFIG.double_down.cooldown} vòng`,
+    cooldown: 3,
+    timing: "post_roll",
+    name: { en: "Double Down", vi: "Nhân Đôi" },
+    description: {
+      en: "2x payout if you win. Cooldown: 3 rounds",
+      vi: "Gấp đôi tiền thắng. Hồi chiêu: 3 vòng",
+    },
   },
   insurance: {
-    en: `50% refund if you lose. Cooldown: ${POWERUP_CONFIG.insurance.cooldown} rounds`,
-    vi: `Hoàn 50% nếu thua. Hồi chiêu: ${POWERUP_CONFIG.insurance.cooldown} vòng`,
+    cooldown: 2,
+    timing: "post_roll",
+    name: { en: "Insurance", vi: "Bảo Hiểm" },
+    description: {
+      en: "50% refund if you lose. Cooldown: 2 rounds",
+      vi: "Hoàn 50% nếu thua. Hồi chiêu: 2 vòng",
+    },
   },
   reveal_one: {
-    en: `Predict result (60-90% accuracy). Cooldown: ${POWERUP_CONFIG.reveal_one.cooldown} rounds`,
-    vi: `Dự đoán kết quả (60-90% chính xác). Hồi chiêu: ${POWERUP_CONFIG.reveal_one.cooldown} vòng`,
+    cooldown: 3,
+    timing: "pre_roll",
+    accuracy: [0.6, 0.9],
+    name: { en: "God Eyes", vi: "Mắt Thần" },
+    description: {
+      en: "Predict result (60-90% accuracy). Cooldown: 3 rounds",
+      vi: "Dự đoán kết quả (60-90% chính xác). Hồi chiêu: 3 vòng",
+    },
   },
   lucky_star: {
-    en: `Multiply winnings by 1.5x - 5x. Cooldown: ${POWERUP_CONFIG.lucky_star.cooldown} rounds`,
-    vi: `Nhân tiền thắng ngẫu nhiên 1.5x - 5x. Hồi chiêu: ${POWERUP_CONFIG.lucky_star.cooldown} vòng`,
+    cooldown: 4,
+    timing: "post_roll",
+    luckyMultiplier: [0.5, 3],
+    name: { en: "Lucky Star", vi: "Sao May Mắn" },
+    description: {
+      en: "Multiply winnings by 0.5x - 3x. Cooldown: 4 rounds",
+      vi: "Nhân tiền thắng ngẫu nhiên 0.5x - 3x. Hồi chiêu: 4 vòng",
+    },
   },
 };
 
@@ -176,13 +188,6 @@ export interface BauCuaState {
   isMegaRound: boolean;
   jackpotPool: number;
 }
-
-// Game constants
-export const INITIAL_BALANCE = 1000;
-export const MIN_BET = 10;
-export const MAX_BET = 500;
-export const JACKPOT_PERCENTAGE = 0.1;
-export const MEGA_ROUND_INTERVAL = 5;
 
 // Actions
 export interface PlaceBetAction {

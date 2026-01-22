@@ -17,6 +17,7 @@ import {
   MEGA_ROUND_INTERVAL,
 } from "./types";
 import type { Player } from "../../stores/roomStore";
+import { randInRange } from "../../utils";
 
 export default class BauCua extends BaseGame<BauCuaState> {
   private botMoveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -56,18 +57,16 @@ export default class BauCua extends BaseGame<BauCuaState> {
   }
 
   // Initialize power-ups for a player
-  private initializePowerUps(): {
-    double_down: PowerUp;
-    insurance: PowerUp;
-    reveal_one: PowerUp;
-    lucky_star: PowerUp;
-  } {
-    return {
-      double_down: { type: "double_down", cooldown: 0, lastUsedRound: -1 },
-      insurance: { type: "insurance", cooldown: 0, lastUsedRound: -1 },
-      reveal_one: { type: "reveal_one", cooldown: 0, lastUsedRound: -1 },
-      lucky_star: { type: "lucky_star", cooldown: 0, lastUsedRound: -1 },
-    };
+  private initializePowerUps(): Record<PowerUpType, PowerUp> {
+    const powerUps = {} as Record<PowerUpType, PowerUp>;
+    for (const [type, _config] of Object.entries(POWERUP_CONFIG)) {
+      powerUps[type as PowerUpType] = {
+        type: type as PowerUpType,
+        cooldown: 0,
+        lastUsedRound: -1,
+      };
+    }
+    return powerUps;
   }
 
   onSocketGameAction(data: { action: GameAction }): void {
@@ -375,7 +374,10 @@ export default class BauCua extends BaseGame<BauCuaState> {
 
       // Lucky Star: Random multiplier for total winnings
       if (activePowerUp === "lucky_star" && totalReturnFromBets > 0) {
-        const multiplier = Math.random() * 3.5 + 1.5; // 1.5x - 5.0x
+        const multiplier = randInRange(
+          POWERUP_CONFIG.lucky_star?.luckyMultiplier?.[0] || 1,
+          POWERUP_CONFIG.lucky_star?.luckyMultiplier?.[1] || 1,
+        );
         totalReturnFromBets = Math.floor(totalReturnFromBets * multiplier);
 
         // Save multiplier for display
@@ -670,10 +672,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     });
   }
 
-  private randInRange(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
   // Activate selected power-up
   private handleActivatePowerUp(
     playerId: string,
@@ -693,8 +691,8 @@ export default class BauCua extends BaseGame<BauCuaState> {
     if (config.timing === "pre_roll") {
       if (powerUpType === "reveal_one") {
         // Generate prediction with configured accuracy
-        const randomSymbol = ALL_SYMBOLS[this.randInRange(0, 5)];
-        const accuracy = this.randInRange(
+        const randomSymbol = ALL_SYMBOLS[randInRange(0, 5, true)];
+        const accuracy = randInRange(
           config.accuracy?.[0] || 0.6,
           config.accuracy?.[1] || 0.9,
         ); // 60-90%
