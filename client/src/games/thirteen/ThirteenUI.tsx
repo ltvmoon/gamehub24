@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import Thirteen from "./Thirteen";
 import type { ThirteenState, Card, PlayerSlot } from "./types";
 import { SUIT_SYMBOLS, RANK_DISPLAY, Suit } from "./types";
+import { useRoomStore } from "../../stores/roomStore";
 import {
   Play,
   SkipForward,
@@ -29,12 +30,17 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const { username } = useUserStore();
   const { ti, ts } = useLanguage();
   const { confirm: showConfirm } = useAlertStore();
+  const currentRoom = useRoomStore((state) => state.currentRoom);
 
   const isHost = game.isHost;
   const myIndex = game.getMyPlayerIndex();
   const mySlot = myIndex >= 0 ? state.players[myIndex] : null;
   const isMyTurn = state.currentTurnIndex === myIndex;
   const canStart = game.canStartGame();
+
+  const isRoomPlayer = useMemo(() => {
+    return currentRoom?.players.some((p) => p.id === game.getUserId()) ?? false;
+  }, [currentRoom, game]);
 
   const validation = useMemo(() => {
     if (selectedCards.length === 0 || !mySlot) return null;
@@ -194,6 +200,9 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
         onRemove={() => game.requestRemovePlayer(player.actualIndex)}
         compact={compact}
         isInGame={isInGame}
+        canJoin={
+          !isHost && state.gamePhase === "waiting" && !isInGame && isRoomPlayer
+        }
       />
     );
   };
@@ -657,7 +666,8 @@ function PlayerSlotDisplay({
   onJoinSlot,
   onRemove,
   compact = false,
-  isInGame,
+  // isInGame,
+  canJoin = false,
 }: {
   slot: PlayerSlot;
   index: number;
@@ -669,10 +679,11 @@ function PlayerSlotDisplay({
   onRemove: () => void;
   compact?: boolean;
   isInGame: boolean; // Is current user already in a slot
+  canJoin?: boolean;
 }) {
   const isEmpty = slot.id === null;
   const canAddBot = isHost && gamePhase === "waiting";
-  const canJoin = !isHost && gamePhase === "waiting" && !isInGame;
+  // const canJoin = !isHost && gamePhase === "waiting" && !isInGame;
 
   return (
     <div

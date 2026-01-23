@@ -548,25 +548,25 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   }
 
   updatePlayers(players: Player[]): void {
-    // Reset non-bot/guest slots
-    this.state.players.forEach((p, i) => {
-      if (!p.isBot && !p.isGuest) {
-        p.id = null;
-        p.username = `Slot ${i + 1}`;
-      }
-    });
-
-    let playerIndex = 0;
+    // Determine which players are currently in slots
     for (let i = 0; i < 4; i++) {
       const slot = this.state.players[i];
-      if (!slot.isBot && !slot.isGuest) {
-        if (playerIndex < players.length) {
-          slot.id = players[playerIndex].id;
-          slot.username = players[playerIndex].username;
-          playerIndex++;
+      if (!slot.isBot && !slot.isGuest && slot.id) {
+        // Check if this player is still in the room
+        const existingPlayer = players.find((p) => p.id === slot.id);
+        if (existingPlayer) {
+          // Update details if they are still here
+          slot.username = existingPlayer.username;
+        } else {
+          // Player left the room, clear the slot
+          slot.id = null;
+          slot.username = `Slot ${i + 1}`;
+          slot.hand = [];
+          slot.passed = false;
         }
       }
     }
+
     this.syncState();
   }
 
