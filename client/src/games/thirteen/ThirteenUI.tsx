@@ -68,7 +68,9 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
 
   const handlePlay = () => {
     if (selectedCards.length === 0 || !mySlot) return;
-    const cards = selectedCards.map((i) => mySlot.hand[i]);
+    const cards = selectedCards
+      .map((i) => mySlot.hand[i])
+      .sort((a, b) => a.rank - b.rank);
     game.requestPlayCards(cards);
     setSelectedCards([]);
   };
@@ -155,10 +157,13 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
         {state.gamePhase === "playing" && (
           <div className={`${textSize} border-t ${marginTop} pt-2`}>
             {isMyTurn ? (
-              <span className="text-primary-400 font-medium">Your Turn</span>
+              <span className="text-primary-400 font-medium">
+                {ts({ en: "Your Turn", vi: "Lượt của bạn" })}
+              </span>
             ) : (
               <span className="text-slate-400">
-                {state.players[state.currentTurnIndex]?.username}'s Turn
+                {ts({ en: "Turn of", vi: "Lượt của" })}
+                {state.players[state.currentTurnIndex]?.username}
               </span>
             )}
           </div>
@@ -356,19 +361,27 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
         <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[200px] bg-slate-800/30 rounded-2xl p-4">
           {state.gamePhase === "waiting" && (
             <div className="flex flex-col items-center gap-4">
-              <span className="text-slate-400">Waiting for players...</span>
+              <span className="text-slate-400">
+                {ts({
+                  en: "Waiting for players...",
+                  vi: "Đang chờ người chơi...",
+                })}
+              </span>
               {isHost && canStart && (
                 <button
                   onClick={() => game.requestStartGame()}
                   className="px-6 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2"
                 >
                   <Play className="w-5 h-5" />
-                  Start Game
+                  {ts({ en: "Start Game", vi: "Bắt đầu" })}
                 </button>
               )}
               {isHost && !canStart && (
                 <span className="text-sm text-slate-500">
-                  Need at least 2 players to start
+                  {ts({
+                    en: "Need at least 2 players",
+                    vi: "Cần ít nhất 2 người chơi",
+                  })}
                 </span>
               )}
             </div>
@@ -389,7 +402,10 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
         {state.gamePhase === "waiting" && (
           <div className="flex flex-col items-center gap-2">
             <span className="text-slate-400 text-sm">
-              Waiting for players...
+              {ts({
+                en: "Waiting for players...",
+                vi: "Đang chờ người chơi...",
+              })}
             </span>
             {isHost && canStart && (
               <button
@@ -397,11 +413,16 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                 className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2 text-sm"
               >
                 <Play className="w-4 h-4" />
-                Start
+                {ts({ en: "Start", vi: "Bắt đầu" })}
               </button>
             )}
             {isHost && !canStart && (
-              <span className="text-xs text-slate-500">Need 2+ players</span>
+              <span className="text-xs text-slate-500">
+                {ts({
+                  en: "Need at least 2 players",
+                  vi: "Cần ít nhất 2 người chơi",
+                })}
+              </span>
             )}
           </div>
         )}
@@ -441,12 +462,12 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
             {/* Validation Message */}
             {validation?.valid && (
               <span className="text-green-400 text-xs @md:text-sm font-medium">
-                ✓ Valid play
+                ✓ {ti({ en: "Valid play", vi: "Bài hợp lệ" })}
               </span>
             )}
             {validation?.valid === false && (
               <span className="text-red-400 text-xs @md:text-sm font-medium">
-                ⚠️ {validation.error}
+                ⚠️ {ti(validation.error)}
               </span>
             )}
 
@@ -457,17 +478,18 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                 className="px-4 py-1.5 @md:px-6 @md:py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-900 disabled:cursor-not-allowed rounded-lg font-medium flex items-center gap-1 @md:gap-2 text-sm"
               >
                 <Play className="w-4 h-4" />
-                Play
+                {ts({ en: "Play", vi: "Đánh" })}
               </button>
               {state.lastCombination && (
                 <button
                   onClick={async () => {
-                    const confirmed = await useAlertStore
-                      .getState()
-                      .confirm(
-                        "You will not be able to play cards until the next round.",
-                        "Pass this round?",
-                      );
+                    const confirmed = await useAlertStore.getState().confirm(
+                      ts({
+                        en: "You will not be able to play cards until the next round.",
+                        vi: "Bạn sẽ không thể chơi bài cho đến vòng sau.",
+                      }),
+                      ts({ en: "Pass this round?", vi: "Bỏ lượt này?" }),
+                    );
                     if (confirmed) {
                       handlePass();
                     }
@@ -475,7 +497,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                   className="px-4 py-1.5 @md:px-6 @md:py-2 bg-red-700 hover:bg-red-600 rounded-lg font-medium flex items-center gap-1 @md:gap-2 text-sm"
                 >
                   <SkipForward className="w-4 h-4" />
-                  Pass
+                  {ts({ en: "Pass", vi: "Bỏ lượt" })}
                 </button>
               )}
             </div>
@@ -490,8 +512,11 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                 onClick={async () => {
                   if (isHost && state.gamePhase === "playing") {
                     const confirmed = await showConfirm(
-                      "This will reset the current game and start fresh.",
-                      "Start New Game?",
+                      ts({
+                        en: "This will reset the current game and start fresh.",
+                        vi: "Việc này sẽ xoá game hiện tại và bắt đầu lại.",
+                      }),
+                      ts({ en: "Start New Game?", vi: "Chơi lại?" }),
                     );
                     if (confirmed) {
                       game.requestNewGame();
@@ -503,7 +528,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                 className="px-3 py-1.5 @md:px-4 @md:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs @md:text-sm flex items-center gap-1 @md:gap-2"
               >
                 <RefreshCcw className="w-3 h-3 @md:w-4 @md:h-4" />
-                New game
+                {ts({ en: "New game", vi: "Chơi lại" })}
               </button>
             )}
           </div>
@@ -515,13 +540,16 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl p-4 @md:p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-base @md:text-lg font-bold mb-3 @md:mb-4">
-              New Game Request
+              {ts({ en: "New Game Request", vi: "Yêu cầu chơi lại" })}
             </h3>
             <p className="text-slate-300 mb-4 @md:mb-6 text-sm @md:text-base">
               <span className="font-medium text-white">
                 {state.newGameRequest.fromName}
               </span>{" "}
-              wants to start a new game.
+              {ts({
+                en: "wants to start a new game.",
+                vi: "muốn chơi lại game.",
+              })}
             </p>
             <div className="flex gap-2 @md:gap-3">
               <button
@@ -529,14 +557,14 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                 className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium flex items-center justify-center gap-2 text-sm"
               >
                 <X className="w-4 h-4" />
-                Decline
+                {ts({ en: "Decline", vi: "Từ chối" })}
               </button>
               <button
                 onClick={() => game.acceptNewGame()}
                 className="flex-1 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium flex items-center justify-center gap-2 text-sm"
               >
                 <Check className="w-4 h-4" />
-                Accept
+                {ts({ en: "Accept", vi: "Chấp nhận" })}
               </button>
             </div>
           </div>
@@ -681,6 +709,7 @@ function PlayerSlotDisplay({
   isInGame: boolean; // Is current user already in a slot
   canJoin?: boolean;
 }) {
+  const { ts } = useLanguage();
   const isEmpty = slot.id === null;
   const canAddBot = isHost && gamePhase === "waiting";
   // const canJoin = !isHost && gamePhase === "waiting" && !isInGame;
@@ -726,7 +755,7 @@ function PlayerSlotDisplay({
                 title="Join this slot"
               >
                 <User className="w-4 h-4" />
-                Join
+                {ts({ en: "Join", vi: "Tham gia" })}
               </button>
             )}
           </div>
@@ -751,11 +780,13 @@ function PlayerSlotDisplay({
           {gamePhase === "playing" ||
             (gamePhase === "ended" && (
               <span className="text-[10px] text-slate-400">
-                {slot.hand.length} cards
+                {slot.hand.length} {ts({ en: "cards", vi: "lá" })}
               </span>
             ))}
           {slot.passed && (
-            <span className="text-[10px] text-yellow-400">Passed</span>
+            <span className="text-[10px] text-yellow-400">
+              {ts({ en: "Passed", vi: "Đã bỏ" })}
+            </span>
           )}
         </div>
       )}

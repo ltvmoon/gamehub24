@@ -37,10 +37,37 @@ export const CombinationType = {
   TRIPLE: "triple",
   STRAIGHT: "straight", // 3+ consecutive cards
   FOUR_OF_KIND: "four_of_kind",
-  THREE_CONSECUTIVE_PAIRS: "three_consecutive_pairs", // Sám cô: 334455, 778899, etc.
+  THREE_CONSECUTIVE_PAIRS: "three_consecutive_pairs", // Đôi thông: 334455, 778899, etc.
 } as const;
 export type CombinationType =
   (typeof CombinationType)[keyof typeof CombinationType];
+
+export const CombinationName = {
+  [CombinationType.SINGLE]: {
+    vi: "lẻ",
+    en: "single",
+  },
+  [CombinationType.PAIR]: {
+    vi: "đôi",
+    en: "pair",
+  },
+  [CombinationType.TRIPLE]: {
+    vi: "ba (sám cô)",
+    en: "triple",
+  },
+  [CombinationType.STRAIGHT]: {
+    vi: "sảnh",
+    en: "straight",
+  },
+  [CombinationType.FOUR_OF_KIND]: {
+    vi: "tứ quý",
+    en: "four of a kind",
+  },
+  [CombinationType.THREE_CONSECUTIVE_PAIRS]: {
+    vi: "3 đôi thông",
+    en: "three consecutive pairs",
+  },
+};
 
 export interface Combination {
   type: CombinationType;

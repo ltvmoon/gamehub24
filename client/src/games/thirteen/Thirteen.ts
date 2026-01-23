@@ -8,6 +8,7 @@ import {
   Suit,
   Rank,
   CombinationType,
+  CombinationName,
 } from "./types";
 import type { Player } from "../../stores/roomStore";
 
@@ -968,26 +969,50 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   }
 
   // Public method to validate selected cards and return error message if invalid
-  validateSelectedCards(cards: Card[]): { valid: boolean; error?: string } {
+  validateSelectedCards(cards: Card[]): {
+    valid: boolean;
+    error?: { vi: string; en: string };
+  } {
     if (cards.length === 0) {
-      return { valid: false, error: "Select cards to play" };
+      return {
+        valid: false,
+        error: { vi: "Vui lòng chọn bài để chơi", en: "Select cards to play" },
+      };
     }
 
     const combination = this.getCombination(cards);
     if (!combination) {
       if (cards.length === 2) {
-        return { valid: false, error: "Cards must be a pair (same rank)" };
+        return {
+          valid: false,
+          error: {
+            vi: "Bài phải là đôi",
+            en: "Cards must be a pair (same rank)",
+          },
+        };
       }
       if (cards.length === 3) {
-        return { valid: false, error: "Cards must be a triple or straight" };
+        return {
+          valid: false,
+          error: {
+            vi: "Bài phải là ba hoặc sảnh",
+            en: "Cards must be a triple or straight",
+          },
+        };
       }
       if (cards.length >= 4) {
         return {
           valid: false,
-          error: "Invalid combination (try straight or four-of-a-kind)",
+          error: {
+            vi: "Bài không hợp lệ (thử sảnh hoặc tứ quý)",
+            en: "Invalid combination (try straight or four-of-a-kind)",
+          },
         };
       }
-      return { valid: false, error: "Invalid card selection" };
+      return {
+        valid: false,
+        error: { vi: "Bài không hợp lệ", en: "Invalid card selection" },
+      };
     }
 
     const lastCombo = this.state.lastCombination;
@@ -1015,7 +1040,10 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       }
       return {
         valid: false,
-        error: `Must play ${lastCombo.type.replace("_", " ")}`,
+        error: {
+          vi: `Phải chơi ${CombinationName[lastCombo.type].vi}`,
+          en: `Must play ${CombinationName[lastCombo.type].en}`,
+        },
       };
     }
 
@@ -1026,13 +1054,19 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     ) {
       return {
         valid: false,
-        error: `Straight must have ${lastCombo.cards.length} cards`,
+        error: {
+          vi: `Sảnh phải có ${lastCombo.cards.length} lá bài`,
+          en: `Straight must have ${lastCombo.cards.length} cards`,
+        },
       };
     }
 
     // Check value
     if (combination.value <= lastCombo.value) {
-      return { valid: false, error: "Your cards are too low" };
+      return {
+        valid: false,
+        error: { en: "Your cards are too low", vi: "Bài của bạn quá thấp" },
+      };
     }
 
     return { valid: true };
