@@ -528,15 +528,15 @@ const RelationshipOverlay: React.FC<{
 
     updateLines();
     // Re-calculate on resize/scroll mainly
-    window.addEventListener("resize", updateLines);
-    window.addEventListener("scroll", updateLines);
+    // window.addEventListener("resize", updateLines);
+    // window.addEventListener("scroll", updateLines);
 
     // Also minimal polling for animation smoothness if layout shifts
     const interval = setInterval(updateLines, 100);
 
     return () => {
-      window.removeEventListener("resize", updateLines);
-      window.removeEventListener("scroll", updateLines);
+      // window.removeEventListener("resize", updateLines);
+      // window.removeEventListener("scroll", updateLines);
       clearInterval(interval);
     };
   }, [hoveredPlayerId, players, suspicionMarkers, votes]);
@@ -665,7 +665,7 @@ const UnifiedPlayerCard: React.FC<{
               : "bg-linear-to-br from-green-500 to-blue-500"
           }`}
         >
-          {showRole && roleInfo ? (
+          {(showRole || isMe) && roleInfo ? (
             roleInfo.icon
           ) : player.isBot ? (
             <Bot className="w-5 h-5" />
@@ -688,7 +688,7 @@ const UnifiedPlayerCard: React.FC<{
         </span>
 
         {/* Role badge (if visible) */}
-        {showRole && roleInfo && (
+        {(showRole || isMe) && roleInfo && (
           <span
             className="text-xs mt-0.5 px-1.5 py-0.5 rounded-full max-w-full"
             style={{

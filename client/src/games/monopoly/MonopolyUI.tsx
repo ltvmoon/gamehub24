@@ -760,7 +760,7 @@ export default function MonopolyUI({
 
     // Playing phase
     return (
-      <div className="flex flex-col items-center gap-3 p-4 bg-slate-800 rounded-lg w-full max-w-md">
+      <div className="relative flex flex-col items-center gap-3 p-4 bg-slate-800 rounded-lg w-full max-w-md">
         {/* Turn indicator */}
         <div className="text-white text-center">
           {isMyTurn ? (
@@ -831,9 +831,9 @@ export default function MonopolyUI({
 
         {/* Pending action modal */}
         {state.pendingAction && isMyTurn && (
-          <div className="w-full p-3 bg-slate-700 rounded-lg animate-slide-in">
-            {/* Bankruptcy Warning */}
+          <div className="w-full p-3 bg-slate-700/80 flex items-center justify-center rounded-lg">
             {renderBankruptcyWarning()}
+
             {state.pendingAction.type === "BUY_DECISION" && (
               <div className="flex flex-col gap-2">
                 <p className="text-white text-center">
@@ -1564,30 +1564,22 @@ export default function MonopolyUI({
 
   const renderGameRules = () => {
     return (
-      <div
-        className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4"
-        onClick={() => setShowRules(false)}
-      >
-        <div
-          className="bg-slate-800 rounded-xl max-w-4xl w-full max-h-[90%] flex flex-col shadow-2xl border border-slate-600"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-700">
+      <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
+          <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-yellow-500" />
-              {ti({ en: "Game Rules & Cards", vi: "Luật Chơi & Thẻ" })}
+              {ti({ en: "Game Rules: Monopoly", vi: "Luật Chơi: Cờ Tỷ Phú" })}
             </h2>
             <button
               onClick={() => setShowRules(false)}
-              className="p-1 hover:bg-slate-700 rounded transition-colors text-white"
+              className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed">
             {/* 1. Basic Rules */}
             <div className="mb-8">
               <h3 className="text-lg font-bold text-green-400 mb-4 border-b border-green-400/30 pb-2">
@@ -2044,7 +2036,7 @@ export default function MonopolyUI({
 
   return (
     <div
-      className="relative flex flex-col md:flex-row gap-2 p-0 w-full max-w-6xl mx-auto"
+      className="relative flex flex-col md:flex-row gap-2 p-0 w-full max-w-6xl mx-auto pb-16 @md:pb-0"
       ref={gameContainerRef}
     >
       {renderTradeOffers()}
@@ -2065,7 +2057,7 @@ export default function MonopolyUI({
 
             {/* Center area - game controls go here */}
             <div
-              className="bg-linear-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center overflow-auto"
+              className="relative bg-linear-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center overflow-auto"
               style={{
                 gridRow: "2 / 11",
                 gridColumn: "2 / 11",

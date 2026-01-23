@@ -117,23 +117,24 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
 
   const renderGameRules = () => (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-100 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl relative">
-        <button
-          onClick={() => setShowRules(false)}
-          className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="p-6 space-y-6">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
+        <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-yellow-500" />
-            {ti({ en: "Game Rules", vi: "Luật Chơi" })}
+            {ti({ en: "Game Rules: Chess", vi: "Luật Chơi: Cờ Vua" })}
           </h2>
+          <button
+            onClick={() => setShowRules(false)}
+            className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
+        <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed">
           <div className="space-y-4 text-slate-300 leading-relaxed">
             <section>
-              <h3 className="text-lg font-bold text-yellow-400 mt-4">
+              <h3 className="text-lg font-bold text-yellow-400">
                 {ti({ en: "Objective", vi: "Mục tiêu" })}
               </h3>
               <p>
@@ -148,7 +149,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Basic Rules", vi: "Quy Tắc Cơ Bản" })}
               </h3>
-              <ul className="list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4">
                 <li>
                   <strong>{ti({ en: "King", vi: "Vua" })}</strong>:{" "}
                   {ti({
@@ -198,7 +199,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Special Moves", vi: "Nước Đi Đặc Biệt" })}
               </h3>
-              <ul className="list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4">
                 <li>
                   {ti({
                     en: "Castling: Move the King two squares towards a Rook.",

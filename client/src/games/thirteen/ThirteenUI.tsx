@@ -202,30 +202,25 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
     if (!showRules) return null;
 
     return (
-      <div
-        className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4"
-        onClick={() => setShowRules(false)}
-      >
-        <div
-          className="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[90%] flex flex-col shadow-2xl border border-slate-600"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-700">
+      <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
+          <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-yellow-500" />
-              {ti({ en: "Game Rules", vi: "Luật Chơi" })}
+              {ti({
+                en: "Game Rules: Thirteen",
+                vi: "Luật Chơi: Tiến Lên Miền Nam",
+              })}
             </h2>
             <button
               onClick={() => setShowRules(false)}
-              className="p-1 hover:bg-slate-700 rounded transition-colors text-white"
+              className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar text-slate-300">
+          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed">
             <div className="space-y-4">
               <p>
                 {ti({
@@ -253,11 +248,11 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
               </ul>
 
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
-                {ti({ en: "Combinations", vi: "Các bộ bài" })}
+                {ti({ en: "Combinations", vi: "Kết hợp bài" })}
               </h3>
               <ul className="list-disc pl-5 space-y-1">
                 <li>
-                  <strong>{ti({ en: "Single", vi: "Rác" })}</strong>:{" "}
+                  <strong>{ti({ en: "Single", vi: "Cóc" })}</strong>:{" "}
                   {ti({ en: "A single card.", vi: "Một lá bài lẻ." })}
                 </li>
                 <li>
@@ -268,7 +263,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                   })}
                 </li>
                 <li>
-                  <strong>{ti({ en: "Triple", vi: "Sám cô" })}</strong>:{" "}
+                  <strong>{ti({ en: "Triple", vi: "3 (Sám cô)" })}</strong>:{" "}
                   {ti({
                     en: "Three cards of the same rank.",
                     vi: "3 lá cùng giá trị.",
@@ -279,6 +274,23 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                   {ti({
                     en: "3+ consecutive rank cards (e.g., 3-4-5). 2 cannot be in a straight.",
                     vi: "3+ lá liên tiếp (VD: 3-4-5). 2 không được nằm trong sảnh.",
+                  })}
+                </li>
+                <li>
+                  <strong>{ti({ en: "Four of a Kind", vi: "Tứ quý" })}</strong>:{" "}
+                  {ti({
+                    en: "Four cards of the same rank.",
+                    vi: "4 lá cùng giá trị.",
+                  })}
+                </li>
+                <li>
+                  <strong>
+                    {ti({ en: "Three consecutive pairs", vi: "3 đôi thông" })}
+                  </strong>
+                  :{" "}
+                  {ti({
+                    en: "Three consecutive pairs of cards.",
+                    vi: "3 đôi liên tiếp.",
                   })}
                 </li>
               </ul>

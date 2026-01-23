@@ -16,6 +16,7 @@ import {
   JACKPOT_PERCENTAGE,
   MEGA_ROUND_INTERVAL,
   MAX_SYMBOLS_PER_PLAYER,
+  RICH_MODE_TARGETS,
 } from "./types";
 import { useAlertStore } from "../../stores/alertStore";
 import useLanguage from "../../stores/languageStore";
@@ -475,7 +476,7 @@ export default function BauCuaUI({
   // Render Game Over Screen
   const renderGameOver = () => {
     if (!showGameOverModal) return null;
-    return (
+    return createPortal(
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
         <div className="bg-slate-900 border-2 border-yellow-500 rounded-2xl max-w-lg w-full p-8 shadow-2xl relative overflow-hidden">
           <div className="text-center space-y-6 relative z-10">
@@ -557,144 +558,144 @@ export default function BauCuaUI({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   };
 
   const renderGameRules = () => (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-100 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl relative">
-        <button
-          onClick={() => setShowRules(false)}
-          className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="p-6 space-y-6">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
+        <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-yellow-500" />
-            {ti({ en: "Game Rules", vi: "Luật Chơi" })}
+            {ti({ en: "Game Rules", vi: "Luật Chơi: Bầu cua" })}
           </h2>
+          <button
+            onClick={() => setShowRules(false)}
+            className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          <div className="space-y-4 text-slate-300 leading-relaxed">
-            <section>
-              <h3 className="text-lg font-bold text-yellow-400 mt-4">
-                {ti({ en: "Objective", vi: "Mục tiêu" })}
-              </h3>
-              <p>
+        <div className="p-4 space-y-4 text-slate-300 leading-relaxed">
+          <section>
+            <h3 className="text-lg font-bold text-yellow-400 mt-4">
+              {ti({ en: "Objective", vi: "Mục tiêu" })}
+            </h3>
+            <p>
+              {ti({
+                en: "Place bets on the symbols you think will appear on the dice.",
+                vi: "Đặt cược vào các linh vật bạn nghĩ sẽ xuất hiện trên xúc xắc.",
+              })}
+            </p>
+            <p>
+              {ti({
+                vi: "2 chế độ chơi: ",
+                en: "2 game modes: ",
+              })}
+            </p>
+            <ul className="list-disc pl-4">
+              <li>
+                💀{" "}
                 {ti({
-                  en: "Place bets on the symbols you think will appear on the dice.",
-                  vi: "Đặt cược vào các linh vật bạn nghĩ sẽ xuất hiện trên xúc xắc.",
+                  vi: "Sinh tồn: Ai sống sót (còn tiền) cuối cùng sẽ thắng.",
+                  en: "Survival: Last player standing (with money) wins.",
                 })}
-              </p>
-              <p>
+              </li>
+              <li>
+                💰{" "}
                 {ti({
-                  vi: "2 chế độ chơi: ",
-                  en: "2 game modes: ",
+                  vi: "Giàu có: Ai kiếm được tiền đạt mục tiêu trước sẽ thắng.",
+                  en: "Rich: The first player to reach the target amount wins.",
                 })}
-              </p>
-              <ul className="list-disc pl-4">
-                <li>
-                  💀{" "}
-                  {ti({
-                    vi: "Sinh tồn: Ai sống sót (còn tiền) cuối cùng sẽ thắng.",
-                    en: "Survival: Last player standing (with money) wins.",
-                  })}
-                </li>
-                <li>
-                  💰{" "}
-                  {ti({
-                    vi: "Giàu có: Ai kiếm được tiền đạt mục tiêu trước sẽ thắng.",
-                    en: "Rich: The first player to reach the target amount wins.",
-                  })}
-                </li>
-              </ul>
-            </section>
+              </li>
+            </ul>
+          </section>
 
-            <section>
-              <h3 className="text-lg font-bold text-yellow-400 mt-4">
-                {ti({ en: "Rules", vi: "Quy Tắc" })}
-              </h3>
-              <ul className="list-disc pl-4">
-                <li>
-                  {ti({
-                    en: "Max 3 bets each round.",
-                    vi: "Đặt cược nhiều nhất 3 linh vật mỗi vòng.",
-                  })}
-                </li>
-                <li>
-                  {ti({
-                    en: "Press Ready and wait host to roll dices.",
-                    vi: "Bấm sẵn sàng và đợi chủ phòng quay xúc xắc.",
-                  })}
-                </li>
-                <li>
-                  ✅{" "}
-                  {ti({
-                    en: "Each symbol matches: Win 2x your bet.",
-                    vi: "Cược đúng linh vật: Nhận x2 tiền cược của linh vật đó.",
-                  })}
-                </li>
-                <li>
-                  ❌{" "}
-                  {ti({
-                    en: "Each symbol not matches: Lose bet on that symbol.",
-                    vi: "Cược sai linh vật: Mất tiền cược.",
-                  })}
-                </li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="text-lg font-bold text-yellow-400 mt-4">
-                {ti({ en: "Power-ups", vi: "Kỹ Năng" })}
-              </h3>
-              <p className="mb-2">
+          <section>
+            <h3 className="text-lg font-bold text-yellow-400 mt-4">
+              {ti({ en: "Rules", vi: "Quy Tắc" })}
+            </h3>
+            <ul className="list-disc pl-4">
+              <li>
                 {ti({
-                  en: "Can use 1 power-up per round.",
-                  vi: "Được dùng 1 kỹ năng mỗi vòng.",
+                  en: "Max 3 bets each round.",
+                  vi: "Đặt cược nhiều nhất 3 linh vật mỗi vòng.",
                 })}
-              </p>
-              <ul className="list-disc pl-4">
-                {Object.keys(POWERUP_CONFIG).map((key) => (
-                  <li key={key}>
-                    <strong>
-                      {ti(POWERUP_CONFIG[key as PowerUpType].emoji)}{" "}
-                      {ti(POWERUP_CONFIG[key as PowerUpType].name)}:
-                    </strong>{" "}
-                    {ti(POWERUP_CONFIG[key as PowerUpType].description)}
-                  </li>
-                ))}
-              </ul>
-            </section>
+              </li>
+              <li>
+                {ti({
+                  en: "Press Ready and wait host to roll dices.",
+                  vi: "Bấm sẵn sàng và đợi chủ phòng quay xúc xắc.",
+                })}
+              </li>
+              <li>
+                ✅{" "}
+                {ti({
+                  en: "Each symbol matches: Win 2x your bet.",
+                  vi: "Cược đúng linh vật: Nhận x2 tiền cược của linh vật đó.",
+                })}
+              </li>
+              <li>
+                ❌{" "}
+                {ti({
+                  en: "Each symbol not matches: Lose bet on that symbol.",
+                  vi: "Cược sai linh vật: Mất tiền cược.",
+                })}
+              </li>
+            </ul>
+          </section>
 
-            <section>
-              <h3 className="text-lg font-bold text-yellow-400 mt-4">
-                {ti({ en: "Jackpot", vi: "Nổ Hũ" })} 💎
-              </h3>
-              <ul className="list-disc pl-4">
-                <li>
-                  {ti({
-                    en: `Jackpot is accumulated from ${JACKPOT_PERCENTAGE * 100}% of all bets each round.`,
-                    vi: `Hũ được tích lũy từ ${JACKPOT_PERCENTAGE * 100}% tổng tiền cược mỗi vòng.`,
-                  })}
+          <section>
+            <h3 className="text-lg font-bold text-yellow-400 mt-4">
+              {ti({ en: "Power-ups", vi: "Kỹ Năng" })}
+            </h3>
+            <p className="mb-2">
+              {ti({
+                en: "Can use 1 power-up per round.",
+                vi: "Được dùng 1 kỹ năng mỗi vòng.",
+              })}
+            </p>
+            <ul className="list-disc pl-4">
+              {Object.keys(POWERUP_CONFIG).map((key) => (
+                <li key={key}>
+                  <strong>
+                    {ti(POWERUP_CONFIG[key as PowerUpType].emoji)}{" "}
+                    {ti(POWERUP_CONFIG[key as PowerUpType].name)}:
+                  </strong>{" "}
+                  {ti(POWERUP_CONFIG[key as PowerUpType].description)}
                 </li>
-                <li>
-                  {ti({
-                    en: `After every ${MEGA_ROUND_INTERVAL} rounds, there will be a Jackpot round.`,
-                    vi: `Sau mỗi ${MEGA_ROUND_INTERVAL} vòng, có 1 vòng Nổ Hũ.`,
-                  })}
-                </li>
-                <li>
-                  {ti({
-                    en: "When 3 same symbols appear, the jackpot is triggered, split equally among those who has correct bet.",
-                    vi: "Khi 3 linh vật giống nhau xuất hiện, hũ sẽ nổ, chia đều cho ai cược đúng.",
-                  })}
-                </li>
-              </ul>
-            </section>
-          </div>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="text-lg font-bold text-yellow-400 mt-4">
+              {ti({ en: "Jackpot", vi: "Nổ Hũ" })} 💎
+            </h3>
+            <ul className="list-disc pl-4">
+              <li>
+                {ti({
+                  en: `Jackpot is accumulated from ${JACKPOT_PERCENTAGE * 100}% of all bets each round.`,
+                  vi: `Hũ được tích lũy từ ${JACKPOT_PERCENTAGE * 100}% tổng tiền cược mỗi vòng.`,
+                })}
+              </li>
+              <li>
+                {ti({
+                  en: `After every ${MEGA_ROUND_INTERVAL} rounds, there will be a Jackpot round.`,
+                  vi: `Sau mỗi ${MEGA_ROUND_INTERVAL} vòng, có 1 vòng Nổ Hũ.`,
+                })}
+              </li>
+              <li>
+                {ti({
+                  en: "When 3 same symbols appear, the jackpot is triggered, split equally among those who has correct bet.",
+                  vi: "Khi 3 linh vật giống nhau xuất hiện, hũ sẽ nổ, chia đều cho ai cược đúng.",
+                })}
+              </li>
+            </ul>
+          </section>
         </div>
       </div>
     </div>
@@ -853,10 +854,7 @@ export default function BauCuaUI({
                       })}
                     </div>
                     <div className="flex flex-wrap justify-center gap-1">
-                      {[
-                        10000, 100000, 1000000, 100000000, 500000000,
-                        1000000000, 2000000000,
-                      ].map((val) => (
+                      {RICH_MODE_TARGETS.map((val) => (
                         <button
                           key={val}
                           onClick={() => game.requestSetGameMode(val)}
