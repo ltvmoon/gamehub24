@@ -56,6 +56,7 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
   const boardRef = useRef(displayBoard);
   const squareRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scoreRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const squarePositionsRef = useRef<{ x: number; y: number }[]>([]); // Cache positions
   const pendingStateRef = useRef<OAnQuanState | null>(null);
   const flyingRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +105,9 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
     }
 
     setAnimating(true);
+    // Cache positions once before animation sequence starts
+    cacheSquarePositions();
+
     const item = animationQueueRef.current.shift();
     if (item) {
       await runAnimation(item.move);
@@ -116,6 +120,10 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
 
       processNextAnimation();
     }
+  };
+
+  const cacheSquarePositions = () => {
+    squarePositionsRef.current = squareRefs.current.map((el) => getCenter(el));
   };
 
   const runAnimation = async (move: NonNullable<OAnQuanState["lastMove"]>) => {
@@ -131,10 +139,17 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
 
     for (const step of steps) {
       if (step.type === "sow") {
-        const startRect = getCenter(squareRefs.current[lastSquareId]);
-        const endRect = getCenter(squareRefs.current[step.squareId]);
+        // Use cached positions
+        const startRect =
+          squarePositionsRef.current[lastSquareId] ||
+          getCenter(squareRefs.current[lastSquareId]);
+        const endRect =
+          squarePositionsRef.current[step.squareId] ||
+          getCenter(squareRefs.current[step.squareId]);
 
-        // 1. Update content (Synchronously)
+        // 1. Update content (Synchronously) - Keep flushSync here for visual flying accuracy?
+        // Actually for smooth 60fps, we might want to relax this.
+        // But let's keep flushSync ONLY for the flying cluster count update to ensure it's ready before animation starts
         flushSync(() => {
           setFlyingState({ count: handSize });
         });
@@ -179,11 +194,11 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
         currentBoard[step.squareId] += 1;
         handSize--;
 
-        flushSync(() => {
-          setDisplayBoard(currentBoard);
-          boardRef.current = currentBoard;
-          setHighlightedSquare(step.squareId);
-        });
+        // REMOVED flushSync here for board update!
+        // This allows React to batch this if needed, or simply not block the main thread as hard.
+        setDisplayBoard(currentBoard);
+        boardRef.current = currentBoard;
+        setHighlightedSquare(step.squareId);
 
         // await new Promise((r) => setTimeout(r, 150));
         // setHighlightedSquare(null);
@@ -196,20 +211,23 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
         setDisplayBoard(currentBoard);
         boardRef.current = currentBoard;
         lastSquareId = step.squareId;
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 150)); // Reduced pickup delay slightly
       } else if (step.type === "capture") {
         const playerIndex = game
           .getState()
           .players.findIndex((p) => p.id === move.player);
 
         if (playerIndex !== -1 && scoreRefs.current[playerIndex]) {
-          const startRect = getCenter(squareRefs.current[step.squareId]);
-          const endRect = getCenter(scoreRefs.current[playerIndex]);
+          const startRect =
+            squarePositionsRef.current[step.squareId] ||
+            getCenter(squareRefs.current[step.squareId]);
+          const endRect = getCenter(scoreRefs.current[playerIndex]); // Score box not cached but only called once per capture
 
           // 1. Pickup stones visually (Clear board, show flying)
           const currentBoard = [...boardRef.current];
           currentBoard[step.squareId] = 0;
 
+          // Keep flushSync for flying state setup
           flushSync(() => {
             setDisplayBoard(currentBoard);
             boardRef.current = currentBoard;
@@ -728,11 +746,11 @@ const MandarinSquare: React.FC<{
   );
 };
 
-const StoneCluster: React.FC<{
+const StoneCluster = React.memo<{
   count: number;
   isBig?: boolean;
   isHighlighted?: boolean;
-}> = ({ count, isBig, isHighlighted }) => {
+}>(({ count, isBig, isHighlighted }) => {
   const visualCount = Math.min(count, 30);
   const stones = Array.from({ length: visualCount });
 
@@ -751,6 +769,6 @@ const StoneCluster: React.FC<{
       ))}
     </div>
   );
-};
+});
 
 export default OAnQuanUI;

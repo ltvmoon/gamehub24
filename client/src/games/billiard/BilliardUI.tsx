@@ -9,6 +9,7 @@ import {
   POCKET_RADIUS,
   POCKETS,
   BALL_COLORS,
+  MIN_POWER,
 } from "./types";
 import {
   Hand,
@@ -936,7 +937,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
   const handleShoot = useCallback(() => {
     // Only auto-shoot on release if in Drag mode
     if (controlModeRef.current === "drag") {
-      if (aimPowerRef.current > 0.05) {
+      if (aimPowerRef.current >= MIN_POWER) {
         trailsRef.current.clear();
         game.shoot(aimAngleRef.current, aimPowerRef.current);
         setIsAiming(false);
@@ -954,7 +955,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
   }, [game]);
 
   const handleSliderShoot = () => {
-    if (aimPower > 0.05) {
+    if (aimPower >= MIN_POWER) {
       trailsRef.current.clear();
       game.shoot(aimAngle, aimPower);
       // Reset aiming state
@@ -1490,7 +1491,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
           <button
             onClick={handleSliderShoot}
-            disabled={aimPower < 0.05 || !isMyTurn || state.isSimulating}
+            disabled={aimPower < MIN_POWER || !isMyTurn || state.isSimulating}
             className={`
                     w-full py-3 rounded-lg font-bold text-lg shadow-lg transition-all
                     disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed

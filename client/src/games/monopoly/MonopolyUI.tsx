@@ -980,7 +980,7 @@ export default function MonopolyUI({
 
     return (
       <div
-        className="fixed inset-0 z-50 flex @md:items-center items-start justify-start bg-black/60 p-4"
+        className="fixed inset-0 z-50 flex @md:items-center items-start justify-center bg-black/60 p-4"
         onClick={() => setSelectedProperty(null)}
       >
         <div
