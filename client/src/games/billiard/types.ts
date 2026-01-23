@@ -83,7 +83,7 @@ export const BALL_RADIUS = 16;
 export const POCKET_RADIUS = 20;
 export const FRICTION = 0.9999;
 export const MIN_VELOCITY = 0.1;
-export const MAX_POWER = 300;
+export const MAX_POWER = 30;
 
 // Pocket positions (6 pockets)
 export const POCKETS = [
