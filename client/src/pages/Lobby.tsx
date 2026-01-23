@@ -509,7 +509,7 @@ function CreateRoomModal({
   onClose: () => void;
   gameId: string;
 }) {
-  const { username } = useUserStore();
+  const { username, userId } = useUserStore();
   const [roomName, setRoomName] = useState("");
   const [gameType, setGameType] = useState(
     gameId || localStorage.getItem("gamehub24_lastGameId") || "",
@@ -561,6 +561,36 @@ function CreateRoomModal({
     );
   };
 
+  const handleCreateOffline = () => {
+    const game = allGames.find((g) => g.id === gameType) || allGames[0];
+    if (!game) return showAlert("Game not found", { type: "error" });
+
+    const localRoomId = `local_${Date.now()}`;
+    const localRoom: Room = {
+      id: localRoomId,
+      name: roomName.trim() || username,
+      ownerId: userId, // Using username as ID for local to match checks if mostly based on ID equality
+      gameType: game.id,
+      isPublic: false,
+      players: [
+        {
+          id: userId, // ownerId matches this
+          username: username,
+          isHost: true,
+          isBot: false,
+        },
+      ],
+      spectators: [],
+      maxPlayers: game.maxPlayers,
+      createdAt: new Date(),
+
+      isOffline: true,
+    };
+
+    setCurrentRoom(localRoom);
+    navigate(`/room/${localRoomId}`, { replace: true });
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
       <div className="bg-background-secondary border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl mx-4">
@@ -571,9 +601,9 @@ function CreateRoomModal({
         <div className="space-y-4 mb-6">
           {/* Room Name */}
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            {/* <label className="block text-sm font-medium text-text-secondary mb-2">
               {ti({ en: "Room Name", vi: "Tên Phòng" })}
-            </label>
+            </label> */}
             <input
               type="text"
               value={roomName}
@@ -588,9 +618,9 @@ function CreateRoomModal({
 
           {/* Game Type */}
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+            {/* <label className="block text-sm font-medium text-text-secondary mb-2">
               {ti({ en: "Game", vi: "Trò chơi" })}
-            </label>
+            </label> */}
             <select
               value={gameType}
               onChange={(e) => setGameType(e.target.value)}
@@ -651,18 +681,26 @@ function CreateRoomModal({
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-col md:flex-row">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg transition-colors cursor-pointer"
           >
             {ti({ en: "Cancel", vi: "Hủy" })}
           </button>
+
+          <button
+            onClick={handleCreateOffline}
+            className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-500 text-white rounded-lg cursor-pointer"
+          >
+            {ti({ en: "Play Offline", vi: "Chơi Offline" })}
+          </button>
+
           <button
             onClick={handleCreate}
             className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary-light text-white rounded-lg shadow-lg shadow-primary/30 transition-all cursor-pointer"
           >
-            {ti({ en: "Create", vi: "Tạo" })}
+            {ti({ en: "Create Online", vi: "Tạo Online" })}
           </button>
         </div>
       </div>

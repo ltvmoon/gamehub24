@@ -19,6 +19,8 @@ export interface Room {
   spectators: Player[];
   maxPlayers: number;
   createdAt: Date;
+
+  isOffline?: boolean;
 }
 
 interface RoomStore {

@@ -4,6 +4,7 @@ import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { getSocket } from "../services/socket";
 import {
+  AlertCircle,
   ArrowDownFromLine,
   ArrowUpFromLine,
   Ban,
@@ -117,13 +118,27 @@ export default function UserList() {
       )}
 
       {/* Invite user button */}
-      <button
-        onClick={() => setShowShareModal(true)}
-        className="w-full py-2.5 flex items-center justify-center gap-2 font-medium rounded-xl transition-all bg-primary hover:bg-primary-light text-white shadow-lg shadow-primary/20"
-      >
-        <Share2 className="w-5 h-5" />
-        {ti({ en: "Invite", vi: "Mời" })}
-      </button>
+      {currentRoom?.isOffline ? (
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-orange-400" />
+            <span className="text-sm text-orange-300">
+              {ti({
+                en: "Cannot invite to Offline room",
+                vi: "Không thể mời vào phòng Offline",
+              })}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowShareModal(true)}
+          className="w-full py-2.5 flex items-center justify-center gap-2 font-medium rounded-xl transition-all bg-primary hover:bg-primary-light text-white shadow-lg shadow-primary/20"
+        >
+          <Share2 className="w-5 h-5" />
+          {ti({ en: "Invite", vi: "Mời" })}
+        </button>
+      )}
 
       {/* Players Section */}
       <div className="flex flex-col gap-2">

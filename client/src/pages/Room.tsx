@@ -12,6 +12,7 @@ import {
   Star,
   MessageSquare,
   Play,
+  AlertCircle,
 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useChatStore } from "../stores/chatStore";
@@ -82,6 +83,19 @@ export default function RoomPage() {
     // Skip if already have room data for this room
     if (currentRoom?.id === roomId) {
       console.log("Already have room data, skipping join");
+      return;
+    }
+
+    // If local room and no data -> redirect to lobby (session lost)
+    if (currentRoom?.isOffline) {
+      showAlert(
+        ts({
+          en: "Local game session lost. Please create a new game.",
+          vi: "Phiên chơi cục bộ đã kết thúc. Vui lòng tạo game mới.",
+        }),
+        { type: "info" },
+      );
+      navigate("/", { replace: true });
       return;
     }
 
@@ -181,7 +195,7 @@ export default function RoomPage() {
       if (connectionTimeoutId) clearTimeout(connectionTimeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, currentRoom?.id]);
+  }, [roomId, currentRoom?.id, currentRoom?.isOffline]);
 
   // Effect for room event listeners
   useEffect(() => {
@@ -279,7 +293,9 @@ export default function RoomPage() {
         : ts({ en: "Leave room?", vi: "Rời phòng?" }),
     );
     if (confirmed) {
-      socket.emit("room:leave", { roomId });
+      if (!currentRoom?.isOffline) {
+        socket.emit("room:leave", { roomId });
+      }
       setCurrentRoom(null);
       clearMessages();
       navigate("/", { replace: true });
@@ -333,6 +349,14 @@ export default function RoomPage() {
   }, [isResizing, resize, stopResizing]);
 
   const handleChangeGame = (gameId: string) => {
+    if (currentRoom?.isOffline) {
+      // Local update
+      if (currentRoom) {
+        setCurrentRoom({ ...currentRoom, gameType: gameId });
+      }
+      setShowChangeGameModal(false);
+      return;
+    }
     socket.emit("room:update", { roomId, gameType: gameId });
     setShowChangeGameModal(false);
   };
@@ -531,6 +555,21 @@ export default function RoomPage() {
             </div>
           </div>
         </header>
+
+        {/* offline badge */}
+        {currentRoom?.isOffline && (
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-orange-400" />
+              <span className="text-sm text-orange-300">
+                {ti({
+                  en: "You are playing in an Offline room",
+                  vi: "Bạn đang chơi ở phòng Offline",
+                })}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Mobile Tabs (visible only on mobile) */}
         {!isDesktop && (
