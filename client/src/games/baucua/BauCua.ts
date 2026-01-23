@@ -404,7 +404,7 @@ export default class BauCua extends BaseGame<BauCuaState> {
         playerBalance.currentBalance - totalBetAmount + totalReturnFromBets;
       playerBalance.currentBalance = Math.max(0, newBalance);
       playerBalance.balanceHistory.push(playerBalance.currentBalance);
-      playerBalance.totalBet = 0;
+      // playerBalance.totalBet = 0;
     });
 
     // Add to jackpot pool
@@ -517,6 +517,11 @@ export default class BauCua extends BaseGame<BauCuaState> {
       this.state.currentRound > 0 &&
       this.state.currentRound % MEGA_ROUND_INTERVAL === 0;
     this.state.powerUpPredictions = {};
+
+    // reset bet
+    Object.keys(this.state.playerBalances).forEach((playerId) => {
+      this.state.playerBalances[playerId].totalBet = 0;
+    });
 
     this.syncState();
     this.checkBotTurn();

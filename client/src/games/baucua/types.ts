@@ -89,6 +89,7 @@ export interface PowerUpConfig {
   timing: PowerUpTiming;
   name: { en: string; vi: string };
   description: { en: string; vi: string };
+  emoji: string;
 
   accuracy?: [number, number]; // For prediction-based powers
   luckyMultiplier?: [number, number]; // For lucky_star
@@ -99,25 +100,28 @@ export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
   double_down: {
     cooldown: 3,
     timing: "post_roll",
+    emoji: "2️⃣",
     name: { en: "Double Down", vi: "Nhân Đôi" },
     description: {
-      en: "2x payout if win, 2x bet lost if lose",
-      vi: "Thắng x2 tiền thưởng, thua x2 tiền phạt",
+      en: "2x payout if win, 2x bet lost if lose. Cooldown: 3 rounds",
+      vi: "Thắng x2 tiền thưởng, thua x2 tiền phạt. Hồi chiêu: 3 vòng",
     },
   },
   insurance: {
     cooldown: 2,
     timing: "post_roll",
+    emoji: "🛡️",
     name: { en: "Insurance", vi: "Bảo Hiểm" },
     description: {
-      en: "Refund 50% if lose, but only 50% profit if win",
-      vi: "Hoàn 50% nếu thua, nhưng mất 50% nếu thắng",
+      en: "Refund 50% if lose, but only 50% profit if win. Cooldown: 2 rounds",
+      vi: "Hoàn 50% nếu thua, nhưng mất 50% nếu thắng. Hồi chiêu: 2 vòng",
     },
   },
   reveal_one: {
     cooldown: 3,
     timing: "pre_roll",
     accuracy: [0.6, 0.9],
+    emoji: "👁️",
     name: { en: "God Eyes", vi: "Mắt Thần" },
     description: {
       en: "Predict result (60-90% accuracy). Cooldown: 3 rounds",
@@ -128,6 +132,7 @@ export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
     cooldown: 4,
     timing: "post_roll",
     luckyMultiplier: [0.5, 3],
+    emoji: "⭐️",
     name: { en: "Lucky Star", vi: "Sao May Mắn" },
     description: {
       en: "Multiply winnings by 0.5x - 3x. Cooldown: 4 rounds",

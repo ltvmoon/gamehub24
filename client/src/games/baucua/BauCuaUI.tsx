@@ -59,6 +59,7 @@ export default function BauCuaUI({
   const { currentRoom } = useRoomStore();
 
   // Local bets for guests (before syncing to host)
+  const [showGameOverModal, setShowGameOverModal] = useState(true);
   const [localBets, setLocalBets] = useState<
     { symbol: BauCuaSymbol; amount: number }[]
   >([]);
@@ -261,7 +262,11 @@ export default function BauCuaUI({
 
     // Check if user has enough money to place a minimum bet
     const availableBalance = myBalance.currentBalance - myTotalBet;
-    if (availableBalance < MIN_BET) {
+
+    if (
+      availableBalance < MIN_BET &&
+      !myBets.find((b) => b.symbol === symbol)
+    ) {
       showAlert(
         ts({
           vi:
@@ -469,6 +474,7 @@ export default function BauCuaUI({
 
   // Render Game Over Screen
   const renderGameOver = () => {
+    if (!showGameOverModal) return null;
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
         <div className="bg-slate-900 border-2 border-yellow-500 rounded-2xl max-w-lg w-full p-8 shadow-2xl relative overflow-hidden">
@@ -541,6 +547,14 @@ export default function BauCuaUI({
                 })}
               </p>
             )}
+
+            {/* close modal button */}
+            <button
+              onClick={() => setShowGameOverModal(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
         </div>
       </div>
@@ -646,6 +660,7 @@ export default function BauCuaUI({
                 {Object.keys(POWERUP_CONFIG).map((key) => (
                   <li key={key}>
                     <strong>
+                      {ti(POWERUP_CONFIG[key as PowerUpType].emoji)}{" "}
                       {ti(POWERUP_CONFIG[key as PowerUpType].name)}:
                     </strong>{" "}
                     {ti(POWERUP_CONFIG[key as PowerUpType].description)}
@@ -656,7 +671,7 @@ export default function BauCuaUI({
 
             <section>
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
-                {ti({ en: "Jackpot", vi: "Nổ Hũ" })}
+                {ti({ en: "Jackpot", vi: "Nổ Hũ" })} 💎
               </h3>
               <ul className="list-disc pl-4">
                 <li>
@@ -1140,7 +1155,7 @@ export default function BauCuaUI({
                       {formatPrice(pBalance.currentBalance)}
                     </p>
                     <span
-                      className={`text-xs ${lastProfit > 0 ? "text-green-400" : "text-red-400"}`}
+                      className={`text-xs ${lastProfit >= 0 ? "text-green-400" : "text-red-400"}`}
                     >
                       {lastProfit > 0 ? "+" : ""}
                       {formatPrice(lastProfit)}
@@ -1429,11 +1444,9 @@ export default function BauCuaUI({
               )}
               {/* Show result for Lucky Star */}
               {state.playerPowerUps[userId]?.lucky_star?.lastMultiplier &&
-                (state.playerPowerUps[userId].lucky_star.lastUsedRound ===
-                  state.currentRound - 1 ||
-                  (state.gamePhase === "results" &&
-                    state.playerPowerUps[userId].lucky_star.lastUsedRound ===
-                      state.currentRound)) && (
+                state.gamePhase === "results" &&
+                state.playerPowerUps[userId].lucky_star.lastUsedRound ===
+                  state.currentRound && (
                   <div className="p-3 bg-yellow-600/20 border border-yellow-500 rounded-lg mt-2">
                     <p className="text-xs text-yellow-300 font-semibold mb-2">
                       🌟{" "}
