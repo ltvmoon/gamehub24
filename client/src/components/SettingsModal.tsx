@@ -12,6 +12,7 @@ import { useSocketStore } from "../stores/socketStore";
 import {
   generateRandomUsername,
   generateSuffix,
+  cleanName,
   useUserStore,
 } from "../stores/userStore";
 import useLanguage, { Language } from "../stores/languageStore";
@@ -71,8 +72,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   // Update preview when newUsername changes
   useEffect(() => {
     if (newUsername.trim()) {
-      const cleanName = newUsername.trim().replace(/\d+$/, "");
-      setPreviewUsername(`${cleanName}${generateSuffix()}`);
+      setPreviewUsername(`${cleanName(newUsername)}${generateSuffix()}`);
     } else {
       setPreviewUsername("");
     }
@@ -91,8 +91,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    const cleanName = trimmed.replace(/\d+$/, "");
-    const finalUsername = `${cleanName}${generateSuffix()}`;
+    const finalUsername = `${cleanName(trimmed)}${generateSuffix()}`;
     setUsername(finalUsername);
     setNewUsername("");
     showAlert(
@@ -237,7 +236,13 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                 <input
                   type="text"
                   value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
+                  onChange={(e) =>
+                    setNewUsername(
+                      e.target.value
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, ""),
+                    )
+                  }
                   placeholder={ts({
                     en: "Enter new username",
                     vi: "Nhập tên mới",
@@ -258,7 +263,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                 {/* Random btn */}
                 <button
                   onClick={() => {
-                    setNewUsername(generateRandomUsername());
+                    setNewUsername(generateRandomUsername(undefined, false));
                   }}
                   className="px-3 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >

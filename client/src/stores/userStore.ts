@@ -240,10 +240,18 @@ export const generateSuffix = (): string => {
 };
 
 export const cleanName = (name: string) =>
-  name.trim().replace(/\d+$/, "").replace(/\s+/g, "");
+  name
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\d+$/, "")
+    .replace(/\s+/g, "");
 
 // Generate username with suffix - accepts optional custom name
-export const generateUsernameWithSuffix = (customName?: string): string => {
+export const generateRandomUsername = (
+  customName?: string,
+  withSuffix: boolean = true,
+): string => {
   if (customName) {
     return `${cleanName(customName)}${generateSuffix()}`;
   }
@@ -251,13 +259,13 @@ export const generateUsernameWithSuffix = (customName?: string): string => {
   // Fallback to random adjective-noun combination
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  return `${toUpperCaseFirstLetter(adj)}${toUpperCaseFirstLetter(noun)}${generateSuffix()}`;
+  return `${toUpperCaseFirstLetter(adj)}${toUpperCaseFirstLetter(noun)}${withSuffix ? generateSuffix() : ""}`;
 };
 
 // Generate short, readable, memorable IDs like "swift-tiger-42" (deprecated, use generateUsernameWithSuffix)
-export const generateRandomUsername = (): string => {
-  return generateUsernameWithSuffix();
-};
+// export const generateRandomUsername = (): string => {
+//   return generateRandomUsername();
+// };
 
 export const STORAGE_KEY = "gamehub_username";
 

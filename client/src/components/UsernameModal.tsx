@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
-import { User } from "lucide-react";
+import { User, Dices } from "lucide-react";
 import useLanguage from "../stores/languageStore";
-import { cleanName, generateSuffix } from "../stores/userStore";
+import {
+  cleanName,
+  generateSuffix,
+  generateRandomUsername,
+} from "../stores/userStore";
 
 interface UsernameModalProps {
   onSubmit: (username: string) => void;
@@ -64,18 +68,39 @@ export default function UsernameModal({
             <label className="block text-sm font-medium text-text-secondary mb-2">
               {ti({ en: "Username", vi: "Tên người dùng" })}
             </label>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={ts({
-                en: "Enter your desired username",
-                vi: "Nhập tên bạn muốn",
-              })}
-              autoFocus
-              maxLength={20}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) =>
+                  setInputValue(
+                    e.target.value
+                      .normalize("NFD")
+                      .replace(/[\u0300-\u036f]/g, ""),
+                  )
+                }
+                placeholder={ts({
+                  en: "Enter your desired username",
+                  vi: "Nhập tên bạn muốn",
+                })}
+                autoFocus
+                maxLength={20}
+                className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-w-0"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setInputValue(generateRandomUsername(undefined, false))
+                }
+                className="px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-text-primary transition-colors mb-0"
+                title={ts({
+                  en: "Generate random username",
+                  vi: "Tạo tên ngẫu nhiên",
+                })}
+              >
+                <Dices className="w-5 h-5" />
+              </button>
+            </div>
             <p className="text-xs text-text-muted mt-1">
               {ti({
                 en: "2-20 characters. Random numbers will be added automatically.",
