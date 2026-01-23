@@ -51,7 +51,7 @@ export default function ChatPanel() {
       roomId: currentRoom.id,
       userId,
       username,
-      message: message.trim(),
+      message: message.trim().slice(0, 100),
       type: "user",
     };
 
@@ -96,6 +96,7 @@ export default function ChatPanel() {
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            maxLength={100}
             onKeyPress={handleKeyPress}
             placeholder="Type a message..."
             className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
