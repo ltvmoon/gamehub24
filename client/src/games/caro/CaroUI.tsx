@@ -432,7 +432,7 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Rules", vi: "Quy Tắc" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4 text-sm">
                 <li>
                   {ti({
                     en: "Players take turns placing their mark (X or O) on an empty square.",
@@ -458,7 +458,7 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Controls", vi: "Điều Khiển" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4 text-sm">
                 <li>
                   {ti({
                     en: "Click/Tap to place a mark.",

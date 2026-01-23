@@ -148,7 +148,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Basic Rules", vi: "Quy Tắc Cơ Bản" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4 text-sm">
                 <li>
                   <strong>{ti({ en: "King", vi: "Vua" })}</strong>:{" "}
                   {ti({
@@ -198,7 +198,7 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Special Moves", vi: "Nước Đi Đặc Biệt" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4 text-sm">
                 <li>
                   {ti({
                     en: "Castling: Move the King two squares towards a Rook.",

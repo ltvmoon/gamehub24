@@ -45,13 +45,14 @@ export default class BauCua extends BaseGame<BauCuaState> {
       diceRoll: null,
       currentRound: 0,
       playersReady: {},
-      winner: null,
+      winners: [],
       playerPowerUps,
       activePowerUps: {},
       powerUpPredictions: {},
       recentRolls: [],
       isMegaRound: false,
       jackpotPool: 0,
+      minBalanceToWin: 0,
     };
   }
 
@@ -95,6 +96,9 @@ export default class BauCua extends BaseGame<BauCuaState> {
         break;
       case "RESET_GAME":
         this.handleResetGame();
+        break;
+      case "SET_GAME_MODE":
+        this.handleSetGameMode((action as any).minBalance);
         break;
       case "ADD_BOT":
         this.handleAddBot();
@@ -345,6 +349,10 @@ export default class BauCua extends BaseGame<BauCuaState> {
           if (activePowerUp === "double_down") {
             profit *= 2;
           }
+          // Insurance: 50% Profit
+          else if (activePowerUp === "insurance") {
+            profit = Math.floor(profit * 0.5);
+          }
 
           returnAmount += profit;
           totalReturnFromBets += returnAmount;
@@ -361,6 +369,10 @@ export default class BauCua extends BaseGame<BauCuaState> {
           }
         } else {
           totalLosses += bet.amount;
+          // Double Down: x2 loss (deduct extra bet amount)
+          if (activePowerUp === "double_down") {
+            totalBetAmount += bet.amount;
+          }
         }
       });
 
@@ -436,9 +448,59 @@ export default class BauCua extends BaseGame<BauCuaState> {
       (pb) => pb.currentBalance > 0,
     );
 
-    if (activePlayers.length === 1) {
-      this.state.gamePhase = "ended";
-      this.state.winner = activePlayers[0].playerId;
+    // Survival Mode: Only 1 player left
+    if (this.state.minBalanceToWin === 0) {
+      if (
+        activePlayers.length === 1 &&
+        Object.keys(this.state.playerBalances).length > 1
+      ) {
+        this.state.gamePhase = "ended";
+        this.state.winners = [activePlayers[0].playerId];
+      } else if (
+        activePlayers.length === 0 &&
+        Object.keys(this.state.playerBalances).length > 0
+      ) {
+        // Everyone died simultaneously -> No winner
+        this.state.gamePhase = "ended";
+        this.state.winners = [];
+      }
+    }
+    // Rich Mode: Richest Wins
+    else {
+      const richPlayers = activePlayers.filter(
+        (p) => p.currentBalance >= this.state.minBalanceToWin,
+      );
+
+      if (richPlayers.length > 0) {
+        // Sort by balance desc to find the richest
+        richPlayers.sort((a, b) => b.currentBalance - a.currentBalance);
+
+        // Pick the richest player(s)
+        const maxBalance = richPlayers[0].currentBalance;
+        const topWinners = richPlayers.filter(
+          (p) => p.currentBalance === maxBalance,
+        );
+
+        this.state.gamePhase = "ended";
+        this.state.winners = topWinners.map((p) => p.playerId);
+        return;
+      }
+
+      // Also end if conditions for Survival are met (everyone else died)
+      if (
+        activePlayers.length === 1 &&
+        Object.keys(this.state.playerBalances).length > 1
+      ) {
+        this.state.gamePhase = "ended";
+        this.state.winners = [activePlayers[0].playerId];
+      } else if (
+        activePlayers.length === 0 &&
+        Object.keys(this.state.playerBalances).length > 0
+      ) {
+        // Everyone died case in Rich Mode -> No winner
+        this.state.gamePhase = "ended";
+        this.state.winners = [];
+      }
     }
   }
 
@@ -476,15 +538,24 @@ export default class BauCua extends BaseGame<BauCuaState> {
     this.state.diceRoll = null;
     this.state.currentRound = 0;
     this.state.playersReady = {};
-    this.state.winner = null;
+    this.state.winners = [];
     this.state.activePowerUps = {};
     this.state.powerUpPredictions = {};
     this.state.recentRolls = [];
     this.state.isMegaRound = false;
     this.state.jackpotPool = 0;
+    this.state.minBalanceToWin = 0;
 
     this.syncState();
+    this.syncState();
     this.checkBotTurn();
+  }
+
+  // Set game mode (Survival or Rich)
+  private handleSetGameMode(minBalance: number): void {
+    if (this.state.gamePhase !== "waiting") return;
+    this.state.minBalanceToWin = minBalance;
+    this.syncState();
   }
 
   // Add a bot player
@@ -579,15 +650,16 @@ export default class BauCua extends BaseGame<BauCuaState> {
       else numBets = Math.random() < 0.5 ? 2 : 3;
 
       // risk level
+      // risk level
       const riskRatio =
         strategy < 0.3
-          ? randInRange(0.3, 0.5) // conservative bot
+          ? randInRange(0.05, 0.1) // conservative bot (5-10%)
           : strategy < 0.7
-            ? randInRange(0.5, 0.75) // normal bot
-            : randInRange(0.7, 0.95); // aggressive bot
+            ? randInRange(0.1, 0.25) // normal bot (10-25%)
+            : randInRange(0.25, 0.5); // aggressive bot (25-50%)
 
       const totalBetBudget = Math.max(
-        1,
+        MIN_BET,
         Math.floor(bot.currentBalance * riskRatio),
       );
       const betAmount = Math.max(MIN_BET, Math.floor(totalBetBudget / numBets));
@@ -652,6 +724,10 @@ export default class BauCua extends BaseGame<BauCuaState> {
 
   public requestResetGame(): void {
     this.makeAction({ type: "RESET_GAME" });
+  }
+
+  public requestSetGameMode(minBalance: number): void {
+    this.makeAction({ type: "SET_GAME_MODE", minBalance } as any);
   }
 
   public requestAddBot(): void {

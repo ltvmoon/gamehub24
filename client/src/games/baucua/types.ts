@@ -101,8 +101,8 @@ export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
     timing: "post_roll",
     name: { en: "Double Down", vi: "Nhân Đôi" },
     description: {
-      en: "2x payout if you win. Cooldown: 3 rounds",
-      vi: "Gấp đôi tiền thắng. Hồi chiêu: 3 vòng",
+      en: "2x payout if win, 2x bet lost if lose",
+      vi: "Thắng x2 tiền thưởng, thua x2 tiền phạt",
     },
   },
   insurance: {
@@ -110,8 +110,8 @@ export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
     timing: "post_roll",
     name: { en: "Insurance", vi: "Bảo Hiểm" },
     description: {
-      en: "50% refund if you lose. Cooldown: 2 rounds",
-      vi: "Hoàn 50% nếu thua. Hồi chiêu: 2 vòng",
+      en: "Refund 50% if lose, but only 50% profit if win",
+      vi: "Hoàn 50% nếu thua, nhưng mất 50% nếu thắng",
     },
   },
   reveal_one: {
@@ -161,8 +161,8 @@ export interface BauCuaState {
   // Players ready status (for betting phase)
   playersReady: Record<string, boolean>;
 
-  // Winner if game ended
-  winner: string | null;
+  // Winners if game ended (can be multiple in case of tie)
+  winners: string[];
 
   // Power-ups per player
   playerPowerUps: Record<
@@ -187,6 +187,9 @@ export interface BauCuaState {
   // Mega roll tracking
   isMegaRound: boolean;
   jackpotPool: number;
+
+  // Win condition: 0 = Survival (Last man standing), > 0 = Target Balance
+  minBalanceToWin: number;
 }
 
 // Actions
@@ -225,6 +228,11 @@ export interface ResetGameAction {
   type: "RESET_GAME";
 }
 
+export interface SetGameModeAction {
+  type: "SET_GAME_MODE";
+  minBalance: number;
+}
+
 export interface AddBotAction {
   type: "ADD_BOT";
 }
@@ -253,6 +261,7 @@ export type BauCuaAction =
   | RollDiceAction
   | StartNewRoundAction
   | ResetGameAction
+  | SetGameModeAction
   | AddBotAction
   | RemoveBotAction
   | ActivatePowerUpAction

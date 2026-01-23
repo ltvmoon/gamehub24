@@ -1882,7 +1882,7 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Objective", vi: "Mục tiêu" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4 text-sm">
                 <li>
                   <strong className="text-red-400">
                     🐺 {ti({ en: "Werewolves", vi: "Ma Sói" })}
@@ -1910,7 +1910,7 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Roles", vi: "Vai Trò" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4 text-sm">
                 <li>
                   <strong>🔮 {ti({ en: "Seer", vi: "Tiên Tri" })}</strong>:{" "}
                   {ti({
@@ -1954,7 +1954,7 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Phases", vi: "Giai Đoạn" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4 text-sm">
+              <ul className="list-disc pl-4 text-sm">
                 <li>
                   <strong>🌙 {ti({ en: "Night", vi: "Đêm" })}</strong>:{" "}
                   {ti({

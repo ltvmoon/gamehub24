@@ -467,6 +467,86 @@ export default function BauCuaUI({
     );
   };
 
+  // Render Game Over Screen
+  const renderGameOver = () => {
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
+        <div className="bg-slate-900 border-2 border-yellow-500 rounded-2xl max-w-lg w-full p-8 shadow-2xl relative overflow-hidden">
+          <div className="text-center space-y-6 relative z-10">
+            {state.winners && state.winners.length > 0 ? (
+              <>
+                <h2 className="text-4xl font-bold text-yellow-500 animate-bounce">
+                  {state.winners.length > 1
+                    ? ti({ vi: "CHIẾN THẮNG", en: "WINNERS" })
+                    : ti({ vi: "CHIẾN THẮNG", en: "WINNER" })}
+                </h2>
+
+                <div className="flex flex-col gap-4 items-center justify-center py-4">
+                  {state.winners.map((winnerId) => {
+                    const player = state.playerBalances[winnerId];
+                    if (!player) return null;
+                    return (
+                      <div
+                        key={winnerId}
+                        className="bg-slate-800/80 p-4 rounded-xl border border-yellow-500/50 min-w-[200px] flex flex-col items-center gap-2 transform hover:scale-105 transition-transform"
+                      >
+                        <div className="text-4xl">👑</div>
+                        <div className="text-2xl font-bold text-white">
+                          {player.username}
+                        </div>
+                        <div className="text-yellow-400 font-bold text-xl">
+                          {formatPrice(player.currentBalance)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-4xl font-bold text-slate-400">
+                  {ti({ vi: "KẾT THÚC", en: "GAME OVER" })}
+                </h2>
+                <p className="text-slate-300 text-lg">
+                  {ti({
+                    vi: "Không có người chiến thắng",
+                    en: "No winner this time",
+                  })}
+                </p>
+                <p className="text-slate-500 text-sm italic">
+                  {ti({
+                    vi: "Tất cả người chơi đều đã hết tiền",
+                    en: "All players ran out of money",
+                  })}
+                </p>
+              </>
+            )}
+
+            {game.isHost && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => game.requestResetGame()}
+                  className="px-8 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-xl shadow-lg hover:shadow-green-500/50 transition-all transform hover:-translate-y-1"
+                >
+                  {ti({ vi: "Chơi lại", en: "Play Again" })} 🔄
+                </button>
+              </div>
+            )}
+
+            {!game.isHost && (
+              <p className="text-slate-500 animate-pulse">
+                {ti({
+                  vi: "Đang chờ chủ phòng chơi lại...",
+                  en: "Waiting for host to reset...",
+                })}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderGameRules = () => (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-100 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl relative">
@@ -490,17 +570,39 @@ export default function BauCuaUI({
               </h3>
               <p>
                 {ti({
-                  en: "Place bets on the symbols you think will appear on the dice. The last player with money wins!",
-                  vi: "Đặt cược vào các linh vật bạn nghĩ sẽ xuất hiện trên xúc xắc. Người cuối cùng còn tiền sẽ thắng!",
+                  en: "Place bets on the symbols you think will appear on the dice.",
+                  vi: "Đặt cược vào các linh vật bạn nghĩ sẽ xuất hiện trên xúc xắc.",
                 })}
               </p>
+              <p>
+                {ti({
+                  vi: "2 chế độ chơi: ",
+                  en: "2 game modes: ",
+                })}
+              </p>
+              <ul className="list-disc pl-4">
+                <li>
+                  💀{" "}
+                  {ti({
+                    vi: "Sinh tồn: Ai sống sót (còn tiền) cuối cùng sẽ thắng.",
+                    en: "Survival: Last player standing (with money) wins.",
+                  })}
+                </li>
+                <li>
+                  💰{" "}
+                  {ti({
+                    vi: "Giàu có: Ai kiếm được tiền đạt mục tiêu trước sẽ thắng.",
+                    en: "Rich: The first player to reach the target amount wins.",
+                  })}
+                </li>
+              </ul>
             </section>
 
             <section>
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Rules", vi: "Quy Tắc" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4">
+              <ul className="list-disc pl-4">
                 <li>
                   {ti({
                     en: "Max 3 bets each round.",
@@ -514,12 +616,14 @@ export default function BauCuaUI({
                   })}
                 </li>
                 <li>
+                  ✅{" "}
                   {ti({
                     en: "Each symbol matches: Win 2x your bet.",
                     vi: "Cược đúng linh vật: Nhận x2 tiền cược của linh vật đó.",
                   })}
                 </li>
                 <li>
+                  ❌{" "}
                   {ti({
                     en: "Each symbol not matches: Lose bet on that symbol.",
                     vi: "Cược sai linh vật: Mất tiền cược.",
@@ -538,7 +642,7 @@ export default function BauCuaUI({
                   vi: "Được dùng 1 kỹ năng mỗi vòng.",
                 })}
               </p>
-              <ul className="space-y-2 list-disc pl-4">
+              <ul className="list-disc pl-4">
                 {Object.keys(POWERUP_CONFIG).map((key) => (
                   <li key={key}>
                     <strong>
@@ -554,7 +658,7 @@ export default function BauCuaUI({
               <h3 className="text-lg font-bold text-yellow-400 mt-4">
                 {ti({ en: "Jackpot", vi: "Nổ Hũ" })}
               </h3>
-              <ul className="space-y-2 list-disc pl-4">
+              <ul className="list-disc pl-4">
                 <li>
                   {ti({
                     en: `Jackpot is accumulated from ${JACKPOT_PERCENTAGE * 100}% of all bets each round.`,
@@ -604,7 +708,7 @@ export default function BauCuaUI({
               return (
                 <div
                   key={reelIndex}
-                  className="relative w-20 h-20 bg-white rounded-xl overflow-hidden shadow-lg"
+                  className={`relative w-20 h-20 bg-white rounded-xl overflow-hidden shadow-lg ${isCorrectBet ? "bg-linear-to-t from-green-300 to-blue-200 border-3 border-green-500" : ""}`}
                 >
                   {isRolling && reel.length > 0 ? (
                     <div
@@ -683,6 +787,699 @@ export default function BauCuaUI({
     );
   };
 
+  const renderWaitingPhase = () => {
+    return (
+      <div className="space-y-4">
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl @md:p-6 p-2 py-6 border border-slate-700">
+          <p className="text-xl mb-4 text-center">
+            {ti({
+              vi: "Đang chờ bắt đầu game...",
+              en: "Waiting to start game...",
+            })}
+          </p>
+
+          {/* Game Mode Selection (Host Only) */}
+          {game.isHost && (
+            <div className="mb-6 p-4 bg-slate-700/50 rounded-xl border border-slate-600">
+              <h3 className="text-lg font-semibold mb-3 text-white text-center">
+                {ti({ vi: "Cài đặt phòng", en: "Room Settings" })}
+              </h3>
+
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => game.requestSetGameMode(0)}
+                    className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                      state.minBalanceToWin === 0
+                        ? "bg-red-600 text-white ring-2 ring-red-400"
+                        : "bg-slate-600 text-slate-300 hover:bg-slate-500"
+                    }`}
+                  >
+                    ☠️ {ti({ vi: "Sinh tồn", en: "Survival" })}
+                  </button>
+                  <button
+                    onClick={() => game.requestSetGameMode(100000000)}
+                    className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                      state.minBalanceToWin > 0
+                        ? "bg-yellow-600 text-white ring-2 ring-yellow-400"
+                        : "bg-slate-600 text-slate-300 hover:bg-slate-500"
+                    }`}
+                  >
+                    🏆 {ti({ vi: "Giàu có", en: "Rich" })}
+                  </button>
+                </div>
+
+                {state.minBalanceToWin > 0 && (
+                  <div className="animate-in fade-in slide-in-from-top-2">
+                    <div className="text-sm text-center text-slate-300 mb-2">
+                      {ti({
+                        vi: "Mục tiêu chiến thắng:",
+                        en: "Winning Goal:",
+                      })}
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-1">
+                      {[
+                        10000, 100000, 1000000, 100000000, 500000000,
+                        1000000000, 2000000000,
+                      ].map((val) => (
+                        <button
+                          key={val}
+                          onClick={() => game.requestSetGameMode(val)}
+                          className={`px-3 py-1 text-xs rounded-full border ${
+                            state.minBalanceToWin === val
+                              ? "bg-yellow-500/20 border-yellow-500 text-yellow-300"
+                              : "bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-400"
+                          }`}
+                        >
+                          {formatPrice(val)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-center text-slate-400 mt-2 italic">
+                  {state.minBalanceToWin === 0
+                    ? ti({
+                        vi: "Người sống sót cuối cùng sẽ chiến thắng.",
+                        en: "The last player with money wins.",
+                      })
+                    : ti({
+                        vi: "Người đầu tiên đạt mức tiền này sẽ chiến thắng.",
+                        en: "First player to reach this balance wins.",
+                      })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!game.isHost && (
+            <div className="mb-6 text-center">
+              <div className="inline-block px-4 py-2 rounded-lg bg-black/30 border border-slate-600">
+                {state.minBalanceToWin === 0 ? (
+                  <div className="text-red-400 font-bold flex items-center gap-2">
+                    <span>☠️</span>{" "}
+                    {ti({ vi: "Chế độ: Sinh tồn", en: "Mode: Survival" })}
+                  </div>
+                ) : (
+                  <div className="text-yellow-400 font-bold flex items-center gap-2">
+                    <span>🏆</span>{" "}
+                    {ti({ vi: "Chế độ: Đua top", en: "Rich Mode" })}
+                    <span className="text-white">
+                      ({formatPrice(state.minBalanceToWin)})
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Player List */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3 text-slate-300">
+              {ti({
+                vi: `Người chơi (${Object.keys(state.playerBalances).length}/${currentRoom?.maxPlayers})`,
+                en: `Players (${Object.keys(state.playerBalances).length}/${currentRoom?.maxPlayers})`,
+              })}
+            </h3>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {Object.values(state.playerBalances).map((player) => (
+                <div
+                  key={player.playerId}
+                  className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between w-[150px]"
+                >
+                  <div className="flex-1 text-left">
+                    <p className="font-semibold text-sm truncate">
+                      {player.username}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {formatPrice(player.currentBalance)}💰
+                    </p>
+                  </div>
+                  {player.isBot && <span className="text-lg ml-2">🤖</span>}
+                  {game.isHost && player.isBot && (
+                    <button
+                      onClick={() => game.requestRemoveBot(player.playerId)}
+                      className="p-2 text-red-400 hover:bg-slate-600 rounded-lg hover:cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {game.isHost && (
+            <div className="flex gap-2 justify-center flex-wrap">
+              <button
+                onClick={() => game.requestAddBot()}
+                className="flex items-center gap-1 px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg transition-colors disabled:bg-slate-800"
+                disabled={Object.keys(state.playerBalances).length >= 20}
+              >
+                {ti({ vi: "Thêm Bot", en: "Add Bot" })}
+                <Bot className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => game.requestStartNewRound()}
+                className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg transition-colors disabled:bg-slate-800"
+                disabled={Object.keys(state.playerBalances).length === 0}
+              >
+                {ti({ vi: "Bắt đầu", en: "Start Game" })}
+                <Play className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBetBoard = () => {
+    return (
+      <div className="grid grid-cols-3 @md:gap-3 gap-1 relative">
+        {/* overlay to show waiting for host to roll */}
+        {isReady && state.gamePhase === "betting" && (
+          <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center">
+            <p className="text-md text-orange-500 pt-2 animate-bounce">
+              {ti({
+                vi: "Đang chờ chủ phòng quay xúc xắc..",
+                en: "Waiting for host to roll dice..",
+              })}
+            </p>
+          </div>
+        )}
+        {ALL_SYMBOLS.map((symbol) => {
+          const betOnThis = getBetOnSymbol(symbol);
+          const betsOnSymbol = getBetsOnSymbol(symbol);
+          const totalBets = getTotalBetsOnSymbol(symbol);
+          const isWinning =
+            state.diceRoll?.includes(symbol) && state.gamePhase === "results";
+
+          // Get hot streak count for this symbol
+          const hotStreaks = getHotStreaks();
+          const streakData = hotStreaks.find((s) => s.symbol === symbol);
+          const streakCount = streakData?.count || 0;
+          const totalRolls = state.recentRolls.length * 3;
+          const streakRank = hotStreaks.findIndex((s) => s.symbol === symbol);
+          const isHot = streakRank < 2 && state.recentRolls.length >= 3;
+          const isCold = streakRank >= 4 && state.recentRolls.length >= 3;
+          const hasAllIn =
+            // i am all-in
+            ((isReady || game.isHost) &&
+              myBalance?.currentBalance &&
+              betOnThis >= (myBalance?.currentBalance || 0)) ||
+            // some player is all-in on this symbol
+            betsOnSymbol.filter((bet) => {
+              const player = state.playerBalances[bet.playerId];
+              const bets = state.currentBets[bet.playerId];
+              return (
+                player &&
+                player.totalBet >= player.currentBalance &&
+                bets.length === 1
+              );
+            }).length > 0;
+
+          return (
+            <button
+              key={symbol}
+              onClick={() => handleSymbolClick(symbol)}
+              disabled={state.gamePhase !== "betting"}
+              className={`relative p-4 rounded-xl border-2 transition-all transform active:scale-95 ${
+                isWinning
+                  ? "bg-linear-to-br from-yellow-500 to-orange-500 border-yellow-400 animate-pulse"
+                  : betOnThis > 0
+                    ? "bg-linear-to-br from-blue-600 to-purple-600 border-blue-400"
+                    : "bg-slate-800/50 border-slate-700 hover:border-slate-500"
+              } ${
+                state.gamePhase === "betting"
+                  ? "cursor-pointer"
+                  : "cursor-not-allowed opacity-75"
+              } ${
+                hasAllIn && state.gamePhase === "betting"
+                  ? "ring-4 ring-red-500 ring-opacity-75 shadow-lg shadow-red-500/50 animate-pulse"
+                  : ""
+              }`}
+            >
+              <div className="text-4xl mb-2">{SYMBOL_NAMES[symbol].emoji}</div>
+
+              {/* Hot/Cold streak indicator */}
+              {state.recentRolls.length >= 3 && (
+                <div className="absolute @md:top-2 @md:left-2 top-1 left-1 flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-bold">
+                  {isHot && "🔥"}
+                  {isCold && "❄️"}
+                  <span
+                    className={
+                      isHot
+                        ? "text-orange-400"
+                        : isCold
+                          ? "text-cyan-400"
+                          : "text-slate-300"
+                    }
+                  >
+                    {streakCount}/{totalRolls}
+                    {/* {Math.round((streakCount / totalRolls) * 100)}% */}
+                  </span>
+                </div>
+              )}
+
+              {/* All-in indicator */}
+              {hasAllIn && state.gamePhase === "betting" && (
+                <div className="absolute @md:top-2 @md:left-2 top-1 left-1 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold animate-bounce flex items-center gap-1">
+                  🔥 ALL-IN
+                </div>
+              )}
+              <div className="text-sm font-semibold mb-2">
+                {ti(SYMBOL_NAMES[symbol])}
+              </div>
+
+              {/* My bet */}
+              {betOnThis > 0 && (
+                <div className="absolute @md:top-2 @md:right-2 top-1 right-1 bg-white text-black px-2 py-1 rounded-full text-xs font-bold">
+                  {formatPrice(betOnThis)}
+                </div>
+              )}
+
+              {/* All bets on this symbol */}
+              {betsOnSymbol.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <div className="text-xs font-bold text-yellow-400 border-t border-slate-600 pt-2">
+                    {ti({ vi: `Tổng: `, en: `Total: ` })}
+                    {formatPrice(totalBets)}
+                  </div>
+                  <div className="max-h-20 overflow-y-auto space-y-0.5">
+                    {betsOnSymbol.map((bet) => (
+                      <div
+                        key={bet.playerId}
+                        className="text-xs flex justify-between items-center gap-1"
+                      >
+                        <span className="truncate flex-1 text-left">
+                          {bet.username}
+                          {bet.isBot && " 🤖"}
+                        </span>
+                        <span className="font-semibold text-green-400">
+                          {formatPrice(bet.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderLeaderBoard = () => {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
+        <h3 className="text-lg font-semibold mb-3">
+          {ti({ vi: "Bảng xếp hạng", en: "Leaderboard" })}
+        </h3>
+        <div className="space-y-2 max-h-120 overflow-y-auto">
+          {getLeaderboard().map((pBalance, idx) => {
+            const lastProfit =
+              pBalance.balanceHistory.length > 1
+                ? pBalance.currentBalance -
+                  pBalance.balanceHistory[pBalance.balanceHistory.length - 2]
+                : 0;
+
+            return (
+              <div
+                key={pBalance.playerId}
+                className={`flex items-center justify-between p-3 rounded-lg ${
+                  pBalance.playerId === userId
+                    ? "bg-blue-600/30 border border-blue-500"
+                    : "bg-slate-700/50"
+                }`}
+              >
+                <div className="flex items-center gap-3 flex-1 text-left">
+                  <span className="text-xl font-bold text-slate-400">
+                    #{idx + 1}
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-semibold">
+                      {pBalance.username}
+                      {pBalance.isBot && " 🤖"}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {ti({ vi: `Cược: `, en: `Bet: ` })}
+                      {formatPrice(pBalance.totalBet)}
+                      {state.playersReady[pBalance.playerId] && " ✓"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 ">
+                  {/* Mini sparkline */}
+                  {state.currentRound > 0 &&
+                    renderMiniSparkline(pBalance.balanceHistory)}
+                  <div className="flex flex-col items-end gap-0">
+                    <p className="text-lg font-bold text-green-400">
+                      {formatPrice(pBalance.currentBalance)}
+                    </p>
+                    <span
+                      className={`text-xs ${lastProfit > 0 ? "text-green-400" : "text-red-400"}`}
+                    >
+                      {lastProfit > 0 ? "+" : ""}
+                      {formatPrice(lastProfit)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMainGameArea = () => {
+    return (
+      <div className="flex flex-col @md:grid @md:grid-cols-[1fr_300px] gap-4">
+        {/* Left Column: Betting Interface */}
+        <div className="flex flex-col gap-4">
+          {/* Player Balance & Bet Controls */}
+          {myBalance && (
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <p className="text-sm text-slate-400">
+                    {ti({ vi: "Số dư", en: "Your Balance" })}
+                  </p>
+                  <p className="text-2xl font-bold text-green-400 flex items-center gap-0">
+                    {formatPrice(myBalance.currentBalance)}
+                    {myBalance.balanceHistory.length > 1 && (
+                      <span
+                        className={`ml-2 text-sm font-bold animate-pulse ${
+                          myLastProfit >= 0 ? "text-green-300" : "text-red-400"
+                        }`}
+                      >
+                        {myLastProfit >= 0 ? "+" : ""}
+                        {formatPrice(myLastProfit)}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-slate-400">
+                    {ti({ vi: "Tổng cược", en: "Total Bet" })}
+                  </p>
+                  <p className="text-xl font-semibold text-orange-400">
+                    {formatPrice(myTotalBet)}
+                  </p>
+                </div>
+              </div>
+
+              {state.gamePhase === "betting" && (
+                <>
+                  <div className="flex gap-2">
+                    {!isReady && (
+                      <button
+                        onClick={() => {
+                          setBetError(null);
+
+                          // Clear local bets if not ready yet
+                          if (!isReady) {
+                            setLocalBets([]);
+                          }
+                          game.requestClearBets();
+                        }}
+                        className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:bg-slate-800 disabled:cursor-not-allowed"
+                        disabled={myBets.length === 0}
+                      >
+                        {ti({ vi: "Xóa cược", en: "Clear Bets" })}{" "}
+                        {myBets.length || ""}
+                      </button>
+                    )}
+                    {!game.isHost && (
+                      <button
+                        onClick={() => {
+                          // Sync local bets to server before toggling ready
+                          if (!isReady && localBets.length > 0) {
+                            game.requestSyncBets(localBets);
+                          }
+                          setBetError(null);
+                          game.requestToggleReady();
+                          setOptimisticReady(!isReady); // Optimistic toggle
+                        }}
+                        className={`flex-1 px-4 py-2 rounded-lg transition-colors disabled:bg-slate-800 disabled:cursor-not-allowed ${
+                          isReady
+                            ? "bg-red-700 hover:bg-red-800"
+                            : "bg-blue-700 hover:bg-blue-800"
+                        }`}
+                        disabled={myBets.length === 0}
+                      >
+                        {isReady
+                          ? ti({ vi: "Huỷ sẵn sàng", en: "Cancel Ready" })
+                          : availableBalance < MIN_BET && myBets.length === 0
+                            ? ti({ vi: "Hết tiền", en: "Out of money" })
+                            : ti({ vi: "Sẵn sàng", en: "Ready" })}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* notify user to select */}
+                  {myBets.length === 0 ? (
+                    availableBalance < MIN_BET ? (
+                      <p className="text-sm text-red-500 pt-2 animate-bounce">
+                        {ti({
+                          vi: "Bạn không đủ tiền cược",
+                          en: "Insufficient funds",
+                        })}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-orange-500 pt-2 animate-bounce">
+                        {ti({
+                          vi: "Vui lòng chọn linh vật",
+                          en: "Please select a symbol",
+                        })}
+                      </p>
+                    )
+                  ) : !isReady && !game.isHost ? (
+                    <p className="text-sm text-orange-500 pt-2 animate-bounce">
+                      {ti({
+                        vi: "Bấm Sẵn sàng khi đặt cược xong",
+                        en: "Press Ready when you finish betting",
+                      })}
+                    </p>
+                  ) : null}
+
+                  {/* bet error */}
+                  {betError && (
+                    <p className="text-sm text-red-500 pt-2 animate-bounce">
+                      {betError}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Betting Board */}
+          {renderBetBoard()}
+
+          {/* Power-ups Panel */}
+          {myBalance && state.playerPowerUps[userId] && (
+            <div className="flex flex-col gap-2 bg-slate-800/50 backdrop-blur-sm rounded-xl @md:p-4 p-2 border border-slate-700">
+              <h3 className="font-semibold mb-3 text-slate-300">
+                {ti({ vi: "Kỹ năng", en: "Power-ups" })}
+              </h3>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {(
+                  Object.keys(state.playerPowerUps[userId]) as PowerUpType[]
+                ).map((powerUpType) => {
+                  const powerUp = state.playerPowerUps[userId][powerUpType];
+                  const isSelected = selectedPowerUpType === powerUpType;
+                  const isActive = state.activePowerUps[userId] === powerUpType;
+                  const isAvailable = powerUp.cooldown === 0 && !isActive;
+
+                  return (
+                    <button
+                      key={powerUpType}
+                      onClick={() =>
+                        setSelectedPowerUpType(isSelected ? null : powerUpType)
+                      }
+                      // disabled={!isAvailable && !isSelected}
+                      className={`relative p-3 rounded-lg border-2 transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-linear-to-br from-green-600 to-emerald-600 border-green-400"
+                          : isSelected
+                            ? "bg-linear-to-br from-blue-600 to-purple-600 border-blue-400 ring-2 ring-blue-300"
+                            : isAvailable
+                              ? "bg-slate-700 border-slate-600 hover:border-blue-400 hover:bg-slate-600"
+                              : "bg-slate-800 border-slate-700 opacity-50"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        {getPowerUpIcon(powerUpType)}
+                        <div className="text-sm font-semibold truncate w-full text-center">
+                          {ti(POWERUP_CONFIG[powerUpType].name)}
+                        </div>
+                        {!isAvailable && !isSelected && !isActive && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg">
+                            <span className="text-2xl font-bold text-white">
+                              {powerUp.cooldown}
+                            </span>
+                          </div>
+                        )}
+                        {isActive && (
+                          <div className="text-xs text-green-300 font-bold">
+                            ✓ {ti({ vi: "Đang dùng", en: "Active" })}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Show active power-up description (if not prediction-based) */}
+              {selectedPowerUpType && (
+                <div className="p-3 bg-purple-600/20 border border-purple-500 rounded-lg">
+                  <p className="text-sm text-purple-300 font-semibold mb-1">
+                    {ti(POWERUP_CONFIG[selectedPowerUpType].name)}
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    {ti(POWERUP_CONFIG[selectedPowerUpType].description)}
+                  </p>
+                </div>
+              )}
+
+              {/* Activate button */}
+              {selectedPowerUpType &&
+                !state.activePowerUps[userId] &&
+                state.gamePhase === "betting" && (
+                  <button
+                    onClick={() => {
+                      game.requestActivatePowerUp(selectedPowerUpType);
+                      // Optimistic update
+                      setOptimisticPowerUp(selectedPowerUpType);
+                      setSelectedPowerUpType(null);
+                    }}
+                    disabled={selectedPowerUp && selectedPowerUp.cooldown > 0}
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:cursor-not-allowed rounded-lg font-bold text-white transition-colors"
+                  >
+                    {selectedPowerUp && selectedPowerUp.cooldown > 0
+                      ? ts({
+                          en: `🪫 Wait for cooldown (${selectedPowerUp.cooldown} rounds left)`,
+                          vi: `🪫 Đang hồi chiêu (còn ${selectedPowerUp.cooldown} vòng)`,
+                        })
+                      : ts({
+                          en: "⚡ Use Power-up",
+                          vi: "⚡ Sử dụng kỹ năng",
+                        })}
+                  </button>
+                )}
+
+              {/* Cancel button for post_roll power-ups */}
+              {state.activePowerUps[userId] &&
+                state.playerPowerUps[userId] &&
+                POWERUP_CONFIG[state.activePowerUps[userId]]?.timing ===
+                  "post_roll" && (
+                  <button
+                    onClick={() => {
+                      game.requestDeactivatePowerUp();
+                      setOptimisticPowerUp(null); // Clear optimistic immediately
+                    }}
+                    className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    {ti({ vi: "Huỷ kỹ năng", en: "Cancel Power-up" })}
+                  </button>
+                )}
+
+              {/* Show prediction for Mắt Thần */}
+              {state.powerUpPredictions[userId] && (
+                <div className="p-3 bg-green-600/20 border border-green-500 rounded-lg">
+                  <p className="text-xs text-green-300 font-semibold mb-2">
+                    🔮{" "}
+                    {ti({
+                      vi: "Dự đoán của Mắt Thần",
+                      en: "Mystic Prediction",
+                    })}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="text-3xl flex items-center">
+                      <span className="mr-2 text-xl">
+                        {ti(
+                          SYMBOL_NAMES[
+                            state.powerUpPredictions[userId]?.symbol
+                          ],
+                        )}
+                      </span>
+                      {
+                        SYMBOL_NAMES[state.powerUpPredictions[userId]?.symbol]
+                          ?.emoji
+                      }
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400">
+                        {ti({ vi: "Độ chính xác", en: "Accuracy" })}
+                      </p>
+                      <p className="text-lg font-bold text-purple-300">
+                        {Math.round(
+                          state.powerUpPredictions[userId]?.accuracy * 100,
+                        )}
+                        %
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Show result for Lucky Star */}
+              {state.playerPowerUps[userId]?.lucky_star?.lastMultiplier &&
+                (state.playerPowerUps[userId].lucky_star.lastUsedRound ===
+                  state.currentRound - 1 ||
+                  (state.gamePhase === "results" &&
+                    state.playerPowerUps[userId].lucky_star.lastUsedRound ===
+                      state.currentRound)) && (
+                  <div className="p-3 bg-yellow-600/20 border border-yellow-500 rounded-lg mt-2">
+                    <p className="text-xs text-yellow-300 font-semibold mb-2">
+                      🌟{" "}
+                      {ti({
+                        vi: "Kết quả Sao May Mắn",
+                        en: "Lucky Star Result",
+                      })}
+                    </p>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-yellow-300">
+                        x
+                        {state.playerPowerUps[
+                          userId
+                        ].lucky_star.lastMultiplier?.toFixed(1)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
+        </div>
+
+        {/* Right Sidebar: Dice & Leaderboard */}
+        <div className="flex flex-col gap-4">
+          {/* Dice Display */}
+          {renderDices()}
+
+          {/* Dice in fixed modal for mobile */}
+          {createPortal(
+            <div
+              className={`fixed top-0 left-0 right-0 bottom-0 bg-slate-900/90 backdrop-blur-sm rounded-xl p-2 z-50 md:hidden ${isRolling ? "flex" : "hidden"} items-center justify-center`}
+            >
+              <div className="flex items-center justify-between">
+                {renderDices()}
+              </div>
+            </div>,
+            document.getElementById("root")!,
+          )}
+
+          {/* Leaderboard with Sparklines */}
+          {renderLeaderBoard()}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <BettingModal
@@ -738,616 +1535,31 @@ export default function BauCuaUI({
               {state.jackpotPool > 0 &&
                 ` • ${ti({ vi: "Hũ", en: "Jackpot" })}: ${formatPrice(state.jackpotPool)} 💎`}
             </p>
-          </div>
-        )}
-
-        {/* Game Ended */}
-        {state.gamePhase === "ended" && (
-          <div className="bg-linear-to-br from-yellow-600 to-orange-600 rounded-xl p-8 text-center border-4 border-yellow-400">
-            <h2 className="text-3xl font-bold mb-4">
-              🎉 {ti({ vi: "Kết thúc!", en: "Game Over!" })} 🎉
-            </h2>
-            {state.winner && (
-              <p className="text-xl mb-6">
-                {ti({
-                  vi: `Người chiến thắng: ${state.playerBalances[state.winner]?.username}`,
-                  en: `Winner: ${state.playerBalances[state.winner]?.username}`,
-                })}
-              </p>
-            )}
-            {game.isHost && (
-              <button
-                onClick={() => game.requestResetGame()}
-                className="px-6 py-3 bg-white text-black rounded-lg font-bold hover:bg-slate-200 transition-colors"
-              >
-                {ti({ vi: "Chơi lại", en: "Play Again" })}
-              </button>
-            )}
+            {/* Show Game Mode Info */}
+            <div className="text-center text-xs mt-1 text-yellow-300 font-semibold bg-black/20 py-1 rounded-lg">
+              {state.minBalanceToWin === 0 ? (
+                <span>
+                  ☠️ {ti({ vi: "Chế độ: Sinh tồn", en: "Mode: Survival" })}
+                </span>
+              ) : (
+                <span>
+                  🏆 {ti({ vi: "Chế độ: Đua top", en: "Mode: Rich" })} (
+                  {ti({ vi: "Mục tiêu: ", en: "Goal: " })}
+                  {formatPrice(state.minBalanceToWin)})
+                </span>
+              )}
+            </div>
           </div>
         )}
 
         {/* Waiting Phase */}
-        {state.gamePhase === "waiting" && (
-          <div className="space-y-4">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl @md:p-6 p-2 py-6 border border-slate-700">
-              <p className="text-xl mb-4 text-center">
-                {ti({
-                  vi: "Đang chờ bắt đầu game...",
-                  en: "Waiting to start game...",
-                })}
-              </p>
-
-              {/* Player List */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3 text-slate-300">
-                  {ti({
-                    vi: `Người chơi (${Object.keys(state.playerBalances).length}/${currentRoom?.maxPlayers})`,
-                    en: `Players (${Object.keys(state.playerBalances).length}/${currentRoom?.maxPlayers})`,
-                  })}
-                </h3>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {Object.values(state.playerBalances).map((player) => (
-                    <div
-                      key={player.playerId}
-                      className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between w-[150px]"
-                    >
-                      <div className="flex-1 text-left">
-                        <p className="font-semibold text-sm truncate">
-                          {player.username}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {formatPrice(player.currentBalance)}💰
-                        </p>
-                      </div>
-                      {player.isBot && <span className="text-lg ml-2">🤖</span>}
-                      {game.isHost && player.isBot && (
-                        <button
-                          onClick={() => game.requestRemoveBot(player.playerId)}
-                          className="p-2 text-red-400 hover:bg-slate-600 rounded-lg hover:cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {game.isHost && (
-                <div className="flex gap-2 justify-center flex-wrap">
-                  <button
-                    onClick={() => game.requestAddBot()}
-                    className="flex items-center gap-1 px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg transition-colors disabled:bg-slate-800"
-                    disabled={Object.keys(state.playerBalances).length >= 20}
-                  >
-                    {ti({ vi: "Thêm Bot", en: "Add Bot" })}
-                    <Bot className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => game.requestStartNewRound()}
-                    className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg transition-colors disabled:bg-slate-800"
-                    disabled={Object.keys(state.playerBalances).length === 0}
-                  >
-                    {ti({ vi: "Bắt đầu", en: "Start Game" })}
-                    <Play className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {state.gamePhase === "waiting" && renderWaitingPhase()}
 
         {/* Main Game Area */}
-        {state.gamePhase !== "waiting" && (
-          <div className="flex flex-col @md:grid @md:grid-cols-[1fr_300px] gap-4">
-            {/* Left Column: Betting Interface */}
-            <div className="flex flex-col gap-4">
-              {/* Player Balance & Bet Controls */}
-              {myBalance && (
-                <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
-                  <div className="flex justify-between items-center mb-3">
-                    <div>
-                      <p className="text-sm text-slate-400">
-                        {ti({ vi: "Số dư", en: "Your Balance" })}
-                      </p>
-                      <p className="text-2xl font-bold text-green-400 flex items-center gap-0">
-                        {formatPrice(myBalance.currentBalance)}
-                        {myBalance.balanceHistory.length > 1 && (
-                          <span
-                            className={`ml-2 text-sm font-bold animate-pulse ${
-                              myLastProfit >= 0
-                                ? "text-green-300"
-                                : "text-red-400"
-                            }`}
-                          >
-                            {myLastProfit >= 0 ? "+" : ""}
-                            {formatPrice(myLastProfit)}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-slate-400">
-                        {ti({ vi: "Tổng cược", en: "Total Bet" })}
-                      </p>
-                      <p className="text-xl font-semibold text-orange-400">
-                        {formatPrice(myTotalBet)}
-                      </p>
-                    </div>
-                  </div>
+        {state.gamePhase !== "waiting" && renderMainGameArea()}
 
-                  {state.gamePhase === "betting" && (
-                    <>
-                      <div className="flex gap-2">
-                        {!isReady && (
-                          <button
-                            onClick={() => {
-                              setBetError(null);
-
-                              // Clear local bets if not ready yet
-                              if (!isReady) {
-                                setLocalBets([]);
-                              }
-                              game.requestClearBets();
-                            }}
-                            className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:bg-slate-800 disabled:cursor-not-allowed"
-                            disabled={myBets.length === 0}
-                          >
-                            {ti({ vi: "Xóa cược", en: "Clear Bets" })}{" "}
-                            {myBets.length || ""}
-                          </button>
-                        )}
-                        {!game.isHost && (
-                          <button
-                            onClick={() => {
-                              // Sync local bets to server before toggling ready
-                              if (!isReady && localBets.length > 0) {
-                                game.requestSyncBets(localBets);
-                              }
-                              setBetError(null);
-                              game.requestToggleReady();
-                              setOptimisticReady(!isReady); // Optimistic toggle
-                            }}
-                            className={`flex-1 px-4 py-2 rounded-lg transition-colors disabled:bg-slate-800 disabled:cursor-not-allowed ${
-                              isReady
-                                ? "bg-red-700 hover:bg-red-800"
-                                : "bg-blue-700 hover:bg-blue-800"
-                            }`}
-                            disabled={myBets.length === 0}
-                          >
-                            {isReady
-                              ? ti({ vi: "Huỷ sẵn sàng", en: "Cancel Ready" })
-                              : availableBalance < MIN_BET &&
-                                  myBets.length === 0
-                                ? ti({ vi: "Hết tiền", en: "Out of money" })
-                                : ti({ vi: "Sẵn sàng", en: "Ready" })}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* notify user to select */}
-                      {myBets.length === 0 ? (
-                        availableBalance < MIN_BET ? (
-                          <p className="text-sm text-red-500 pt-2 animate-bounce">
-                            {ti({
-                              vi: "Bạn không đủ tiền cược",
-                              en: "Insufficient funds",
-                            })}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-orange-500 pt-2 animate-bounce">
-                            {ti({
-                              vi: "Vui lòng chọn linh vật",
-                              en: "Please select a symbol",
-                            })}
-                          </p>
-                        )
-                      ) : !isReady && !game.isHost ? (
-                        <p className="text-sm text-orange-500 pt-2 animate-bounce">
-                          {ti({
-                            vi: "Bấm Sẵn sàng khi đặt cược xong",
-                            en: "Press Ready when you finish betting",
-                          })}
-                        </p>
-                      ) : null}
-
-                      {/* bet error */}
-                      {betError && (
-                        <p className="text-sm text-red-500 pt-2 animate-bounce">
-                          {betError}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Betting Board */}
-              <div className="grid grid-cols-3 @md:gap-3 gap-1 relative">
-                {/* overlay to show waiting for host to roll */}
-                {isReady && state.gamePhase === "betting" && (
-                  <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center">
-                    <p className="text-md text-orange-500 pt-2 animate-bounce">
-                      {ti({
-                        vi: "Đang chờ chủ phòng quay xúc xắc..",
-                        en: "Waiting for host to roll dice..",
-                      })}
-                    </p>
-                  </div>
-                )}
-                {ALL_SYMBOLS.map((symbol) => {
-                  const betOnThis = getBetOnSymbol(symbol);
-                  const betsOnSymbol = getBetsOnSymbol(symbol);
-                  const totalBets = getTotalBetsOnSymbol(symbol);
-                  const isWinning =
-                    state.diceRoll?.includes(symbol) &&
-                    state.gamePhase === "results";
-
-                  // Get hot streak count for this symbol
-                  const hotStreaks = getHotStreaks();
-                  const streakData = hotStreaks.find(
-                    (s) => s.symbol === symbol,
-                  );
-                  const streakCount = streakData?.count || 0;
-                  const totalRolls = state.recentRolls.length * 3;
-                  const streakRank = hotStreaks.findIndex(
-                    (s) => s.symbol === symbol,
-                  );
-                  const isHot = streakRank < 2 && state.recentRolls.length >= 3;
-                  const isCold =
-                    streakRank >= 4 && state.recentRolls.length >= 3;
-                  const hasAllIn =
-                    // i am all-in
-                    ((isReady || game.isHost) &&
-                      myBalance?.currentBalance &&
-                      betOnThis >= (myBalance?.currentBalance || 0)) ||
-                    // some player is all-in on this symbol
-                    betsOnSymbol.filter((bet) => {
-                      const player = state.playerBalances[bet.playerId];
-                      const bets = state.currentBets[bet.playerId];
-                      return (
-                        player &&
-                        player.totalBet >= player.currentBalance &&
-                        bets.length === 1
-                      );
-                    }).length > 0;
-
-                  return (
-                    <button
-                      key={symbol}
-                      onClick={() => handleSymbolClick(symbol)}
-                      disabled={state.gamePhase !== "betting"}
-                      className={`relative p-4 rounded-xl border-2 transition-all transform active:scale-95 ${
-                        isWinning
-                          ? "bg-linear-to-br from-yellow-500 to-orange-500 border-yellow-400 animate-pulse"
-                          : betOnThis > 0
-                            ? "bg-linear-to-br from-blue-600 to-purple-600 border-blue-400"
-                            : "bg-slate-800/50 border-slate-700 hover:border-slate-500"
-                      } ${
-                        state.gamePhase === "betting"
-                          ? "cursor-pointer"
-                          : "cursor-not-allowed opacity-75"
-                      } ${
-                        hasAllIn && state.gamePhase === "betting"
-                          ? "ring-4 ring-red-500 ring-opacity-75 shadow-lg shadow-red-500/50 animate-pulse"
-                          : ""
-                      }`}
-                    >
-                      <div className="text-4xl mb-2">
-                        {SYMBOL_NAMES[symbol].emoji}
-                      </div>
-
-                      {/* Hot/Cold streak indicator */}
-                      {state.recentRolls.length >= 3 && (
-                        <div className="absolute @md:top-2 @md:left-2 top-1 left-1 flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-bold">
-                          {isHot && "🔥"}
-                          {isCold && "❄️"}
-                          <span
-                            className={
-                              isHot
-                                ? "text-orange-400"
-                                : isCold
-                                  ? "text-cyan-400"
-                                  : "text-slate-300"
-                            }
-                          >
-                            {streakCount}/{totalRolls}
-                            {/* {Math.round((streakCount / totalRolls) * 100)}% */}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* All-in indicator */}
-                      {hasAllIn && state.gamePhase === "betting" && (
-                        <div className="absolute @md:top-2 @md:left-2 top-1 left-1 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold animate-bounce flex items-center gap-1">
-                          🔥 ALL-IN
-                        </div>
-                      )}
-                      <div className="text-sm font-semibold mb-2">
-                        {ti(SYMBOL_NAMES[symbol])}
-                      </div>
-
-                      {/* My bet */}
-                      {betOnThis > 0 && (
-                        <div className="absolute @md:top-2 @md:right-2 top-1 right-1 bg-white text-black px-2 py-1 rounded-full text-xs font-bold">
-                          {formatPrice(betOnThis)}
-                        </div>
-                      )}
-
-                      {/* All bets on this symbol */}
-                      {betsOnSymbol.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          <div className="text-xs font-bold text-yellow-400 border-t border-slate-600 pt-2">
-                            {ti({ vi: `Tổng: `, en: `Total: ` })}
-                            {formatPrice(totalBets)}
-                          </div>
-                          <div className="max-h-20 overflow-y-auto space-y-0.5">
-                            {betsOnSymbol.map((bet) => (
-                              <div
-                                key={bet.playerId}
-                                className="text-xs flex justify-between items-center gap-1"
-                              >
-                                <span className="truncate flex-1 text-left">
-                                  {bet.username}
-                                  {bet.isBot && " 🤖"}
-                                </span>
-                                <span className="font-semibold text-green-400">
-                                  {formatPrice(bet.amount)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Power-ups Panel */}
-              {myBalance && state.playerPowerUps[userId] && (
-                <div className="flex flex-col gap-2 bg-slate-800/50 backdrop-blur-sm rounded-xl @md:p-4 p-2 border border-slate-700">
-                  <h3 className="font-semibold mb-3 text-slate-300">
-                    {ti({ vi: "Kỹ năng", en: "Power-ups" })}
-                  </h3>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {(
-                      Object.keys(state.playerPowerUps[userId]) as PowerUpType[]
-                    ).map((powerUpType) => {
-                      const powerUp = state.playerPowerUps[userId][powerUpType];
-                      const isSelected = selectedPowerUpType === powerUpType;
-                      const isActive =
-                        state.activePowerUps[userId] === powerUpType;
-                      const isAvailable = powerUp.cooldown === 0 && !isActive;
-
-                      return (
-                        <button
-                          key={powerUpType}
-                          onClick={() =>
-                            setSelectedPowerUpType(
-                              isSelected ? null : powerUpType,
-                            )
-                          }
-                          // disabled={!isAvailable && !isSelected}
-                          className={`relative p-3 rounded-lg border-2 transition-all cursor-pointer ${
-                            isActive
-                              ? "bg-linear-to-br from-green-600 to-emerald-600 border-green-400"
-                              : isSelected
-                                ? "bg-linear-to-br from-blue-600 to-purple-600 border-blue-400 ring-2 ring-blue-300"
-                                : isAvailable
-                                  ? "bg-slate-700 border-slate-600 hover:border-blue-400 hover:bg-slate-600"
-                                  : "bg-slate-800 border-slate-700 opacity-50"
-                          }`}
-                        >
-                          <div className="flex flex-col items-center gap-1">
-                            {getPowerUpIcon(powerUpType)}
-                            <div className="text-sm font-semibold truncate w-full text-center">
-                              {ti(POWERUP_CONFIG[powerUpType].name)}
-                            </div>
-                            {!isAvailable && !isSelected && !isActive && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg">
-                                <span className="text-2xl font-bold text-white">
-                                  {powerUp.cooldown}
-                                </span>
-                              </div>
-                            )}
-                            {isActive && (
-                              <div className="text-xs text-green-300 font-bold">
-                                ✓ {ti({ vi: "Đang dùng", en: "Active" })}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Show active power-up description (if not prediction-based) */}
-                  {selectedPowerUpType && (
-                    <div className="p-3 bg-purple-600/20 border border-purple-500 rounded-lg">
-                      <p className="text-sm text-purple-300 font-semibold mb-1">
-                        {ti(POWERUP_CONFIG[selectedPowerUpType].name)}
-                      </p>
-                      <p className="text-sm text-slate-300">
-                        {ti(POWERUP_CONFIG[selectedPowerUpType].description)}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Activate button */}
-                  {selectedPowerUpType &&
-                    !state.activePowerUps[userId] &&
-                    state.gamePhase === "betting" && (
-                      <button
-                        onClick={() => {
-                          game.requestActivatePowerUp(selectedPowerUpType);
-                          // Optimistic update
-                          setOptimisticPowerUp(selectedPowerUpType);
-                          setSelectedPowerUpType(null);
-                        }}
-                        disabled={
-                          selectedPowerUp && selectedPowerUp.cooldown > 0
-                        }
-                        className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:cursor-not-allowed rounded-lg font-bold text-white transition-colors"
-                      >
-                        {selectedPowerUp && selectedPowerUp.cooldown > 0
-                          ? ts({
-                              en: `🪫 Wait for cooldown (${selectedPowerUp.cooldown} rounds left)`,
-                              vi: `🪫 Đang hồi chiêu (còn ${selectedPowerUp.cooldown} vòng)`,
-                            })
-                          : ts({
-                              en: "⚡ Use Power-up",
-                              vi: "⚡ Sử dụng kỹ năng",
-                            })}
-                      </button>
-                    )}
-
-                  {/* Cancel button for post_roll power-ups */}
-                  {state.activePowerUps[userId] &&
-                    state.playerPowerUps[userId] &&
-                    POWERUP_CONFIG[state.activePowerUps[userId]]?.timing ===
-                      "post_roll" && (
-                      <button
-                        onClick={() => {
-                          game.requestDeactivatePowerUp();
-                          setOptimisticPowerUp(null); // Clear optimistic immediately
-                        }}
-                        className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                      >
-                        {ti({ vi: "Huỷ kỹ năng", en: "Cancel Power-up" })}
-                      </button>
-                    )}
-
-                  {/* Show prediction for Mắt Thần */}
-                  {state.powerUpPredictions[userId] && (
-                    <div className="p-3 bg-green-600/20 border border-green-500 rounded-lg">
-                      <p className="text-xs text-green-300 font-semibold mb-2">
-                        🔮{" "}
-                        {ti({
-                          vi: "Dự đoán của Mắt Thần",
-                          en: "Mystic Prediction",
-                        })}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <div className="text-3xl flex items-center">
-                          <span className="mr-2 text-xl">
-                            {ti(
-                              SYMBOL_NAMES[
-                                state.powerUpPredictions[userId]?.symbol
-                              ],
-                            )}
-                          </span>
-                          {
-                            SYMBOL_NAMES[
-                              state.powerUpPredictions[userId]?.symbol
-                            ]?.emoji
-                          }
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-slate-400">
-                            {ti({ vi: "Độ chính xác", en: "Accuracy" })}
-                          </p>
-                          <p className="text-lg font-bold text-purple-300">
-                            {Math.round(
-                              state.powerUpPredictions[userId]?.accuracy * 100,
-                            )}
-                            %
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {/* Show result for Lucky Star */}
-                  {state.playerPowerUps[userId]?.lucky_star?.lastMultiplier &&
-                    state.playerPowerUps[userId].lucky_star.lastUsedRound ===
-                      state.currentRound - 1 && (
-                      <div className="p-3 bg-yellow-600/20 border border-yellow-500 rounded-lg mt-2">
-                        <p className="text-xs text-yellow-300 font-semibold mb-2">
-                          🌟{" "}
-                          {ti({
-                            vi: "Kết quả Sao May Mắn",
-                            en: "Lucky Star Result",
-                          })}
-                        </p>
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-yellow-300">
-                            x
-                            {state.playerPowerUps[
-                              userId
-                            ].lucky_star.lastMultiplier?.toFixed(1)}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                </div>
-              )}
-            </div>
-
-            {/* Right Sidebar: Dice & Leaderboard */}
-            <div className="flex flex-col gap-4">
-              {/* Dice Display */}
-              {renderDices()}
-
-              {/* Dice in fixed modal for mobile */}
-              {createPortal(
-                <div
-                  className={`fixed top-0 left-0 right-0 bottom-0 bg-slate-900/90 backdrop-blur-sm rounded-xl p-2 z-50 md:hidden ${isRolling ? "flex" : "hidden"} items-center justify-center`}
-                >
-                  <div className="flex items-center justify-between">
-                    {renderDices()}
-                  </div>
-                </div>,
-                document.getElementById("root")!,
-              )}
-
-              {/* Leaderboard with Sparklines */}
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
-                <h3 className="text-lg font-semibold mb-3">
-                  {ti({ vi: "Bảng xếp hạng", en: "Leaderboard" })}
-                </h3>
-                <div className="space-y-2 max-h-120 overflow-y-auto">
-                  {getLeaderboard().map((player, idx) => (
-                    <div
-                      key={player.playerId}
-                      className={`flex items-center justify-between p-3 rounded-lg ${
-                        player.playerId === userId
-                          ? "bg-blue-600/30 border border-blue-500"
-                          : "bg-slate-700/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <span className="text-xl font-bold text-slate-400">
-                          #{idx + 1}
-                        </span>
-                        <div className="flex-1">
-                          <p className="font-semibold">
-                            {player.username}
-                            {player.isBot && " 🤖"}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {ti({ vi: `Cược: `, en: `Bet: ` })}
-                            {formatPrice(player.totalBet)}
-                            {state.playersReady[player.playerId] && " ✓"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {/* Mini sparkline */}
-                        {state.currentRound > 0 &&
-                          renderMiniSparkline(player.balanceHistory)}
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-green-400">
-                            {formatPrice(player.currentBalance)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Game Over Screen */}
+        {state.gamePhase === "ended" && renderGameOver()}
 
         {/* Host Controls */}
         {game.isHost && state.gamePhase !== "waiting" && (

@@ -17,6 +17,8 @@ export function randInRange(
   max: number,
   floor: boolean = false,
 ): number {
-  const diff = Math.random() * (max - min + 1);
-  return min + (floor ? Math.floor(diff) : diff);
+  if (floor) {
+    return min + Math.floor(Math.random() * (max - min + 1));
+  }
+  return min + Math.random() * (max - min);
 }
