@@ -452,15 +452,60 @@ io.on("connection", (socket: Socket) => {
 
   // Relay game actions
   socket.on("game:action", (data: { roomId: string; action: any }) => {
-    console.log("game:action", data.roomId);
+    console.log(`game:action ${userId} -> ${data.roomId}`);
     socket.to(data.roomId).emit("game:action", data);
   });
 
   // Relay game state
   socket.on("game:state", (data: { roomId: string; state: any }) => {
-    console.log("game:state", data.roomId);
+    const json = JSON.stringify(data);
+    console.log(
+      `game:state ${userId} -> ${data.roomId} (${(json.length / 1024).toFixed(2)} KB) ${json}\n\n`,
+    );
     socket.to(data.roomId).emit("game:state", data);
   });
+
+  // Relay game state patch
+  socket.on("game:state:patch", (data: { roomId: string; patch: any }) => {
+    const json = JSON.stringify(data);
+    console.log(
+      `game:state:patch ${userId} -> ${data.roomId} (${(json.length / 1024).toFixed(2)} KB) ${json}\n\n`,
+    );
+    socket.to(data.roomId).emit("game:state:patch", data);
+  });
+
+  // Request sync (Relay to host, with requester socketId)
+  socket.on("game:request_sync", (data: { roomId: string }) => {
+    console.log(`game:request_sync ${userId} -> ${data.roomId}`);
+    // Determine host? The host is in the room.
+    // Actually we can just broadcast to the room, the host will pick it up.
+    // But we need to attach the requester's socket ID so the host knows who to reply to.
+    socket.to(data.roomId).emit("game:request_sync", {
+      roomId: data.roomId,
+      requesterSocketId: socket.id,
+    });
+  });
+
+  // Direct state sync (Host -> Specific User)
+  socket.on(
+    "game:state:direct",
+    (data: {
+      roomId: string;
+      targetSocketId: string;
+      state: any;
+      version: number;
+    }) => {
+      const json = JSON.stringify(data);
+      console.log(
+        `game:state:direct ${data.roomId} -> ${data.targetSocketId} (${(json.length / 1024).toFixed(2)} KB) ${json}\n\n`,
+      );
+      io.to(data.targetSocketId).emit("game:state", {
+        roomId: data.roomId,
+        state: data.state,
+        version: data.version,
+      });
+    },
+  );
 
   // CHAT EVENTS
 

@@ -51,8 +51,18 @@ Tất cả các game đều kế thừa từ class `BaseGame<T>` ([BaseGame.ts](
 - `onSocketGameAction(data)` - Xử lý actions từ socket (abstract)
 - `makeAction(action)` - Thực hiện một action (client hoặc host)
 - `setState(state)` - Cập nhật state và thông báo listeners
-- `broadcastState()` - Host broadcast state cho tất cả guests
+- `broadcastState(forceFull?)` - Host broadcast state (auto-detects patch vs full)
+- `syncState(forceFull?)` - Đồng bộ state (notification + broadcast)
 - `updatePlayers(players)` - Cập nhật danh sách người chơi
+
+**State Sync Optimization:**
+`BaseGame` tự động tối ưu hóa băng thông bằng cách:
+1. **Hashing:** Kiểm tra `lastSyncedHash`, nếu không đổi thì không gửi tin nhắn.
+2. **Diffing:** Tính toán sự thay đổi giữa state mới và cũ.
+3. **Patching:** Gửi `game:state:patch` với chỉ dữ liệu thay đổi (nếu có).
+4. **Direct Sync:** Khi user request sync, host gửi state trực tiếp cho user đó qua `game:state:direct` thay vì broadcast.
+5. **Recovery (Versioning):** Host gắn `version` vào mỗi update. Nếu client nhận patch với version không khớp (`current + 1`), client sẽ tự động `requestSync` (chống corrupted state do packet loss).
+6. **Fallback:** Gửi full state `game:state` nếu có thay đổi lớn hoặc người dùng mới vào (hoặc hồi phục sau lỗi).
 
 ---
 
@@ -89,8 +99,10 @@ sequenceDiagram
 | Event | Direction | Description | Data |
 |-------|-----------|-------------|------|
 | `game:action` | Client → Server → Host | Guest gửi action cho host xử lý | `{ roomId, action }` |
-| `game:state` | Host → Server → Clients | Host broadcast state mới | `{ roomId, state }` |
-| `game:end` | Host → Server → Clients | Thông báo game kết thúc | `{ roomId, result }` |
+| `game:state` | Host → Server → Clients | Host broadcast state mới (Full) | `{ roomId, state, version }` |
+| `game:state:patch` | Host → Server → Clients | Host gửi bản cập nhật thay đổi (Delta) | `{ roomId, patch, version }` |
+| `game:request_sync` | Client → Server → Host | Yêu cầu Host gửi lại Full State | `{ roomId, requesterSocketId }` |
+| `game:state:direct` | Host → Server → Client | Host gửi state trực tiếp cho 1 user | `{ roomId, targetSocketId, state, version }` |
 
 ---
 
@@ -138,7 +150,19 @@ flowchart TB
 5. ✅ Quản lý bot players
 6. ✅ Lưu/load state (localStorage)
 7. ✅ Kiểm tra win conditions
+8. ✅ Optimization (Delta Updates)
 
+**Code pattern:**
+```typescript
+onSocketGameAction(data: { action: GameAction }): void {
+  // ...
+  // Host updates and syncs
+  this.syncState(); // Automatically decides patch vs full
+}
+```
+**Optimized Sync:**
+- `syncState()`: Tự động so sánh hash/diff và gửi patch.
+- `syncState(true)`: Force gửi full state (ví dụ: khi có người chơi mới).
 **Code pattern:**
 ```typescript
 onSocketGameAction(data: { action: GameAction }): void {
@@ -256,7 +280,6 @@ stateDiagram-v2
    - Bot auto-play
 
 4. **GameOver** (kết thúc)
-   - Broadcast `game:end` event
    - Clear saved state
    - Show results
 

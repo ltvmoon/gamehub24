@@ -1,4 +1,5 @@
 import { Socket } from "socket.io-client";
+import { produce } from "immer";
 import { useRoomStore, type Player } from "../stores/roomStore";
 
 export interface GameAction {
@@ -22,6 +23,12 @@ export abstract class BaseGame<T> {
   protected state: T;
   protected stateListeners: ((state: T) => void)[] = [];
 
+  // Optimization: State syncing
+  protected lastSyncedState?: T;
+  protected lastSyncedHash?: string;
+  public isOptimizationEnabled: boolean = true;
+  protected stateVersion: number = 0;
+
   constructor(
     roomId: string,
     socket: Socket,
@@ -36,14 +43,30 @@ export abstract class BaseGame<T> {
     this.players = players;
     this.state = this.getInitState();
 
+    // Initialize sync tracking (Host only needs this, but safe to init)
+    this.lastSyncedState = JSON.parse(JSON.stringify(this.state));
+    this.lastSyncedHash = getHash(this.state);
+
+    // All players listen for game actions
+    this.socket.on("game:action", this.onSocketGameAction.bind(this));
+
     // Bind socket listeners
     if (!this.isHost) {
       // Clients listen for state updates from host
       this.socket.on("game:state", this.onSocketGameState.bind(this));
+      this.socket.on(
+        "game:state:patch",
+        this.onSocketGameStatePatch.bind(this),
+      );
+
+      // Client request sync state from host
+      this.requestSync();
     }
 
-    // All players listen for game actions
-    this.socket.on("game:action", this.onSocketGameAction.bind(this));
+    // Listen for sync requests (Host)
+    if (this.isHost) {
+      this.socket.on("game:request_sync", this.onRequestSync.bind(this));
+    }
 
     this.init();
   }
@@ -71,7 +94,12 @@ export abstract class BaseGame<T> {
     this.players = players;
 
     console.log(players);
-    this.syncState(); // host sync state to new players
+    this.syncState(); // host sync state to new players (Force full sync)
+  }
+
+  public setOptimization(enabled: boolean): void {
+    this.isOptimizationEnabled = enabled;
+    console.log(`State optimization ${enabled ? "enabled" : "disabled"}`);
   }
 
   // Game persistent state name (e.g. "tictactoe")
@@ -91,9 +119,9 @@ export abstract class BaseGame<T> {
     this.stateListeners.forEach((listener) => listener({ ...state }));
   }
 
-  public syncState(): void {
+  public syncState(forceFull = false): void {
     this.notifyListeners(this.state);
-    this.broadcastState();
+    this.broadcastState(forceFull);
   }
 
   public setState(state: T): void {
@@ -119,21 +147,63 @@ export abstract class BaseGame<T> {
   }
 
   // host broadcast state to all guests
-  public broadcastState(): void {
+  public broadcastState(forceFull = false): void {
     if (this.isHost) {
       const state = this.getState();
+      const currentHash = getHash(state);
 
+      // 1. Optimization: Skip if state hasn't changed (hash check)
+      if (
+        this.isOptimizationEnabled &&
+        !forceFull &&
+        this.lastSyncedHash === currentHash
+      ) {
+        return;
+      }
+
+      // Increment version before any update
+      this.stateVersion++;
+
+      // 2. Optimization: Send delta (patch) if possible
+      if (this.isOptimizationEnabled && !forceFull && this.lastSyncedState) {
+        const patch = getDiff(this.lastSyncedState, state);
+        // Only send patch if it's not empty and safe to do so
+        if (patch && Object.keys(patch).length > 0) {
+          if (this.hasSomeoneElseInRoom()) {
+            this.socket.emit("game:state:patch", {
+              roomId: this.roomId,
+              patch,
+              version: this.stateVersion,
+            });
+          }
+          this.updateLastSynced(state, currentHash);
+          return;
+        }
+      }
+
+      // 3. Fallback: Send full state
       // only emit if there are someone else in the room
       if (this.hasSomeoneElseInRoom()) {
         this.socket.emit("game:state", {
           roomId: this.roomId,
           state: { ...state },
+          version: this.stateVersion,
         });
       }
 
-      // Auto-save state to localStorage
-      this.saveStateToStorage();
+      // Update tracking and Auto-save
+      this.updateLastSynced(state, currentHash);
     }
+  }
+
+  private updateLastSynced(state: T, hash: string) {
+    this.lastSyncedState = JSON.parse(JSON.stringify(state));
+    this.lastSyncedHash = hash;
+    this.saveStateToStorage();
+  }
+
+  public requestSync(): void {
+    this.socket.emit("game:request_sync", { roomId: this.roomId });
   }
 
   // Send action to all players (including self via server relay)
@@ -149,9 +219,70 @@ export abstract class BaseGame<T> {
   }
 
   // Client receives state update from host
-  protected onSocketGameState(data: { state: T }): void {
-    if (!this.isHost) {
+  protected onSocketGameState(data: {
+    state: T;
+    version?: number;
+    roomId?: string;
+  }): void {
+    // is guest and room id match
+    if (!this.isHost && (!data.roomId || data.roomId === this.roomId)) {
+      // Full state always accepted. Update version.
+      if (typeof data.version === "number") {
+        console.log("updated state version", this.stateVersion, data.version);
+        this.stateVersion = data.version;
+      }
       this.setState(data.state);
+    }
+  }
+
+  // Client receives partial state update (patch)
+  protected onSocketGameStatePatch(data: {
+    patch: any;
+    version?: number;
+  }): void {
+    if (!this.isHost) {
+      // Integrity Check
+      if (
+        typeof data.version === "number" &&
+        data.version !== this.stateVersion + 1
+      ) {
+        console.warn(
+          `Packet loss detected! Expected version ${this.stateVersion + 1} but got ${data.version}. Requesting sync...`,
+        );
+        this.requestSync();
+        return;
+      }
+
+      // Use immer to apply patch immutably
+      const newState = produce(this.state, (draft: any) => {
+        applyPatch(draft, data.patch);
+      });
+
+      // Update version
+      if (typeof data.version === "number") {
+        this.stateVersion = data.version;
+      }
+
+      this.setState(newState);
+    }
+  }
+
+  // Host receives sync request
+  protected onRequestSync(data: { requesterSocketId?: string }): void {
+    if (this.isHost) {
+      if (data.requesterSocketId) {
+        // Optimization: Send state ONLY to the requester
+        const state = this.getState();
+        this.socket.emit("game:state:direct", {
+          roomId: this.roomId,
+          targetSocketId: data.requesterSocketId,
+          state: { ...state },
+          version: this.stateVersion,
+        });
+      } else {
+        // Fallback: Broadcast to everyone
+        this.syncState(true);
+      }
     }
   }
 
@@ -185,6 +316,86 @@ export abstract class BaseGame<T> {
   // Cleanup socket listeners
   destroy(): void {
     this.socket.off("game:state");
+    this.socket.off("game:state:patch");
     this.socket.off("game:action");
+    if (this.isHost) {
+      this.socket.off("game:request_sync");
+    }
+  }
+}
+
+// --- Helper Functions ---
+
+function getHash(obj: any): string {
+  try {
+    const str = JSON.stringify(obj);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+  } catch (e) {
+    return Date.now().toString(); // Fallback
+  }
+}
+
+function getDiff(oldObj: any, newObj: any): any {
+  if (oldObj === newObj) return undefined;
+  if (typeof oldObj !== typeof newObj) return newObj;
+  if (typeof newObj !== "object" || newObj === null) return newObj;
+
+  const diff: any = {};
+  let changed = false;
+
+  // Check for keys in newObj (Updates & Adds)
+  for (const key in newObj) {
+    // If key not in oldObj, it's new
+    if (!(key in oldObj)) {
+      diff[key] = newObj[key];
+      changed = true;
+      continue;
+    }
+
+    // Recursive diff
+    const changes = getDiff(oldObj[key], newObj[key]);
+    if (changes !== undefined) {
+      diff[key] = changes;
+      changed = true;
+    }
+  }
+
+  // Check for deleted keys
+  for (const key in oldObj) {
+    if (!(key in newObj)) {
+      return newObj; // Fallback to full replace for this level
+    }
+  }
+
+  return changed ? diff : undefined;
+}
+
+function applyPatch(draft: any, patch: any) {
+  if (!patch || typeof patch !== "object") return;
+
+  for (const key in patch) {
+    const value = patch[key];
+
+    // If draft has this key and both are objects, recurse
+    // If draft is array and patch is object (indices), recurse
+    // If patch is array, it's a full replacement (from getDiff fallback)
+    if (
+      draft[key] &&
+      typeof draft[key] === "object" &&
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      applyPatch(draft[key], value);
+    } else {
+      // Direct replacement (primitives, arrays, or object overwrites)
+      draft[key] = value;
+    }
   }
 }

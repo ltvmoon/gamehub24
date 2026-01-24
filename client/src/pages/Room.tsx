@@ -73,6 +73,7 @@ export default function RoomPage() {
   );
 
   // Effect for joining room via direct URL
+  const isJoiningRef = useRef(false);
   useEffect(() => {
     if (leaveRef.current) return;
     if (!roomId) {
@@ -99,20 +100,19 @@ export default function RoomPage() {
       return;
     }
 
-    let isJoining = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const attemptJoin = () => {
-      if (isJoining) return;
-      isJoining = true;
+      if (isJoiningRef.current) return;
+      isJoiningRef.current = true;
 
       console.log("Attempting to join room:", roomId, "socket.id:", socket.id);
 
       // Set timeout to detect failed callback
       timeoutId = setTimeout(() => {
         console.log("Join timeout - callback never received");
-        isJoining = false;
+        isJoiningRef.current = false;
         showAlert(
           ts({
             en: "Failed to join room - connection timeout",
@@ -134,7 +134,7 @@ export default function RoomPage() {
             setCurrentRoom(response.room);
             console.log("Joined room:", response.room);
           } else {
-            isJoining = false;
+            isJoiningRef.current = false;
             if (response.error === "Incorrect password") {
               setShowPasswordPrompt(true);
             } else {

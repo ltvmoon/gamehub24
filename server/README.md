@@ -271,23 +271,66 @@ Relay game state from host to all guests.
 // Host broadcasts state
 socket.emit('game:state', {
   roomId: string,
-  state: GameState
+  state: GameState,
+  version: number
 });
 
 // Guests receive state
-socket.on('game:state', ({ roomId, state }) => {
-  // Update local state
+socket.on('game:state', ({ roomId, state, version }) => {
+  // Update local state and version
 });
 ```
 
-#### `game:end`
+#### `game:state:patch`
 **Host → Server → Clients**
-Relay game end notification.
+Relay **delta** state update (optimization).
 
 ```typescript
-socket.emit('game:end', {
+// Host sends patch
+socket.emit('game:state:patch', {
   roomId: string,
-  result: GameResult
+  patch: any, // Delta patch
+  version: number
+});
+
+// Guests receive patch
+socket.on('game:state:patch', ({ roomId, patch, version }) => {
+  // Apply patch to local state
+});
+```
+
+#### `game:request_sync`
+**Client → Server → Host**
+Client requests full state sync (e.g. after packet loss or reconnection).
+
+```typescript
+// Client requests sync
+socket.emit('game:request_sync', {
+  roomId: string
+});
+
+// Host receives request with requester ID
+socket.on('game:request_sync', ({ roomId, requesterSocketId }) => {
+  // Host decides to broadcast or direct sync
+});
+```
+
+#### `game:state:direct`
+**Host → Server → Client**
+Host sends state directly to a specific client (response to sync request).
+
+```typescript
+// Host sends direct state
+socket.emit('game:state:direct', {
+  roomId: string,
+  targetSocketId: string,
+  state: GameState,
+  version: number
+});
+
+// Specific client receives state
+socket.on('game:state', ({ roomId, state, version }) => {
+  // Update local state
 });
 ```
 
