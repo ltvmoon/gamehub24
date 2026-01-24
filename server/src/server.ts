@@ -36,6 +36,7 @@ const io = new Server(httpServer, {
 
 // Initialize managers
 const roomManager = new RoomManager();
+roomManager.loadState();
 const chatHistory: Map<string, ChatMessage[]> = new Map();
 
 function formatUpTime(diff: number) {
@@ -79,6 +80,15 @@ io.on("connection", (socket: Socket) => {
 
   // Update socket ID if user reconnects
   roomManager.updatePlayerSocketId(userId, socket.id);
+
+  // Check if user is in a room and rejoin if necessary
+  const currentRoom = roomManager.getRoomByUserId(userId);
+  if (currentRoom) {
+    socket.join(currentRoom.id);
+    console.log(
+      `🔄 User ${username} rejoined room ${currentRoom.id} (socket updated)`,
+    );
+  }
 
   // heartbeat
   socket.on("heartbeat", () => {});

@@ -1,10 +1,78 @@
 import type { Room, CreateRoomData } from "./types";
 
 export class RoomManager {
+  private readonly DATA_DIR = "data";
+  private readonly SAVE_FILE = "rooms.json";
+
   private rooms: Map<string, Room> = new Map();
   private playerRoomMap: Map<string, string> = new Map(); // userId -> roomId
   private roomSettings: Map<string, { gameType: string; name: string }> =
     new Map();
+
+  constructor() {
+    this.ensureDataDir();
+  }
+
+  private ensureDataDir() {
+    const fs = require("fs");
+    const path = require("path");
+    const dirPath = path.resolve(this.DATA_DIR);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+  }
+
+  private saveState() {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const filePath = path.resolve(this.DATA_DIR, this.SAVE_FILE);
+
+      const data = {
+        rooms: Array.from(this.rooms.entries()),
+        roomSettings: Array.from(this.roomSettings.entries()),
+      };
+
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+      console.error("[RoomManager] Error saving state:", error);
+    }
+  }
+
+  public loadState() {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const filePath = path.resolve(this.DATA_DIR, this.SAVE_FILE);
+
+      if (!fs.existsSync(filePath)) {
+        return;
+      }
+
+      const fileContent = fs.readFileSync(filePath, "utf-8");
+      const data = JSON.parse(fileContent);
+
+      if (data.rooms) {
+        this.rooms = new Map(data.rooms);
+      }
+      if (data.roomSettings) {
+        this.roomSettings = new Map(data.roomSettings);
+      }
+
+      // Rebuild playerRoomMap
+      this.playerRoomMap.clear();
+      this.rooms.forEach((room) => {
+        room.players.forEach((p) => this.playerRoomMap.set(p.id, room.id));
+        room.spectators.forEach((p) => this.playerRoomMap.set(p.id, room.id));
+      });
+
+      console.log(
+        `[RoomManager] Restored ${this.rooms.size} rooms from ${filePath}`,
+      );
+    } catch (error) {
+      console.error("[RoomManager] Error loading state:", error);
+    }
+  }
 
   getRoomSettings(roomId: string) {
     return this.roomSettings.get(roomId);
@@ -15,6 +83,7 @@ export class RoomManager {
     settings: { gameType: string; name: string },
   ) {
     this.roomSettings.set(roomId, settings);
+    this.saveState();
   }
 
   createRoom(
@@ -59,6 +128,7 @@ export class RoomManager {
       gameType: room.gameType,
       name: room.name,
     });
+    this.saveState();
 
     console.log(
       `[RoomManager] Created room ${roomId} for user ${userId} (${username})`,
@@ -106,6 +176,7 @@ export class RoomManager {
     });
 
     this.playerRoomMap.set(userId, roomId);
+    this.saveState();
 
     console.log(
       `[RoomManager] User ${userId} (${username}) joined room ${roomId}`,
@@ -149,6 +220,7 @@ export class RoomManager {
           room.players.length === 0
         })`,
       );
+      this.saveState();
       return { roomId, wasHost };
     }
 
@@ -161,6 +233,7 @@ export class RoomManager {
     //   );
     // }
 
+    this.saveState();
     return { roomId, room, wasHost };
   }
 
@@ -193,6 +266,12 @@ export class RoomManager {
         spectator.socketId = socketId;
       }
     }
+    // Update socket ID is just in-memory ephemeral state, usually.
+    // However, if we restart, the old socket IDs are useless anyway.
+    // So we don't strictly *need* to persist this update.
+    // But saving state here keeps the file in sync if we want to debug.
+    // Let's debounce or skip saving for just socket updates to reduce IO load.
+    // For now, I'll Skip saving for socket update as it changes often and is invalidated on restart.
   }
 
   moveSpectatorToPlayer(
@@ -212,6 +291,7 @@ export class RoomManager {
     const player = room.spectators[spectatorIndex];
     room.spectators.splice(spectatorIndex, 1);
     room.players.push(player);
+    this.saveState();
 
     return { success: true, room };
   }
@@ -235,6 +315,7 @@ export class RoomManager {
     const player = room.players[playerIndex];
     room.players.splice(playerIndex, 1);
     room.spectators.push(player);
+    this.saveState();
 
     return { success: true, room };
   }
@@ -256,6 +337,7 @@ export class RoomManager {
     if (playerIndex !== -1) {
       room.players.splice(playerIndex, 1);
       this.playerRoomMap.delete(userId);
+      this.saveState();
       return { success: true, room };
     }
 
@@ -264,6 +346,7 @@ export class RoomManager {
     if (spectatorIndex !== -1) {
       room.spectators.splice(spectatorIndex, 1);
       this.playerRoomMap.delete(userId);
+      this.saveState();
       return { success: true, room };
     }
 
