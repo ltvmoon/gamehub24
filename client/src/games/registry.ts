@@ -16,6 +16,7 @@ import {
   ChessKnight,
   Component,
   Shrimp,
+  Coins,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
@@ -392,8 +393,8 @@ games.set("baucua", {
   id: "baucua",
   name: { en: "Bầu Cua", vi: "Bầu Cua" },
   description: {
-    en: "Traditional Vietnamese Tet dice betting game. Bet on symbols and roll the dice!",
-    vi: "Trò chơi xúc xắc Tết truyền thống Việt Nam. Đặt cược và lắc xúc xắc!",
+    en: "Traditional Vietnamese Tet dice game. Choose symbols and roll the dice!",
+    vi: "Trò chơi xúc xắc Tết truyền thống Việt Nam. Chọn linh vật và lắc xúc xắc!",
   },
   icon: Shrimp,
   categories: ["party", "relax"],
@@ -405,6 +406,26 @@ games.set("baucua", {
     return new BauCua(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./baucua/BauCuaUI").then((m) => m.default),
+});
+
+// Register Poker
+games.set("poker", {
+  id: "poker",
+  name: { en: "Poker (Texas Hold'em)", vi: "Xì tố (Poker)" },
+  description: {
+    en: "Classic Texas Hold'em Poker. Play, bluff, and win!",
+    vi: "Game bài Poker Texas cổ điển. Chơi, chiến thuật và giành chiến thắng!",
+  },
+  icon: Coins,
+  categories: ["card", "strategy", "party"],
+  minPlayers: 2,
+  maxPlayers: 6,
+  isAvailable: true,
+  createGame: async (roomId, socket, isHost, userId, players) => {
+    const { default: Poker } = await import("./poker/Poker");
+    return new Poker(roomId, socket, isHost, userId, players);
+  },
+  loadUI: () => import("./poker/PokerUI").then((m) => m.default),
 });
 
 // Registry functions
