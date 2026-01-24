@@ -190,7 +190,7 @@ export interface BauCuaState {
   powerUpPredictions: Record<string, PowerUpPrediction>;
 
   // Last 10 rounds dice results for hot streaks
-  recentRolls: DiceRoll[];
+  recentRolls: Record<string, DiceRoll>;
 
   // Mega roll tracking
   isMegaRound: boolean;

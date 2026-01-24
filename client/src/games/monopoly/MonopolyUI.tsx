@@ -21,6 +21,8 @@ import {
   Lock,
   BookOpen,
   X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
@@ -72,7 +74,9 @@ export default function MonopolyUI({
   const { confirm: showConfirm } = useAlertStore();
   const [state, setState] = useState<MonopolyState>(game.getState());
   const [historyLogs, setHistoryLogs] = useState<GameLog[]>(
-    game.getState().logs || [],
+    Object.values(game.getState().logs || {}).sort(
+      (a, b) => a.timestamp - b.timestamp,
+    ),
   );
   const { ti, ts } = useLanguage();
   const [rolling, setRolling] = useState(false);
@@ -91,6 +95,9 @@ export default function MonopolyUI({
     Record<string, boolean>
   >({});
   const [tradePlayerId, setTradePlayerId] = useState<string | null>(null);
+
+  // View Mode for Mobile
+  const [viewMode, setViewMode] = useState<"fit" | "zoom">("fit");
 
   // Hover state for visual connection
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(
@@ -243,16 +250,29 @@ export default function MonopolyUI({
 
       // Update local history logs (accumulate unique logs)
       setHistoryLogs((prevLogs) => {
-        const newLogs = newState.logs || [];
-        // Detect reset: if newLogs are empty but we had logs before
-        if (newLogs.length === 0 && prevLogs.length > 0) {
+        const newLogsObj = newState.logs || {};
+        const newLogs = Object.values(newLogsObj);
+
+        // Detect reset: if newLogs are empty but we had logs before (and it's a reset action)
+        // Actually, since we accumulate, we might want to respect the server's truth if it cleared logs
+        // BUT, usually we want to keep history.
+        // If the server explicitly has empty logs and game phase is waiting (reset), clear history
+        if (
+          Object.keys(newLogsObj).length === 0 &&
+          newState.gamePhase === "waiting"
+        ) {
           return [];
         }
+
         const existingIds = new Set(prevLogs.map((l) => l.id));
         const uniqueNewLogs = newLogs.filter((l) => !existingIds.has(l.id));
+
         if (uniqueNewLogs.length === 0) return prevLogs;
-        // If logs were reset (e.g. game restart), handle gracefully (though line 247 handles it)
-        return [...prevLogs, ...uniqueNewLogs];
+
+        // Merge and Sort
+        return [...prevLogs, ...uniqueNewLogs].sort(
+          (a, b) => a.timestamp - b.timestamp,
+        );
       });
     });
   }, [game]);
@@ -372,7 +392,13 @@ export default function MonopolyUI({
 
         {/* Space name */}
         <div className="flex-1 flex items-center justify-center p-0.5 overflow-hidden">
-          <span className="text-[5px] @md:text-[8px] text-white text-center leading-tight line-clamp-2 font-medium">
+          <span
+            className={`text-center leading-tight line-clamp-2 font-medium text-white ${
+              viewMode === "zoom"
+                ? "text-[10px] @md:text-[12px]"
+                : "text-[5px] @md:text-[8px]"
+            }`}
+          >
             {ti(space.name || space.name)}
           </span>
         </div>
@@ -608,7 +634,9 @@ export default function MonopolyUI({
               <div className="h-8 w-full opacity-70 hover:opacity-100 transition-opacity mt-1">
                 {player.moneyHistory && (
                   <RenderSparkline
-                    data={player.moneyHistory}
+                    data={Object.keys(player.moneyHistory || {})
+                      .sort()
+                      .map((k) => player.moneyHistory[k])}
                     color={player.color}
                     height={30}
                   />
@@ -2043,38 +2071,150 @@ export default function MonopolyUI({
       <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
 
       {/* Main Board */}
-      <div className="flex flex-col items-center gap-2 flex-1">
-        <div className="relative bg-slate-900 rounded-lg @md:rounded-xl p-0.5 @md:p-1 shadow-2xl border-2 @md:border-4 border-slate-700 overflow-hidden w-full max-w-[95vw]">
-          {/* Grid board */}
-          <div
-            className="grid gap-px @md:gap-0.5 w-full"
-            style={{
-              gridTemplateColumns: "repeat(11, 1fr)",
-              gridTemplateRows: "repeat(11, 1fr)",
-            }}
+      <div className="flex flex-col items-center gap-2 flex-1 w-full overflow-hidden">
+        {/* Zoom Controls (Mobile Only) */}
+        <div className="flex @md:hidden w-full justify-end gap-2 px-2">
+          <button
+            onClick={() => setViewMode(viewMode === "fit" ? "zoom" : "fit")}
+            className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 text-white rounded-lg border border-slate-600 shadow-sm text-xs font-bold active:scale-95 transition-transform"
           >
-            {BOARD_SPACES.map(renderBoardSpace)}
+            {viewMode === "fit" ? (
+              <>
+                <ZoomIn className="w-3 h-3" />{" "}
+                {ti({ en: "Zoom", vi: "Phóng to" })}
+              </>
+            ) : (
+              <>
+                <ZoomOut className="w-3 h-3" />{" "}
+                {ti({ en: "Fit", vi: "Thu nhỏ" })}
+              </>
+            )}
+          </button>
+        </div>
 
-            {/* Center area - game controls go here */}
+        <div
+          className={`relative bg-slate-900 rounded-lg @md:rounded-xl p-0.5 @md:p-1 shadow-2xl border-2 @md:border-4 border-slate-700 w-full transition-all duration-300 ${
+            viewMode === "zoom"
+              ? "overflow-auto min-w-full max-w-full h-[70vh] cursor-grab active:cursor-grabbing"
+              : "overflow-hidden max-w-[95vw]"
+          }`}
+          ref={(el) => {
+            if (!el) return;
+            // Native drag scroll implementation
+            let isDown = false;
+            let startX: number;
+            let startY: number;
+            let scrollLeft: number;
+            let scrollTop: number;
+
+            const onMouseDown = (e: MouseEvent) => {
+              if (viewMode !== "zoom") return;
+              isDown = true;
+              el.style.cursor = "grabbing";
+              el.style.userSelect = "none";
+              startX = e.pageX - el.offsetLeft;
+              startY = e.pageY - el.offsetTop;
+              scrollLeft = el.scrollLeft;
+              scrollTop = el.scrollTop;
+            };
+
+            const onMouseLeave = () => {
+              isDown = false;
+              el.style.cursor = "grab";
+              el.style.removeProperty("user-select");
+            };
+
+            const onMouseUp = () => {
+              isDown = false;
+              el.style.cursor = "grab";
+              el.style.removeProperty("user-select");
+            };
+
+            const onMouseMove = (e: MouseEvent) => {
+              if (!isDown) return;
+              e.preventDefault();
+              const x = e.pageX - el.offsetLeft;
+              const y = e.pageY - el.offsetTop;
+              const walkX = (x - startX) * 1; // Scroll-fast
+              const walkY = (y - startY) * 1;
+              el.scrollLeft = scrollLeft - walkX;
+              el.scrollTop = scrollTop - walkY;
+            };
+
+            // Touch events
+            const onTouchStart = (e: TouchEvent) => {
+              if (viewMode !== "zoom") return;
+              isDown = true;
+              startX = e.touches[0].pageX - el.offsetLeft;
+              startY = e.touches[0].pageY - el.offsetTop;
+              scrollLeft = el.scrollLeft;
+              scrollTop = el.scrollTop;
+            };
+
+            const onTouchEnd = () => {
+              isDown = false;
+            };
+
+            const onTouchMove = (e: TouchEvent) => {
+              if (!isDown) return;
+              // e.preventDefault(); // Might block browser gestures if we aren't careful, but we want to handle scroll manually?
+              // Actually if overflow:auto handles it, we don't strictly need manual touch drag unless we want "drag anywhere" behavior
+              // Standard scrolling works fine on mobile usually. The user asked for "drag support" - manual drag improves it if the user touches "non-scrollable" areas?
+              // But usually for a map, standard panning is fine.
+              // Let's implement manual panning supplement if they requested it specifically.
+              const x = e.touches[0].pageX - el.offsetLeft;
+              const y = e.touches[0].pageY - el.offsetTop;
+              const walkX = x - startX;
+              const walkY = y - startY;
+              el.scrollLeft = scrollLeft - walkX;
+              el.scrollTop = scrollTop - walkY;
+            };
+
+            el.onmousedown = onMouseDown;
+            el.onmouseleave = onMouseLeave;
+            el.onmouseup = onMouseUp;
+            el.onmousemove = onMouseMove;
+
+            el.ontouchstart = onTouchStart;
+            el.ontouchend = onTouchEnd;
+            el.ontouchmove = onTouchMove;
+          }}
+        >
+          {/* Grid board wrapper - serves as the relative parent for tokens in zoom mode */}
+          <div
+            className={`relative w-full ${viewMode === "zoom" ? "min-w-[800px] min-h-[800px]" : ""}`}
+          >
+            {/* Grid board */}
             <div
-              className="relative bg-linear-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center overflow-auto"
+              className={`grid gap-px @md:gap-0.5 w-full h-full`}
               style={{
-                gridRow: "2 / 11",
-                gridColumn: "2 / 11",
+                gridTemplateColumns: "repeat(11, 1fr)",
+                gridTemplateRows: "repeat(11, 1fr)",
               }}
             >
-              {/* Title */}
-              <h2 className="text-xs @md:text-xl font-bold text-transparent bg-clip-text bg-linear-to-r from-yellow-400 to-red-500 mb-1 @md:mb-2">
-                CỜ TỶ PHÚ
-              </h2>
+              {BOARD_SPACES.map(renderBoardSpace)}
 
-              {/* Game Controls */}
-              {renderGameControls()}
+              {/* Center area - game controls go here */}
+              <div
+                className="relative bg-linear-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center overflow-auto"
+                style={{
+                  gridRow: "2 / 11",
+                  gridColumn: "2 / 11",
+                }}
+              >
+                {/* Title */}
+                <h2 className="text-xs @md:text-xl font-bold text-transparent bg-clip-text bg-linear-to-r from-yellow-400 to-red-500 mb-1 @md:mb-2">
+                  CỜ TỶ PHÚ
+                </h2>
+
+                {/* Game Controls */}
+                {renderGameControls()}
+              </div>
             </div>
-          </div>
 
-          {/* Token Overlay - Smooth Movement Animation */}
-          {renderTokenOverlay()}
+            {/* Token Overlay - Now a child of the sized wrapper, so 0-100% maps to the full board size */}
+            {renderTokenOverlay()}
+          </div>
         </div>
       </div>
 

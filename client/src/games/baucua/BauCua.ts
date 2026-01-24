@@ -49,7 +49,7 @@ export default class BauCua extends BaseGame<BauCuaState> {
       playerPowerUps,
       activePowerUps: {},
       powerUpPredictions: {},
-      recentRolls: [],
+      recentRolls: {},
       isMegaRound: false,
       jackpotPool: 0,
       minBalanceToWin: 0,
@@ -272,10 +272,19 @@ export default class BauCua extends BaseGame<BauCuaState> {
 
     this.state.diceRoll = [dice[0], dice[1], dice[2]];
 
-    // Track recent rolls for hot streaks (keep last 10)
-    this.state.recentRolls.push([dice[0], dice[1], dice[2]]);
-    if (this.state.recentRolls.length > 10) {
-      this.state.recentRolls.shift();
+    // Track recent rolls for hot streaks (keep last 100)
+    // Use object to avoid shifting large arrays in patches
+    const rollId = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    this.state.recentRolls[rollId] = [dice[0], dice[1], dice[2]];
+
+    // Prune if > 100
+    const rollKeys = Object.keys(this.state.recentRolls);
+    if (rollKeys.length > 100) {
+      const sortedKeys = rollKeys.sort(); // Sort by timestamp (in key)
+      const numToRemove = sortedKeys.length - 100;
+      for (let i = 0; i < numToRemove; i++) {
+        delete this.state.recentRolls[sortedKeys[i]];
+      }
     }
 
     this.syncState();
@@ -546,7 +555,7 @@ export default class BauCua extends BaseGame<BauCuaState> {
     this.state.winners = [];
     this.state.activePowerUps = {};
     this.state.powerUpPredictions = {};
-    this.state.recentRolls = [];
+    this.state.recentRolls = {};
     this.state.isMegaRound = false;
     this.state.jackpotPool = 0;
     this.state.minBalanceToWin = 0;

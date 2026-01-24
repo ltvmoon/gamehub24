@@ -93,7 +93,7 @@ export interface MonopolyPlayer {
   jailTurns: number;
   isBankrupt: boolean;
   isBot: boolean;
-  moneyHistory: number[];
+  moneyHistory: Record<string, number>;
 }
 
 // Chance/Community Chest cards
@@ -140,7 +140,7 @@ export interface MonopolyState {
     | { type: "PAY_TAX"; amount: number }
     | { type: "CARD"; card: Card };
   lastAction: string | { en: string; vi: string } | null; // Description of last action for UI
-  logs: GameLog[];
+  logs: Record<string, GameLog>;
   tradeOffers: TradeOffer[];
 }
 

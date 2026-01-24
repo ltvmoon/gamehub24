@@ -21,7 +21,7 @@ export default class Reversi extends BaseGame<ReversiState> {
       winner: null,
       gamePhase: "waiting",
       undoRequest: null,
-      moveHistory: [],
+      moveHistory: {},
       lastMove: null,
       flippedCells: [],
     };
@@ -84,7 +84,7 @@ export default class Reversi extends BaseGame<ReversiState> {
     this.state.gamePhase = "playing";
     this.state.turn = "black";
     this.state.board = this.createInitialBoard();
-    this.state.moveHistory = [];
+    this.state.moveHistory = {};
     this.state.winner = null;
     this.state.lastMove = null;
 
@@ -237,16 +237,23 @@ export default class Reversi extends BaseGame<ReversiState> {
       board: this.state.board.map((row) => [...row]),
       turn: this.state.turn,
     };
-    this.state.moveHistory.push(history);
+    const moveKey = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    this.state.moveHistory[moveKey] = history;
+
     // Keep max 5 moves
-    if (this.state.moveHistory.length > 5) {
-      this.state.moveHistory.shift();
+    const keys = Object.keys(this.state.moveHistory);
+    if (keys.length > 5) {
+      const sortedKeys = keys.sort();
+      const numToRemove = sortedKeys.length - 5;
+      for (let i = 0; i < numToRemove; i++) {
+        delete this.state.moveHistory[sortedKeys[i]];
+      }
     }
   }
 
   private handleRequestUndo(playerId: string, playerName: string): void {
     if (this.state.gamePhase !== "playing") return;
-    if (this.state.moveHistory.length === 0) return;
+    if (Object.keys(this.state.moveHistory).length === 0) return;
     if (this.state.undoRequest) return;
 
     // Find opponent - if bot, apply undo directly
@@ -270,9 +277,12 @@ export default class Reversi extends BaseGame<ReversiState> {
   }
 
   private applyUndo(): void {
-    if (this.state.moveHistory.length === 0) return;
+    const keys = Object.keys(this.state.moveHistory).sort();
+    if (keys.length === 0) return;
 
-    const lastState = this.state.moveHistory.pop()!;
+    const lastKey = keys[keys.length - 1];
+    const lastState = this.state.moveHistory[lastKey];
+    delete this.state.moveHistory[lastKey];
     this.state.board = lastState.board;
     this.state.turn = lastState.turn;
     this.state.undoRequest = null;
@@ -415,7 +425,7 @@ export default class Reversi extends BaseGame<ReversiState> {
       winner: null,
       gamePhase: "waiting",
       undoRequest: null,
-      moveHistory: [],
+      moveHistory: {},
       lastMove: null,
     };
 

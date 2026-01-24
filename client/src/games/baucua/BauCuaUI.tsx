@@ -223,7 +223,8 @@ export default function BauCuaUI({
 
   // Get hot streaks from recent rolls
   const getHotStreaks = (): HotStreak[] => {
-    if (state.recentRolls.length === 0) return [];
+    const rolls = Object.values(state.recentRolls || {});
+    if (rolls.length === 0) return [];
 
     const counts: Record<BauCuaSymbol, number> = {
       gourd: 0,
@@ -234,7 +235,7 @@ export default function BauCuaUI({
       deer: 0,
     };
 
-    state.recentRolls.forEach((roll) => {
+    rolls.forEach((roll) => {
       roll.forEach((symbol) => {
         counts[symbol]++;
       });
@@ -993,10 +994,12 @@ export default function BauCuaUI({
           const hotStreaks = getHotStreaks();
           const streakData = hotStreaks.find((s) => s.symbol === symbol);
           const streakCount = streakData?.count || 0;
-          const totalRolls = state.recentRolls.length * 3;
+          const totalRolls = Object.keys(state.recentRolls || {}).length * 3;
           const streakRank = hotStreaks.findIndex((s) => s.symbol === symbol);
-          const isHot = streakRank < 2 && state.recentRolls.length >= 3;
-          const isCold = streakRank >= 4 && state.recentRolls.length >= 3;
+          const isHot =
+            streakRank < 2 && Object.keys(state.recentRolls || {}).length >= 3;
+          const isCold =
+            streakRank >= 4 && Object.keys(state.recentRolls || {}).length >= 3;
           const hasAllIn =
             // i am all-in
             ((isReady || game.isHost) &&
@@ -1037,7 +1040,7 @@ export default function BauCuaUI({
               <div className="text-4xl mb-2">{SYMBOL_NAMES[symbol].emoji}</div>
 
               {/* Hot/Cold streak indicator */}
-              {state.recentRolls.length >= 3 && (
+              {Object.keys(state.recentRolls || {}).length >= 3 && (
                 <div className="absolute @md:top-2 @md:left-2 top-1 left-1 flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-bold">
                   {isHot && "🔥"}
                   {isCold && "❄️"}

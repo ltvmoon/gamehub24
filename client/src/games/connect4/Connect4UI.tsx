@@ -355,7 +355,7 @@ export default function Connect4UI({
         {state.gamePhase === "playing" && (
           <>
             {myIndex >= 0 &&
-              state.moveHistory.length > 0 &&
+              Object.keys(state.moveHistory || {}).length > 0 &&
               !state.undoRequest && (
                 <button
                   onClick={() => game.requestUndo()}

@@ -374,15 +374,16 @@ export default function ReversiUI({
                 {ti({ en: "Pass Turn", vi: "Bỏ lượt" })}
               </button>
             )}
-            {state.moveHistory.length > 0 && !state.undoRequest && (
-              <button
-                onClick={() => game.requestUndo()}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
-              >
-                <RotateCcw className="w-4 h-4" />{" "}
-                {ti({ en: "Undo", vi: "Hoàn tác" })}
-              </button>
-            )}
+            {Object.keys(state.moveHistory || {}).length > 0 &&
+              !state.undoRequest && (
+                <button
+                  onClick={() => game.requestUndo()}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4" />{" "}
+                  {ti({ en: "Undo", vi: "Hoàn tác" })}
+                </button>
+              )}
             {/* reset game */}
             {isHost && (
               <button

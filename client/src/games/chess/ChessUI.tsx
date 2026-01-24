@@ -93,8 +93,19 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
       });
     }
 
+    // Add ResizeObserver to handle container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      if (chessgroundRef.current) {
+        chessgroundRef.current.redrawAll();
+      }
+    });
+
+    if (boardRef.current) {
+      resizeObserver.observe(boardRef.current);
+    }
+
     return () => {
-      // cleanup if needed
+      resizeObserver.disconnect();
     };
   }, [state.fen, isMyTurn, state.gameOver, myColorCode]);
 

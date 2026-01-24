@@ -27,7 +27,7 @@ export interface ReversiState {
   winner: string | null;
   gamePhase: "waiting" | "playing" | "ended";
   undoRequest: UndoRequest | null;
-  moveHistory: MoveHistory[];
+  moveHistory: Record<string, MoveHistory>;
   lastMove: { row: number; col: number } | null;
   flippedCells: { row: number; col: number }[]; // Cells flipped in last move
 }

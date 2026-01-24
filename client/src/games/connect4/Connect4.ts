@@ -31,7 +31,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
       winner: null,
       gamePhase: "waiting",
       undoRequest: null,
-      moveHistory: [],
+      moveHistory: {},
       lastMove: null,
       winningCells: [],
     };
@@ -84,7 +84,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
     this.state.gamePhase = "playing";
     this.state.currentPlayerIndex = 0;
     this.state.board = this.createEmptyBoard();
-    this.state.moveHistory = [];
+    this.state.moveHistory = {};
     this.state.winner = null;
     this.state.lastMove = null;
     this.state.winningCells = [];
@@ -217,15 +217,23 @@ export default class Connect4 extends BaseGame<Connect4State> {
       board: this.state.board.map((row) => [...row]),
       currentPlayerIndex: this.state.currentPlayerIndex,
     };
-    this.state.moveHistory.push(history);
-    if (this.state.moveHistory.length > 10) {
-      this.state.moveHistory.shift();
+    const moveKey = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    this.state.moveHistory[moveKey] = history;
+
+    // Prune if > 50
+    const keys = Object.keys(this.state.moveHistory);
+    if (keys.length > 50) {
+      const sortedKeys = keys.sort();
+      const numToRemove = sortedKeys.length - 50;
+      for (let i = 0; i < numToRemove; i++) {
+        delete this.state.moveHistory[sortedKeys[i]];
+      }
     }
   }
 
   private handleRequestUndo(playerId: string, playerName: string): void {
     if (this.state.gamePhase !== "playing") return;
-    if (this.state.moveHistory.length === 0) return;
+    if (Object.keys(this.state.moveHistory).length === 0) return;
     if (this.state.undoRequest) return;
 
     const playerIndex = this.state.players.findIndex((p) => p.id === playerId);
@@ -247,9 +255,13 @@ export default class Connect4 extends BaseGame<Connect4State> {
   }
 
   private applyUndo(): void {
-    if (this.state.moveHistory.length === 0) return;
+    const keys = Object.keys(this.state.moveHistory).sort();
+    if (keys.length === 0) return;
 
-    const lastState = this.state.moveHistory.pop()!;
+    const lastKey = keys[keys.length - 1];
+    const lastState = this.state.moveHistory[lastKey];
+    delete this.state.moveHistory[lastKey];
+
     this.state.board = lastState.board;
     this.state.currentPlayerIndex = lastState.currentPlayerIndex;
     this.state.undoRequest = null;
@@ -689,7 +701,7 @@ export default class Connect4 extends BaseGame<Connect4State> {
       winner: null,
       gamePhase: "waiting",
       undoRequest: null,
-      moveHistory: [],
+      moveHistory: {},
       lastMove: null,
       winningCells: [],
     };

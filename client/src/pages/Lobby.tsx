@@ -217,12 +217,12 @@ export default function Lobby() {
             </div>
 
             <div
-              className={`grid grid-cols-1 md:grid-cols-3 md:gap-6 gap-3 transition-opacity duration-300 ${
+              className={`grid grid-cols-2 md:grid-cols-3 md:gap-6 gap-3 transition-opacity duration-300 ${
                 isAnimating ? "opacity-0" : "opacity-100"
               }`}
             >
               {gamesToShow.length <= 0 && (
-                <p className="text-text-muted text-center">
+                <p className="text-text-muted text-center col-span-full">
                   {ti({ en: "No games available", vi: "Không có trò chơi" })}
                 </p>
               )}
@@ -231,14 +231,14 @@ export default function Lobby() {
                 return (
                   <div
                     key={game.id}
-                    className={`glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-200 ${
+                    className={`glass-card rounded-2xl p-4 md:p-6 hover:border-primary/30 transition-all duration-200 ${
                       !game.isAvailable ? "opacity-50" : ""
-                    } relative group`}
+                    } relative group flex flex-col`}
                   >
                     {/* Favorite Button */}
                     <button
                       onClick={(e) => toggleFavorite(game.id, e)}
-                      className={`absolute top-4 right-4 p-2 rounded-full transition-all duration-200 z-10 ${
+                      className={`absolute top-2 right-2 md:top-4 md:right-4 p-2 rounded-full transition-all duration-200 z-10 ${
                         favorites.includes(game.id)
                           ? "text-yellow-500 bg-yellow-500/10 hover:bg-yellow-500/20"
                           : "text-text-muted hover:text-yellow-500 hover:bg-white/5 md:opacity-0 group-hover:opacity-100"
@@ -254,13 +254,13 @@ export default function Lobby() {
                     </button>
 
                     {/* align center */}
-                    <div className="mb-4 flex items-center justify-center">
-                      <Icon className="w-12 h-12 text-primary" />
+                    <div className="mb-3 md:mb-4 flex items-center justify-center">
+                      <Icon className="w-10 h-10 md:w-12 md:h-12 text-primary" />
                     </div>
-                    <h4 className="font-display text-xl text-text-primary mb-2">
+                    <h4 className="font-display text-lg md:text-xl text-text-primary mb-2 text-center leading-tight">
                       {ti(game.name)}
                     </h4>
-                    <p className="text-sm text-text-secondary mb-3">
+                    <p className="text-sm text-text-secondary mb-3 hidden md:block text-center flex-1">
                       {ti(game.description)}
                     </p>
                     {/* Category badges */}
@@ -268,14 +268,14 @@ export default function Lobby() {
                       {game.categories.map((cat) => (
                         <span
                           key={cat}
-                          className={`px-2 py-0.5 text-[10px] font-medium rounded-full border ${CATEGORY_CONFIG[cat].color}`}
+                          className={`px-2 py-0.5 text-[11px] md:text-[10px] font-medium rounded-full border ${CATEGORY_CONFIG[cat].color}`}
                         >
                           {ti(CATEGORY_CONFIG[cat].label)}
                         </span>
                       ))}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-text-muted mb-4 justify-center">
-                      <Users className="w-4 h-4" />
+                    <div className="flex items-center gap-1.5 md:gap-2 text-xs text-text-muted mb-4 justify-center">
+                      <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       <span>
                         {game.minPlayers === game.maxPlayers
                           ? `${game.minPlayers} ${ti({
@@ -288,21 +288,23 @@ export default function Lobby() {
                             })}`}
                       </span>
                     </div>
-                    {game.isAvailable ? (
-                      <button
-                        onClick={() => handleSelectGame(game.id)}
-                        className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-lg transition-colors cursor-pointer"
-                      >
-                        {ti({ en: "Create Room", vi: "Tạo Phòng" })}
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full px-4 py-2 bg-white/5 text-text-muted font-semibold rounded-lg cursor-not-allowed"
-                      >
-                        {ti({ en: "Coming Soon", vi: "Sắp Ra Mắt" })}
-                      </button>
-                    )}
+                    <div className="mt-auto">
+                      {game.isAvailable ? (
+                        <button
+                          onClick={() => handleSelectGame(game.id)}
+                          className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm md:text-base font-semibold rounded-lg transition-colors cursor-pointer"
+                        >
+                          {ti({ en: "Play", vi: "Chơi" })}
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="w-full px-4 py-2 bg-white/5 text-text-muted text-sm md:text-base font-semibold rounded-lg cursor-not-allowed"
+                        >
+                          {ti({ en: "Soon", vi: "Sắp ra" })}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -314,7 +316,7 @@ export default function Lobby() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Users className="w-6 h-6 text-primary" />
-                <h3 className="text-2xl font-display text-text-primary">
+                <h3 className="text-xl md:text-2xl font-display text-text-primary">
                   {ti({ en: "Public Rooms", vi: "Phòng Công Khai" })} (
                   {publicRooms.length})
                 </h3>
@@ -329,7 +331,7 @@ export default function Lobby() {
             </div>
 
             {publicRooms.length === 0 ? (
-              <div className="glass-card rounded-2xl p-12 text-center">
+              <div className="glass-card rounded-2xl p-8 md:p-12 text-center">
                 <p className="text-text-muted">
                   {ti({
                     en: "No public rooms available. Create one to get started!",
@@ -338,7 +340,7 @@ export default function Lobby() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 {publicRooms.map((room) => (
                   <RoomListItem key={room.id} room={room} />
                 ))}
@@ -435,7 +437,7 @@ function RoomListItem({ room }: { room: Room }) {
   const GameIcon = game?.icon || Gamepad;
 
   return (
-    <div className="glass-card rounded-xl p-4 hover:border-primary/30 transition-all duration-200 cursor-pointer group flex flex-col gap-4">
+    <div className="glass-card rounded-xl p-4 hover:border-primary/30 transition-all duration-200 cursor-pointer group flex flex-col gap-3 md:gap-4">
       <div className="flex items-start gap-4">
         {/* Icon */}
         <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0 mt-1">
@@ -510,7 +512,7 @@ function CreateRoomModal({
   gameId: string;
 }) {
   const { username, userId } = useUserStore();
-  const [roomName, setRoomName] = useState("");
+  const [roomName, setRoomName] = useState(username);
   const [gameType, setGameType] = useState(
     gameId || localStorage.getItem("gamehub24_lastGameId") || "",
   );
@@ -601,16 +603,16 @@ function CreateRoomModal({
         <div className="space-y-4 mb-6">
           {/* Room Name */}
           <div>
-            {/* <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm text-text-secondary mb-2 text-left">
               {ti({ en: "Room Name", vi: "Tên Phòng" })}
-            </label> */}
+            </label>
             <input
               type="text"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               placeholder={ts({
-                en: `Enter room name (default: ${username})`,
-                vi: `Nhập tên phòng (mặc định: ${username})`,
+                en: `Name your room (default: ${username})`,
+                vi: `Đặt tên phòng (mặc định: ${username})`,
               })}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
@@ -618,9 +620,9 @@ function CreateRoomModal({
 
           {/* Game Type */}
           <div>
-            {/* <label className="block text-sm font-medium text-text-secondary mb-2">
+            <label className="block text-sm font-medium text-text-secondary mb-2 text-left">
               {ti({ en: "Game", vi: "Trò chơi" })}
-            </label> */}
+            </label>
             <select
               value={gameType}
               onChange={(e) => setGameType(e.target.value)}
@@ -681,27 +683,29 @@ function CreateRoomModal({
           )}
         </div>
 
-        <div className="flex gap-3 flex-col md:flex-row">
+        <div className="flex gap-2 flex-col md:flex-row justify-center items-center">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg transition-colors cursor-pointer"
+            className="px-4 py-2 md:py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg transition-colors cursor-pointer"
           >
             {ti({ en: "Cancel", vi: "Hủy" })}
           </button>
 
-          <button
-            onClick={handleCreateOffline}
-            className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-500 text-white rounded-lg cursor-pointer"
-          >
-            {ti({ en: "Play Offline", vi: "Chơi Offline" })}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCreateOffline}
+              className="px-4 py-2 md:py-2.5 bg-slate-700 hover:bg-slate-500 text-white rounded-lg cursor-pointer"
+            >
+              {ti({ en: "Play Offline", vi: "Chơi Offline" })}
+            </button>
 
-          <button
-            onClick={handleCreate}
-            className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary-light text-white rounded-lg shadow-lg shadow-primary/30 transition-all cursor-pointer"
-          >
-            {ti({ en: "Create Online", vi: "Tạo Online" })}
-          </button>
+            <button
+              onClick={handleCreate}
+              className="px-4 py-2 md:py-2.5 bg-primary hover:bg-primary-light text-white rounded-lg shadow-lg shadow-primary/30 transition-all cursor-pointer"
+            >
+              {ti({ en: "Create Online", vi: "Tạo Online" })}
+            </button>
+          </div>
         </div>
       </div>
     </div>

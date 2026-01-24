@@ -41,7 +41,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
         jailTurns: 0,
         isBankrupt: false,
         isBot: false,
-        moneyHistory: [START_MONEY],
+        moneyHistory: { [Date.now()]: START_MONEY },
       });
     }
 
@@ -57,7 +57,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
       winner: null,
       pendingAction: null,
       lastAction: null,
-      logs: [],
+      logs: {},
       tradeOffers: [],
     };
   }
@@ -65,17 +65,30 @@ export default class Monopoly extends BaseGame<MonopolyState> {
   // Notify UI and broadcast - creates new state reference for React
   private notifyAndBroadcast(): void {
     // Sync money history before broadcasting
+    // Sync money history before broadcasting
     this.state.players.forEach((p) => {
       // Ensure history exists
-      if (!p.moneyHistory) p.moneyHistory = [];
+      if (!p.moneyHistory) p.moneyHistory = {};
 
-      // Add current money if different from last entry or empty
-      const lastEntry = p.moneyHistory[p.moneyHistory.length - 1];
-      if (lastEntry !== p.money) {
-        p.moneyHistory.push(p.money);
-        // Cap at 30 items
-        if (p.moneyHistory.length > 30) {
-          p.moneyHistory.shift();
+      // Get last entry (need to sort keys)
+      const keys = Object.keys(p.moneyHistory);
+      const sortedKeys = keys.sort(); // Lexicographical sort works for ISO timestamps or simple increasing IDs
+      const lastKey = sortedKeys[sortedKeys.length - 1];
+      const lastValue = lastKey ? p.moneyHistory[lastKey] : null;
+
+      if (lastValue !== p.money) {
+        // Add new entry
+        const newKey = Date.now();
+        p.moneyHistory[newKey] = p.money;
+
+        // Prune if > 100
+        if (sortedKeys.length >= 100) {
+          // Remove oldest
+          // sortedKeys is already sorted old -> new
+          const numToRemove = sortedKeys.length + 1 - 100;
+          for (let i = 0; i < numToRemove; i++) {
+            delete p.moneyHistory[sortedKeys[i]];
+          }
         }
       }
     });
@@ -598,11 +611,24 @@ export default class Monopoly extends BaseGame<MonopolyState> {
       type,
       timestamp: Date.now(),
     };
-    this.state.logs.push(log);
+    this.state.logs[log.id] = log;
 
-    // Keep only last 30 logs to save bandwidth
-    if (this.state.logs.length > 30) {
-      this.state.logs = this.state.logs.slice(-30);
+    // Prune old logs if too many (convert keys to array, sort by timestamp, delete oldest)
+    const logIds = Object.keys(this.state.logs);
+    if (logIds.length > 50) {
+      // Sort by timestamp (need to look up log object)
+      const sortedIds = logIds.sort((a, b) => {
+        return (
+          (this.state.logs[a]?.timestamp || 0) -
+          (this.state.logs[b]?.timestamp || 0)
+        );
+      });
+
+      // Remove oldest (first items in sorted array)
+      const numToRemove = logIds.length - 50;
+      for (let i = 0; i < numToRemove; i++) {
+        delete this.state.logs[sortedIds[i]];
+      }
     }
 
     this.state.lastAction = message;
@@ -623,7 +649,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
       gamePhase: "playing",
       currentPlayerIndex: this.findFirstActivePlayer(),
       lastAction: { en: "Game started!", vi: "Trò chơi bắt đầu!" },
-      logs: [],
+      logs: {},
     };
     this.addLog({ en: "Game started!", vi: "Trò chơi bắt đầu!" }, "info");
 
@@ -1841,7 +1867,9 @@ export default class Monopoly extends BaseGame<MonopolyState> {
         p.inJail = false;
         p.jailTurns = 0;
         p.isBankrupt = false;
-        p.moneyHistory = [START_MONEY];
+        p.moneyHistory = {
+          [Date.now()]: START_MONEY,
+        };
       }
     });
     this.state.properties = [];
@@ -1853,7 +1881,7 @@ export default class Monopoly extends BaseGame<MonopolyState> {
     this.state.gamePhase = "waiting";
     this.state.winner = null;
     this.state.pendingAction = null;
-    this.state.logs = [];
+    this.state.logs = {};
     this.addLog(
       {
         en: "Game reset!",

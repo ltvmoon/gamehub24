@@ -266,8 +266,6 @@ export abstract class BaseGame<T> {
         this.stateVersion = data.version;
       }
 
-      console.log("new state", newState);
-
       this.setState(newState);
     }
   }
@@ -346,6 +344,8 @@ function getHash(obj: any): string {
   }
 }
 
+const DELETED_VALUE = "__$$DELETED$$__";
+
 function getDiff(oldObj: any, newObj: any): any {
   if (oldObj === newObj) return undefined;
   if (oldObj === null || newObj === null) return newObj; // Handle null explicitly (typeof null === 'object')
@@ -376,7 +376,8 @@ function getDiff(oldObj: any, newObj: any): any {
   // Check for deleted keys
   for (const key in oldObj) {
     if (!(key in newObj)) {
-      return newObj; // Fallback to full replace for this level
+      diff[key] = DELETED_VALUE;
+      changed = true;
     }
   }
 
@@ -389,10 +390,9 @@ function applyPatch(draft: any, patch: any) {
   for (const key in patch) {
     const value = patch[key];
 
-    // If draft has this key and both are objects, recurse
-    // If draft is array and patch is object (indices), recurse
-    // If patch is array, it's a full replacement (from getDiff fallback)
-    if (
+    if (value === DELETED_VALUE) {
+      delete draft[key];
+    } else if (
       draft[key] &&
       typeof draft[key] === "object" &&
       value &&
