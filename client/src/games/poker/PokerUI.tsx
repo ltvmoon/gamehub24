@@ -21,6 +21,8 @@ import {
   RotateCcw,
   BookOpen,
   Play,
+  Coins,
+  Disc,
 } from "lucide-react";
 import useLanguage from "../../stores/languageStore";
 import { createPortal } from "react-dom";
@@ -121,6 +123,48 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
                 {ti({
                   en: "Create the best 5-card hand using your 2 hole cards and 5 community cards.",
                   vi: "Tạo ra tay bài 5 lá mạnh nhất từ 2 lá bài tẩy của bạn và 5 lá bài chung.",
+                })}
+              </p>
+            </section>
+
+            {/* Chips & Economy */}
+            <section>
+              <h3 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
+                <Coins className="w-5 h-5" />
+                {ti({ en: "Chips & Blinds", vi: "Tiền & Mù" })}
+              </h3>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li className="flex justify-between border-b border-slate-800 pb-1">
+                  <span>
+                    {ti({ en: "Starting Chips", vi: "Tiền khởi điểm" })}
+                  </span>
+                  <span className="font-bold text-yellow-500">1000</span>
+                </li>
+                <li className="flex justify-between border-b border-slate-800 pb-1">
+                  <span>
+                    {ti({ en: "Blinds (Small/Big)", vi: "Tiền mù (Nhỏ/Lớn)" })}
+                  </span>
+                  <span className="font-bold text-white">10 / 20</span>
+                </li>
+                <li className="text-xs text-slate-400 italic mt-2">
+                  {ti({
+                    en: "Auto-Rebuy: Chips reset to 1000 if you go bankrupt (Next Hand).",
+                    vi: "Tự động bơm tiền: Reset về 1000 nếu bạn cháy túi (Ván sau).",
+                  })}
+                </li>
+              </ul>
+            </section>
+
+            {/* Dealer Info */}
+            <section>
+              <h3 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
+                <Disc className="w-5 h-5" />
+                {ti({ en: "Dealer Position", vi: "Vị trí Dealer" })}
+              </h3>
+              <p className="text-sm text-slate-300 mb-2">
+                {ti({
+                  en: "The Dealer button (D) moves clockwise each hand. It determines who posts Blinds and acts last after the flop.",
+                  vi: "Nút Dealer (D) di chuyển theo chiều kim đồng hồ mỗi ván. Nó xác định ai đặt tiền mù và ai hành động cuối cùng sau khi chia bài chung.",
                 })}
               </p>
             </section>
@@ -267,12 +311,14 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
                 <ul className="space-y-3">
                   <li className="bg-slate-800/50 p-3 rounded-lg border-l-4 border-slate-500">
                     <div className="flex justify-between items-baseline mb-1">
-                      <strong className="text-white">Check / Fold</strong>
+                      <strong className="text-white">
+                        {ti({ en: "Check / Fold", vi: "Xem / Bỏ" })}
+                      </strong>
                       <span className="text-xs text-slate-500 uppercase">
                         {ti({ en: "Weak", vi: "Yếu" })}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-sm text-slate-400">
                       {ti({
                         en: "Skip turn if no bet / Discard hand.",
                         vi: "Xem (không cược) / Bỏ bài.",
@@ -281,12 +327,14 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
                   </li>
                   <li className="bg-slate-800/50 p-3 rounded-lg border-l-4 border-blue-500">
                     <div className="flex justify-between items-baseline mb-1">
-                      <strong className="text-blue-200">Call</strong>
+                      <strong className="text-blue-200">
+                        {ti({ en: "Call", vi: "Theo" })}
+                      </strong>
                       <span className="text-xs text-blue-500/50 uppercase">
                         {ti({ en: "Passive", vi: "Thụ động" })}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-sm text-slate-400">
                       {ti({
                         en: "Match current highest bet.",
                         vi: "Theo cược bằng người trước.",
@@ -295,12 +343,14 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
                   </li>
                   <li className="bg-slate-800/50 p-3 rounded-lg border-l-4 border-green-500">
                     <div className="flex justify-between items-baseline mb-1">
-                      <strong className="text-green-200">Raise / All-in</strong>
+                      <strong className="text-green-200">
+                        {ti({ en: "Raise / All-in", vi: "Tố / Tất tay" })}
+                      </strong>
                       <span className="text-xs text-green-500/50 uppercase">
                         {ti({ en: "Aggressive", vi: "Mạnh" })}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-sm text-slate-400">
                       {ti({
                         en: "Increase bet / Bet everything.",
                         vi: "Tố thêm tiền / Cược tất tay.",
@@ -317,7 +367,7 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
   };
 
   return (
-    <div className="flex flex-col w-full h-full min-h-[600px] bg-slate-900 text-white relative overflow-hidden select-none mb-16">
+    <div className="flex flex-col w-full h-full min-h-[700px] bg-slate-900 text-white relative overflow-hidden select-none mb-16">
       {/* Game Area Wrapper */}
       <div className="relative flex-1 w-full shrink-0">
         {/* Table Background */}
@@ -391,7 +441,8 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
                 isHost={isHost}
                 gamePhase={state.gamePhase}
                 bestHandName={
-                  myIndex === p.actualIndex && p.slot.hand.length > 0
+                  (myIndex === p.actualIndex || state.gamePhase === "ended") &&
+                  p.slot.hand.length > 0
                     ? ti(
                         HAND_NAMES[
                           game.evaluateHand(p.slot.hand, state.communityCards)
@@ -401,7 +452,8 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
                     : undefined
                 }
                 bestHandRank={
-                  myIndex === p.actualIndex && p.slot.hand.length > 0
+                  (myIndex === p.actualIndex || state.gamePhase === "ended") &&
+                  p.slot.hand.length > 0
                     ? game.evaluateHand(p.slot.hand, state.communityCards).rank
                     : undefined
                 }
@@ -664,13 +716,13 @@ const getPositionClass = (index: number) => {
 
   switch (index) {
     case 0:
-      return `bottom-2 left-1/2 -translate-x-1/2 ${d[0]}`;
+      return `bottom-6 left-1/2 -translate-x-1/2 ${d[0]}`;
     case 1:
       return `bottom-10 left-1 ${d[1]}`; // Bottom Left
     case 5:
       return `bottom-10 right-1 ${d[5]}`; // Bottom Right
     case 3:
-      return `top-2 left-1/2 -translate-x-1/2 ${d[3]}`; // Top Center
+      return `top-6 left-1/2 -translate-x-1/2 ${d[3]}`; // Top Center
     case 2:
       return `top-10 left-1 ${d[2]}`; // Top Left
     case 4:
@@ -818,7 +870,8 @@ function PlayerSlot({
                   >
                     <CardDisplay
                       card={card}
-                      size="sm"
+                      size="md"
+                      compact
                       className="animate-in fade-in slide-in-from-bottom-8 duration-500 ease-out"
                     />
                   </div>
@@ -849,16 +902,18 @@ function PlayerSlot({
           </div>
         )}
 
-        {/* Best Hand Indicator - Only for Self */}
-        {isSelf && !player.hasFolded && bestHandName && (
-          <div
-            onClick={onOpenRules}
-            className={`absolute -top-7 whitespace-nowrap border px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg animate-in fade-in slide-in-from-bottom-2 z-40 flex items-center gap-1 transition-all duration-300 cursor-pointer hover:scale-110 ${getHandStyle(bestHandRank)}`}
-          >
-            <Trophy className={`w-3 h-3 ${getHandIconColor(bestHandRank)}`} />
-            {bestHandName}
-          </div>
-        )}
+        {/* Best Hand Indicator - Only for Self or Showdown */}
+        {(isSelf || gamePhase === "ended") &&
+          !player.hasFolded &&
+          bestHandName && (
+            <div
+              onClick={onOpenRules}
+              className={`absolute -top-6 whitespace-nowrap border px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg animate-in fade-in slide-in-from-bottom-2 z-40 flex items-center gap-1 transition-all duration-300 cursor-pointer hover:scale-110 ${getHandStyle(bestHandRank)}`}
+            >
+              <Trophy className={`w-3 h-3 ${getHandIconColor(bestHandRank)}`} />
+              {bestHandName}
+            </div>
+          )}
       </div>
 
       {/* Host Controls */}
@@ -880,10 +935,12 @@ function CardDisplay({
   card,
   size = "md",
   className = "",
+  compact = false,
 }: {
   card: Card;
   size?: "sm" | "md" | "lg";
   className?: string;
+  compact?: boolean;
 }) {
   const isRed = card.suit === Suit.HEART || card.suit === Suit.DIAMOND;
   const sizeClasses = {
@@ -906,11 +963,11 @@ function CardDisplay({
       >
         {SUIT_SYMBOLS[card.suit]}
       </div>
-      {/* <div
+      <div
         className={`self-end font-bold ${isRed ? "text-red-600" : "text-slate-900"} leading-none rotate-180`}
       >
-        {RANK_DISPLAY[card.rank]}
-      </div> */}
+        {compact ? "" : RANK_DISPLAY[card.rank]}
+      </div>
     </div>
   );
 }
