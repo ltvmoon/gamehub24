@@ -2072,26 +2072,6 @@ export default function MonopolyUI({
 
       {/* Main Board */}
       <div className="flex flex-col items-center gap-2 flex-1 w-full overflow-hidden">
-        {/* Zoom Controls (Mobile Only) */}
-        <div className="flex @md:hidden w-full justify-end gap-2 px-2">
-          <button
-            onClick={() => setViewMode(viewMode === "fit" ? "zoom" : "fit")}
-            className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 text-white rounded-lg border border-slate-600 shadow-sm text-xs font-bold active:scale-95 transition-transform"
-          >
-            {viewMode === "fit" ? (
-              <>
-                <ZoomIn className="w-3 h-3" />{" "}
-                {ti({ en: "Zoom", vi: "Phóng to" })}
-              </>
-            ) : (
-              <>
-                <ZoomOut className="w-3 h-3" />{" "}
-                {ti({ en: "Fit", vi: "Thu nhỏ" })}
-              </>
-            )}
-          </button>
-        </div>
-
         <div
           className={`relative bg-slate-900 rounded-lg @md:rounded-xl p-0.5 @md:p-1 shadow-2xl border-2 @md:border-4 border-slate-700 w-full transition-all duration-300 ${
             viewMode === "zoom"
@@ -2215,6 +2195,26 @@ export default function MonopolyUI({
             {/* Token Overlay - Now a child of the sized wrapper, so 0-100% maps to the full board size */}
             {renderTokenOverlay()}
           </div>
+        </div>
+
+        {/* Zoom Controls (Mobile Only) */}
+        <div className="flex w-full justify-end gap-2 px-2">
+          <button
+            onClick={() => setViewMode(viewMode === "fit" ? "zoom" : "fit")}
+            className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 text-white rounded-lg border border-slate-600 shadow-sm text-xs font-bold active:scale-95 transition-transform"
+          >
+            {viewMode === "fit" ? (
+              <>
+                <ZoomIn className="w-3 h-3" />{" "}
+                {ti({ en: "Zoom", vi: "Phóng to" })}
+              </>
+            ) : (
+              <>
+                <ZoomOut className="w-3 h-3" />{" "}
+                {ti({ en: "Fit", vi: "Thu nhỏ" })}
+              </>
+            )}
+          </button>
         </div>
       </div>
 
