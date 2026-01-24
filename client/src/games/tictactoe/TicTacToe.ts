@@ -68,7 +68,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
       }
       this.state.isDraw = result.isDraw || false;
       this.state.gameOver = true;
-      this.broadcastGameEnd(result);
+      this.clearSavedState();
     } else {
       // Switch turn
       this.state.currentTurn = this.state.currentTurn === "X" ? "O" : "X";

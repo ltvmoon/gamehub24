@@ -173,7 +173,7 @@ export default class Reversi extends BaseGame<ReversiState> {
       this.state.winner = "draw";
     }
 
-    this.broadcastGameEnd({ winner: this.state.winner ?? undefined });
+    this.clearSavedState();
   }
 
   // ============== Move Validation ==============

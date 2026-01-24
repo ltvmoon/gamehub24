@@ -212,7 +212,7 @@ export default class Ludo extends BaseGame<LudoState> {
         currentPlayer.hasFinished = true;
         this.state.winner = playerId;
         this.state.gamePhase = "ended";
-        this.broadcastGameEnd({ winner: playerId });
+        this.clearSavedState();
         this.syncState();
         return;
       }

@@ -155,17 +155,6 @@ export abstract class BaseGame<T> {
     }
   }
 
-  // Broadcast game end
-  protected broadcastGameEnd(result: GameResult): void {
-    this.socket.emit("game:end", {
-      roomId: this.roomId,
-      result,
-    });
-
-    // Clear saved state on game end
-    this.clearSavedState();
-  }
-
   // Persist state to localStorage (Host only)
   protected saveStateToStorage(): void {
     if (this.isHost && this.gameName !== "unknown") {

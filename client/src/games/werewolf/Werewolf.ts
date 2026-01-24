@@ -1265,9 +1265,7 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     this.addLog(winnerLabel, "info");
     this.syncState();
 
-    this.broadcastGameEnd({
-      winner: this.state.winner || undefined,
-    });
+    this.clearSavedState();
   }
 
   // === Timer ===

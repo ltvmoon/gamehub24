@@ -409,7 +409,7 @@ export default class Billiard extends BaseGame<BilliardState> {
         this.state.winner = parseInt(result.winner) as PlayerSlot;
       }
       this.syncState();
-      this.broadcastGameEnd(result);
+      this.clearSavedState();
       return;
     }
 

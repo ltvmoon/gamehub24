@@ -462,12 +462,6 @@ io.on("connection", (socket: Socket) => {
     socket.to(data.roomId).emit("game:state", data);
   });
 
-  // Relay game end
-  socket.on("game:end", (data: { roomId: string; result: any }) => {
-    console.log("game:end", data.roomId);
-    socket.to(data.roomId).emit("game:end", data);
-  });
-
   // CHAT EVENTS
 
   // Send chat message

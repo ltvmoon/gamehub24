@@ -285,7 +285,7 @@ export default class Uno extends BaseGame<UnoState> {
       this.state.winner = playerId;
       this.state.gamePhase = "ended";
       this.syncState();
-      this.broadcastGameEnd({ winner: playerId });
+      this.clearSavedState();
       return;
     }
 

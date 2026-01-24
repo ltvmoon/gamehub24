@@ -116,12 +116,12 @@ export default class Connect4 extends BaseGame<Connect4State> {
       this.state.winningCells = winningCells;
       this.state.winner = playerId;
       this.state.gamePhase = "ended";
-      this.broadcastGameEnd({ winner: playerId });
+      this.clearSavedState();
     } else if (this.isBoardFull()) {
       // Draw
       this.state.winner = "draw";
       this.state.gamePhase = "ended";
-      this.broadcastGameEnd({ isDraw: true });
+      this.clearSavedState();
     } else {
       // Switch turn
       this.state.currentPlayerIndex = 1 - this.state.currentPlayerIndex;

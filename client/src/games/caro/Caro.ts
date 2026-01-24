@@ -77,7 +77,7 @@ export default class Caro extends BaseGame<CaroState> {
       this.state.winner = playerSymbol;
       this.state.winningLine = win;
       this.state.gameOver = true;
-      this.broadcastGameEnd({ winner: playerSymbol });
+      this.clearSavedState();
     } else {
       this.state.currentTurn = playerSymbol === "X" ? "O" : "X";
     }

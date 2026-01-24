@@ -320,7 +320,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       this.state.winner = playerId;
       this.state.gamePhase = "ended";
       this.syncState();
-      this.broadcastGameEnd({ winner: playerId });
+      this.clearSavedState();
       return;
     }
 

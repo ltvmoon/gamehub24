@@ -125,7 +125,7 @@ export default class ChessGame extends BaseGame<ChessState> {
       } else {
         this.state.winner = null; // Draw
       }
-      this.broadcastGameEnd({ winner: this.state.winner || undefined });
+      this.clearSavedState();
     } else {
       // Check capture for display
       if (move.captured) {
