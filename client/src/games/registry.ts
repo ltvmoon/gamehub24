@@ -17,6 +17,7 @@ import {
   Component,
   Shrimp,
   Coins,
+  Crosshair,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
@@ -37,14 +38,14 @@ export interface GameModule {
   minPlayers: number;
   maxPlayers: number;
   isAvailable: boolean;
-  createGame: (
+  createGame?: (
     roomId: string,
     socket: Socket,
     isHost: boolean,
     userId: string,
     players: Player[],
   ) => Promise<BaseGame<any>>;
-  loadUI: () => Promise<ComponentType<GameUIProps>>;
+  loadUI?: () => Promise<ComponentType<GameUIProps>>;
 }
 
 // Game Registry
@@ -387,6 +388,21 @@ games.set("poker", {
     return new Poker(roomId, socket, isHost, userId, players);
   },
   loadUI: () => import("./poker/PokerUI").then((m) => m.default),
+});
+
+// Register Gunny
+games.set("gunny", {
+  id: "gunny",
+  name: { en: "Gunny (Tank)", vi: "Gunny (Bắn Xe Tăng)" },
+  description: {
+    en: "Turn-based artillery game. Adjust angle and power to defeat opponents!",
+    vi: "Game bắn súng tọa độ. Căn góc và lực trúng mục tiêu!",
+  },
+  icon: Crosshair,
+  categories: ["gun", "strategy", "party"],
+  minPlayers: 2,
+  maxPlayers: 4,
+  isAvailable: false,
 });
 
 // Registry functions

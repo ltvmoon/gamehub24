@@ -12,7 +12,8 @@ export default function GlobalChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
   const { userId, username } = useUserStore();
-  const { isGlobalChatOpen, setGlobalChatOpen, onlineCount } = useChatStore();
+  const { isGlobalChatOpen, setGlobalChatOpen, onlineCount, setOnlineCount } =
+    useChatStore();
   const { ti, ts } = useLanguage();
   const socket = getSocket();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -30,7 +31,7 @@ export default function GlobalChat() {
     if (!socket) return;
 
     const handleMessage = (msg: ChatMessage) => {
-      setMessages((prev) => [...prev, msg].slice(-50));
+      setMessages((prev) => [...prev, msg]);
       if (isMinimizedRef.current) {
         setUnreadCount((prev) => prev + 1);
       }
@@ -41,12 +42,27 @@ export default function GlobalChat() {
       setTimeout(() => setError(null), 5000);
     };
 
+    const fetchOnlineCount = () => {
+      socket.emit("stats:online", (data: { online: number }) => {
+        setOnlineCount(data.online);
+      });
+    };
+
     socket.on("global:chat", handleMessage);
     socket.on("global:chat:error", handleError);
+
+    // Request online count
+    fetchOnlineCount();
+
+    // Periodically refresh online count
+    const interval = setInterval(() => {
+      fetchOnlineCount();
+    }, 30000); // Every 30 seconds
 
     return () => {
       socket.off("global:chat", handleMessage);
       socket.off("global:chat:error", handleError);
+      clearInterval(interval);
     };
   }, [socket]);
 

@@ -31,7 +31,7 @@ export default function Lobby() {
   const { username } = useUserStore();
   const { isConnected } = useSocketStore();
   const { publicRooms, setPublicRooms } = useRoomStore();
-  const { setGlobalChatOpen, onlineCount, setOnlineCount } = useChatStore();
+  const { setGlobalChatOpen, onlineCount } = useChatStore();
   const { favorites, toggleFavorite, favoritesCount } = useGameFavorites();
 
   const [showCreateModal, setShowCreateModal] = useState<string | null>(null);
@@ -62,26 +62,13 @@ export default function Lobby() {
       setPublicRooms(rooms);
     });
 
-    // Request online count
-    socket.emit("stats:online", (data: { online: number }) => {
-      setOnlineCount(data.online);
-    });
-
     // Listen for room list updates
     socket.on("room:list:update", (rooms: Room[]) => {
       setPublicRooms(rooms);
     });
 
-    // Periodically refresh online count
-    const interval = setInterval(() => {
-      socket.emit("stats:online", (data: { online: number }) => {
-        setOnlineCount(data.online);
-      });
-    }, 10000); // Every 10 seconds
-
     return () => {
       socket.off("room:list:update");
-      clearInterval(interval);
     };
   }, [setPublicRooms]);
 
@@ -315,7 +302,7 @@ export default function Lobby() {
                           disabled
                           className="w-full px-4 py-2 bg-white/5 text-text-muted text-sm md:text-base font-semibold rounded-lg cursor-not-allowed"
                         >
-                          {ti({ en: "Soon", vi: "Sắp ra" })}
+                          {ti({ en: "Coming Soon", vi: "Sắp ra mắt" })}
                         </button>
                       )}
                     </div>

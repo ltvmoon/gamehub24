@@ -81,7 +81,7 @@ export default function GameContainer({
       }
 
       const gameModule = getGame(gameType);
-      if (!gameModule) {
+      if (!gameModule || !gameModule.createGame || !gameModule.loadUI) {
         setError(`Game "${gameType}" not found`);
         setIsLoading(false);
         loadingRef.current = null;

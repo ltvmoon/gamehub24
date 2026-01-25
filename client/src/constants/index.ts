@@ -10,7 +10,8 @@ export type GameCategory =
   | "puzzle"
   | "card"
   | "party"
-  | "relax";
+  | "relax"
+  | "gun";
 
 // Category display names and colors
 export const CATEGORY_CONFIG: Record<
@@ -40,5 +41,9 @@ export const CATEGORY_CONFIG: Record<
   relax: {
     label: { en: "Relax", vi: "Thư giãn" },
     color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+  },
+  gun: {
+    label: { en: "Gun", vi: "Bắn súng" },
+    color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
   },
 };
