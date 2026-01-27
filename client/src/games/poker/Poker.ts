@@ -229,7 +229,6 @@ export default class Poker extends BaseGame<PokerState> {
     this.state.currentTurnIndex = activeIndices[turnPos];
     this.state.minRaise = this.state.bigBlindAmount;
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -358,7 +357,7 @@ export default class Poker extends BaseGame<PokerState> {
     this.state.currentTurnIndex = nextIndex;
 
     // Auto-check if everyone is all-in except one? logic handled in advanceTurn
-    this.syncState();
+
     this.checkBotTurn();
   }
 
@@ -378,7 +377,7 @@ export default class Poker extends BaseGame<PokerState> {
         this.showdown();
         return;
       }
-      this.syncState();
+
       // sleep logic? No, just run through
     }
   }
@@ -408,7 +407,7 @@ export default class Poker extends BaseGame<PokerState> {
       winner.chips += this.state.pot;
       this.state.pot = 0;
       this.state.gamePhase = "ended";
-      this.syncState();
+
       return;
     }
 
@@ -444,7 +443,6 @@ export default class Poker extends BaseGame<PokerState> {
 
     this.state.pot = 0;
     this.state.gamePhase = "ended";
-    this.syncState();
   }
 
   // --- Hand Evaluation (Simplified for now) ---
@@ -704,7 +702,6 @@ export default class Poker extends BaseGame<PokerState> {
       chips: 1000,
     };
     this.state.players = [...this.state.players]; // Update reference for React
-    this.syncState();
   }
 
   private resetGame() {
@@ -733,7 +730,6 @@ export default class Poker extends BaseGame<PokerState> {
     });
 
     this.state.players = [...this.state.players];
-    this.syncState();
   }
 
   private joinSlot(slotIndex: number, playerId: string, playerName: string) {
@@ -753,7 +749,6 @@ export default class Poker extends BaseGame<PokerState> {
       chips: 1000,
     };
     this.state.players = [...this.state.players]; // Update reference
-    this.syncState();
   }
 
   private removePlayer(slotIndex: number) {
@@ -775,7 +770,6 @@ export default class Poker extends BaseGame<PokerState> {
       hasActed: false,
     };
     this.state.players = [...this.state.players]; // Update reference
-    this.syncState();
   }
 
   // --- Public Requests ---
@@ -974,7 +968,7 @@ export default class Poker extends BaseGame<PokerState> {
     }
 
     this.state.currentTurnIndex = nextIndex;
-    this.syncState();
+
     this.checkBotTurn();
   }
 
@@ -1062,7 +1056,6 @@ export default class Poker extends BaseGame<PokerState> {
     winner.chips += this.state.pot;
     this.state.pot = 0;
     this.state.gamePhase = "ended";
-    this.syncState();
   }
 
   // --- Bot ---

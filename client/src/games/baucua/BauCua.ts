@@ -157,8 +157,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     this.state.currentBets[playerId] = currentBets;
     this.state.playerBalances[playerId].totalBet =
       totalCurrentBet + actualAmount;
-
-    this.syncState();
   }
 
   // Clear all bets for a player
@@ -168,8 +166,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     this.state.currentBets[playerId] = [];
     this.state.playerBalances[playerId].totalBet = 0;
     this.state.playersReady[playerId] = false;
-
-    this.syncState();
   }
 
   // Sync all bets from guest (when they click ready)
@@ -191,8 +187,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     // Set all bets at once
     this.state.currentBets[playerId] = bets;
     this.state.playerBalances[playerId].totalBet = totalBet;
-
-    this.syncState();
   }
 
   // Toggle ready status
@@ -206,8 +200,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     if (!hasPlacedBets && !this.state.playersReady[playerId]) return;
 
     this.state.playersReady[playerId] = !this.state.playersReady[playerId];
-
-    this.syncState();
   }
 
   // Roll the dice (host only)
@@ -286,8 +278,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
         delete this.state.recentRolls[sortedKeys[i]];
       }
     }
-
-    this.syncState();
 
     // After animation, calculate results (increased to match UI animation)
     setTimeout(() => {
@@ -447,8 +437,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
 
     // Check if any player is out of money
     this.checkGameOver();
-
-    this.syncState();
   }
 
   // Check if game should end
@@ -532,7 +520,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
       this.state.playerBalances[playerId].totalBet = 0;
     });
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -560,8 +547,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     this.state.jackpotPool = 0;
     this.state.minBalanceToWin = 0;
 
-    this.syncState();
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -569,7 +554,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
   private handleSetGameMode(minBalance: number): void {
     if (this.state.gamePhase !== "waiting") return;
     this.state.minBalanceToWin = minBalance;
-    this.syncState();
   }
 
   // Add a bot player
@@ -588,7 +572,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
 
     this.state.playerPowerUps[botId] = this.initializePowerUps();
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -602,8 +585,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     delete this.state.playersReady[playerId];
     delete this.state.playerPowerUps[playerId];
     delete this.state.activePowerUps[playerId];
-
-    this.syncState();
   }
 
   // Check if it's bot's turn and make them act
@@ -690,8 +671,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
       // Bot is always ready after betting
       this.state.playersReady[bot.playerId] = true;
     });
-
-    this.syncState();
   }
 
   // Public methods for UI
@@ -803,8 +782,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
     this.state.activePowerUps[playerId] = powerUpType;
     powerUp.cooldown = config.cooldown;
     powerUp.lastUsedRound = this.state.currentRound;
-
-    this.syncState();
   }
 
   // Deactivate power-up (only for post_roll types before dice roll)
@@ -831,8 +808,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
 
     // Clear activation
     this.state.activePowerUps[playerId] = null;
-
-    this.syncState();
   }
 
   // Update players when room changes
@@ -866,8 +841,6 @@ export default class BauCua extends BaseGame<BauCuaState> {
         delete this.state.activePowerUps[id];
       }
     });
-
-    this.syncState();
   }
 
   destroy(): void {

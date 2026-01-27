@@ -137,14 +137,12 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       // Client-side prediction for drawing
       if (action.type === "DRAW") {
         this.state.strokes = [...this.state.strokes, action.payload];
-        this.syncState();
       } else if (action.type === "CLEAR") {
         if (
           this.state.mode === "FREE" ||
           (this.state.gartic && this.state.gartic.drawerId === this.userId)
         ) {
           this.state.strokes = [];
-          this.syncState();
         }
       } else if (action.type === "UNDO") {
         // Find and remove last stroke by this player
@@ -160,7 +158,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
           this.state.strokes = this.state.strokes.filter(
             (_, i) => i !== lastIndex,
           );
-          this.syncState();
         }
       }
 
@@ -186,13 +183,11 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     }
 
     this.state.strokes = [...this.state.strokes, stroke];
-    this.syncState();
   }
 
   private handleClear() {
     if (!this.isHost) return;
     this.state.strokes = [];
-    this.syncState();
   }
 
   private handleUndo(playerId: string) {
@@ -208,7 +203,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     if (lastIndex === -1) return;
 
     this.state.strokes = this.state.strokes.filter((_, i) => i !== lastIndex);
-    this.syncState();
   }
 
   private handleStartGartic() {
@@ -248,8 +242,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       },
       "INFO",
     );
-
-    this.syncState();
 
     // Start Timer
     if (this.roundTimeout) clearTimeout(this.roundTimeout);
@@ -332,7 +324,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
           vi: "Mọi người đều đoán đúng!",
         });
       } else {
-        this.syncState();
       }
     } else {
       // WRONG GUESS
@@ -360,7 +351,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     const difficulty = this.state.wordDifficulty || "easy";
     const words = getWordsByDifficulty(difficulty, 3, payload.language);
     this.state.wordOptions = words;
-    this.syncState();
   }
 
   private handleSelectDifficulty(payload: { difficulty: Difficulty }) {
@@ -374,8 +364,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
 
     // Timeout is already running from startNewRound, no need to reset it unless we want to give more time?
     // Let's keep the original timeout to keep rounds brisk.
-
-    this.syncState();
   }
 
   private handlePauseGame() {
@@ -426,7 +414,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
 
       // this.addSystemMessage("Game Paused!", "WARNING");
     }
-    this.syncState();
   }
 
   private handleBuyHint(playerId: string) {
@@ -471,7 +458,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
         },
         "INFO",
       );
-      this.syncState();
     }
   }
 
@@ -516,7 +502,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       },
       "INFO",
     );
-    this.syncState();
 
     // Timeout for choosing word
     if (this.roundTimeout) clearTimeout(this.roundTimeout);
@@ -543,7 +528,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       },
       "WARNING",
     );
-    this.syncState();
 
     // Auto start next round after break
     this.roundTimeout = setTimeout(() => {
@@ -565,7 +549,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       timestamp: Date.now(),
     };
     this.state.messages = [...this.state.messages, msg].slice(-50); // Keep last 50
-    this.syncState();
   }
 
   private addSystemMessage(
@@ -581,7 +564,6 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       timestamp: Date.now(),
     };
     this.state.messages = [...this.state.messages, msg].slice(-50);
-    this.syncState();
   }
 
   // Public methods for UI

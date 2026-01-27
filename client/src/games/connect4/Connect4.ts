@@ -89,7 +89,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
     this.state.lastMove = null;
     this.state.winningCells = [];
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -127,7 +126,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
       this.state.currentPlayerIndex = 1 - this.state.currentPlayerIndex;
     }
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -244,8 +242,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
       this.applyUndo();
     } else {
       this.state.undoRequest = { fromId: playerId, fromName: playerName };
-
-      this.syncState();
     }
   }
 
@@ -267,14 +263,10 @@ export default class Connect4 extends BaseGame<Connect4State> {
     this.state.undoRequest = null;
     this.state.lastMove = null;
     this.state.winningCells = [];
-
-    this.syncState();
   }
 
   private handleDeclineUndo(): void {
     this.state.undoRequest = null;
-
-    this.syncState();
   }
 
   // ============== Bot AI (Minimax with Alpha-Beta) ==============
@@ -289,8 +281,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
       color: "yellow",
       isBot: true,
     };
-
-    this.syncState();
   }
 
   private handleRemoveBot(): void {
@@ -303,8 +293,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
       color: "yellow",
       isBot: false,
     };
-
-    this.syncState();
   }
 
   private checkBotTurn(): void {
@@ -705,13 +693,10 @@ export default class Connect4 extends BaseGame<Connect4State> {
       lastMove: null,
       winningCells: [],
     };
-
-    this.syncState();
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
     if (this.state.gamePhase !== "waiting") {
-      this.syncState();
       return;
     }
 
@@ -731,8 +716,6 @@ export default class Connect4 extends BaseGame<Connect4State> {
         this.state.players[1].username = "Player 2";
       }
     }
-
-    this.syncState();
   }
 
   // ============== Helper Methods ==============

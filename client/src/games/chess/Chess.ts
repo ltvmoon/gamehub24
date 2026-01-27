@@ -137,7 +137,6 @@ export default class ChessGame extends BaseGame<ChessState> {
         }
       }
     }
-    this.syncState();
   }
 
   reset(): void {
@@ -160,7 +159,7 @@ export default class ChessGame extends BaseGame<ChessState> {
       pendingNewGameRequest: null,
       isBotLoading: false,
     };
-    this.syncState();
+
     this.checkBotTurn();
   }
 
@@ -207,7 +206,6 @@ export default class ChessGame extends BaseGame<ChessState> {
 
   private handleNewGameRequest(playerId: string): void {
     this.state.pendingNewGameRequest = playerId;
-    this.syncState();
   }
 
   private handleNewGameResponse(accepted: boolean): void {
@@ -215,7 +213,6 @@ export default class ChessGame extends BaseGame<ChessState> {
       this.reset();
     } else {
       this.state.pendingNewGameRequest = null;
-      this.syncState();
     }
   }
 
@@ -240,8 +237,6 @@ export default class ChessGame extends BaseGame<ChessState> {
         this.state.players.black = null;
       }
     }
-
-    this.syncState();
   }
 
   // --- Bot Logic (Stockfish) ---
@@ -268,7 +263,6 @@ export default class ChessGame extends BaseGame<ChessState> {
     }
 
     this.state.isBotLoading = true;
-    this.syncState();
 
     // Initialize Stockfish
     if (!this.stockfishWorker) {
@@ -297,7 +291,6 @@ export default class ChessGame extends BaseGame<ChessState> {
     } else {
       // Already loaded, just ready check
       this.state.isBotLoading = false;
-      this.syncState();
 
       this.checkBotTurn();
     }
@@ -310,7 +303,6 @@ export default class ChessGame extends BaseGame<ChessState> {
     } else if (this.state.players.white?.isBot) {
       this.state.players.white = null;
     }
-    this.syncState();
   }
 
   private onBotReady?: () => void;
@@ -349,7 +341,7 @@ export default class ChessGame extends BaseGame<ChessState> {
 
     if (message === "readyok") {
       this.state.isBotLoading = false;
-      this.syncState();
+
       this.checkBotTurn();
       if (this.onBotReady) {
         this.onBotReady();

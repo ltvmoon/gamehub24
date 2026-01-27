@@ -82,7 +82,6 @@ export default class Caro extends BaseGame<CaroState> {
       this.state.currentTurn = playerSymbol === "X" ? "O" : "X";
     }
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -100,8 +99,6 @@ export default class Caro extends BaseGame<CaroState> {
       pendingUndoRequest: null,
       gamePhase: "waiting",
     };
-
-    this.syncState();
   }
 
   updatePlayers(players: Player[]): void {
@@ -121,8 +118,6 @@ export default class Caro extends BaseGame<CaroState> {
       X: x,
       O: o,
     };
-
-    this.syncState();
   }
   // --- Helpers ---
 
@@ -259,8 +254,6 @@ export default class Caro extends BaseGame<CaroState> {
     if (lastSymbol !== requesterSymbol) return;
 
     this.state.pendingUndoRequest = playerId;
-
-    this.syncState();
   }
 
   private handleUndoResponse(accepted: boolean): void {
@@ -279,8 +272,6 @@ export default class Caro extends BaseGame<CaroState> {
       }
       this.state.pendingUndoRequest = null;
     }
-
-    this.syncState();
   }
 
   private handleSwitchTurn(): void {
@@ -288,8 +279,6 @@ export default class Caro extends BaseGame<CaroState> {
     if (this.state.history.length > 0) return;
 
     this.state.currentTurn = this.state.currentTurn === "X" ? "O" : "X";
-
-    this.syncState();
   }
 
   // --- Bot Logic ---
@@ -303,8 +292,6 @@ export default class Caro extends BaseGame<CaroState> {
       isHost: false,
       isBot: true,
     };
-
-    this.syncState();
   }
 
   removeBot(): void {
@@ -313,8 +300,6 @@ export default class Caro extends BaseGame<CaroState> {
     if (!this.state.players.O?.isBot) return;
 
     this.state.players.O = null;
-
-    this.syncState();
   }
 
   // Start Game
@@ -323,8 +308,6 @@ export default class Caro extends BaseGame<CaroState> {
     if (!this.state.players.X || !this.state.players.O) return;
 
     this.state.gamePhase = "playing";
-
-    this.syncState();
 
     // Check if bot goes first
     this.checkBotTurn();

@@ -49,7 +49,6 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
   sync(playing: boolean, currentTime: number) {
     this.state.isPlaying = playing;
     this.state.timestamp = currentTime;
-    this.syncState();
   }
 
   private handleSetVideo(videoId: string) {
@@ -58,14 +57,11 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
     this.state.isPlaying = true;
     this.state.timestamp = 0;
     this.state.lastUpdate = Date.now();
-
-    this.syncState();
   }
 
   private handleToggleGuestControl(allow: boolean) {
     if (!this.isHost) return;
     this.state.allowGuestControl = allow;
-    this.syncState();
   }
 
   // Public methods

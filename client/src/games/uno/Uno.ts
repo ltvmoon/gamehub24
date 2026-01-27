@@ -87,7 +87,7 @@ export default class Uno extends BaseGame<UnoState> {
         break;
       case "DECLINE_NEW_GAME":
         this.state.newGameRequest = null;
-        this.syncState();
+
         break;
     }
   }
@@ -284,7 +284,7 @@ export default class Uno extends BaseGame<UnoState> {
     if (player.hand.length === 0) {
       this.state.winner = playerId;
       this.state.gamePhase = "ended";
-      this.syncState();
+
       this.clearSavedState();
       return;
     }
@@ -301,8 +301,6 @@ export default class Uno extends BaseGame<UnoState> {
       this.advanceTurn();
       this.advanceTurn();
     }
-
-    this.syncState();
 
     this.checkBotTurn();
   }
@@ -376,8 +374,6 @@ export default class Uno extends BaseGame<UnoState> {
       this.advanceTurn();
     }
 
-    this.syncState();
-
     this.checkBotTurn();
   }
 
@@ -411,7 +407,6 @@ export default class Uno extends BaseGame<UnoState> {
     const player = this.state.players[playerIndex];
     if (player.hand.length <= 2) {
       player.calledUno = true;
-      this.syncState();
     }
   }
 
@@ -425,7 +420,6 @@ export default class Uno extends BaseGame<UnoState> {
     if (target.hand.length === 1 && !target.calledUno) {
       // Penalty: draw 2 cards
       this.drawCards(target, 2);
-      this.syncState();
     }
   }
 
@@ -463,8 +457,6 @@ export default class Uno extends BaseGame<UnoState> {
       calledUno: false,
     };
     this.state = { ...this.state, players: newPlayers };
-
-    this.syncState();
   }
 
   private handleJoinSlot(
@@ -487,8 +479,6 @@ export default class Uno extends BaseGame<UnoState> {
       calledUno: false,
     };
     this.state = { ...this.state, players: newPlayers };
-
-    this.syncState();
   }
 
   private handleRemovePlayer(slotIndex: number): void {
@@ -508,8 +498,6 @@ export default class Uno extends BaseGame<UnoState> {
       calledUno: false,
     };
     this.state = { ...this.state, players: newPlayers };
-
-    this.syncState();
   }
 
   // ============== Game Flow ==============
@@ -543,14 +531,11 @@ export default class Uno extends BaseGame<UnoState> {
       this.state.pendingDraw = 2;
     }
 
-    this.syncState();
-
     this.checkBotTurn();
   }
 
   private handleNewGameRequest(playerId: string, playerName: string): void {
     this.state.newGameRequest = { fromId: playerId, fromName: playerName };
-    this.syncState();
   }
 
   reset(): void {
@@ -577,8 +562,6 @@ export default class Uno extends BaseGame<UnoState> {
       mustDraw: false,
       hasDrawn: false,
     };
-
-    this.syncState();
   }
 
   checkGameEnd(): GameResult | null {
@@ -607,7 +590,6 @@ export default class Uno extends BaseGame<UnoState> {
         }
       }
     }
-    this.syncState();
   }
 
   // ============== Bot AI ==============

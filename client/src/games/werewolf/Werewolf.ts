@@ -167,8 +167,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     // Only auto-add in setup phase
     if (this.state.isGameStarted) return;
 
-    let stateChanged = false;
-
     // 1. Sync existing slots with room players
     this.state.players.forEach((slot) => {
       if (slot.id && !slot.isBot) {
@@ -179,7 +177,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
           // Update username if changed
           if (slot.username !== roomPlayer.username) {
             slot.username = roomPlayer.username;
-            stateChanged = true;
           }
         } else {
           // Player left the room, clear the slot
@@ -187,17 +184,9 @@ export default class Werewolf extends BaseGame<WerewolfState> {
           slot.username = `Slot ${this.state.players.indexOf(slot) + 1}`;
           slot.role = null;
           slot.isBot = false;
-          stateChanged = true;
         }
       }
     });
-
-    // NOTE: We do NOT auto-add players to empty slots anymore.
-    // Players must manually click "Join" (handled by JOIN_SLOT action)
-
-    if (stateChanged) {
-      this.syncState();
-    }
   }
 
   // === Setup Phase ===
@@ -224,8 +213,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     slot.id = playerId;
     slot.username = playerName;
     slot.isBot = false;
-
-    this.syncState();
   }
 
   private handleLeaveSlot(slotIndex: number): void {
@@ -237,8 +224,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     slot.id = null;
     slot.username = `Slot ${slotIndex + 1}`;
     slot.isBot = false;
-
-    this.syncState();
   }
 
   private handleAddBot(slotIndex: number): void {
@@ -253,8 +238,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     slot.id = `bot_${Date.now()}_${slotIndex}`;
     slot.username = botName;
     slot.isBot = true;
-
-    this.syncState();
   }
 
   private handleRemoveBot(slotIndex: number): void {
@@ -266,15 +249,12 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     slot.id = null;
     slot.username = `Slot ${slotIndex + 1}`;
     slot.isBot = false;
-
-    this.syncState();
   }
 
   private handleUpdateConfig(config: Partial<typeof DEFAULT_CONFIG>): void {
     if (this.state.isGameStarted) return;
 
     this.state.config = { ...this.state.config, ...config };
-    this.syncState();
   }
 
   private handleStartGame(hostRole?: WerewolfRole): void {
@@ -419,7 +399,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     }
 
     this.startPhaseTimer();
-    this.syncState();
 
     // Process bot actions for current sub-phase
     this.processBotNightAction();
@@ -453,7 +432,7 @@ export default class Werewolf extends BaseGame<WerewolfState> {
       if (this.hasAliveRole(nextPhase as WerewolfRole)) {
         this.state.nightSubPhase = nextPhase;
         this.startPhaseTimer();
-        this.syncState();
+
         this.processBotNightAction();
         return;
       }
@@ -542,7 +521,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
       this.state.nightActions.wolfTarget = target;
       this.advanceNightSubPhase();
     } else {
-      this.syncState();
     }
   }
 
@@ -793,7 +771,7 @@ export default class Werewolf extends BaseGame<WerewolfState> {
       hunterWithPendingShot.hasVoted = false;
 
       this.startPhaseTimer();
-      this.syncState();
+
       this.processBotHunterAction();
       return;
     }
@@ -806,7 +784,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
 
     // Auto-advance to discussion after brief pause
     this.startPhaseTimer();
-    this.syncState();
   }
 
   private killPlayer(playerId: string): void {
@@ -855,7 +832,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     });
 
     this.startPhaseTimer();
-    this.syncState();
 
     // Bot auto actions during discussion
     this.processBotDiscussion();
@@ -908,8 +884,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     if (this.state.chatMessages.length > 500) {
       this.state.chatMessages = this.state.chatMessages.slice(-500);
     }
-
-    this.syncState();
   }
 
   private handleAddSuspicion(playerId: string, targetId: string): void {
@@ -953,8 +927,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
         vi: `${player.username} nghi ngờ bạn`,
       });
     }
-
-    this.syncState();
   }
 
   private handleRemoveSuspicion(playerId: string, targetId: string): void {
@@ -963,8 +935,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     this.state.suspicionMarkers = this.state.suspicionMarkers.filter(
       (m) => !(m.fromPlayerId === playerId && m.toPlayerId === targetId),
     );
-
-    this.syncState();
   }
 
   // === Voting Phase ===
@@ -979,7 +949,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     });
 
     this.startPhaseTimer();
-    this.syncState();
 
     // Bot auto voting
     this.processBotVoting();
@@ -1027,7 +996,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     if (allVoted) {
       this.processVotes();
     } else {
-      this.syncState();
     }
   }
 
@@ -1125,7 +1093,7 @@ export default class Werewolf extends BaseGame<WerewolfState> {
       hunterWithPendingShot.hasVoted = false;
 
       this.startPhaseTimer();
-      this.syncState();
+
       this.processBotHunterAction();
       return;
     }
@@ -1138,7 +1106,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
 
     // Pause then start next night
     this.startPhaseTimer();
-    this.syncState();
   }
 
   // === Hunter Revenge ===
@@ -1194,7 +1161,7 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     );
     if (anotherHunter) {
       this.state.pendingElimination = anotherHunter.id;
-      this.syncState();
+
       return;
     }
 
@@ -1268,7 +1235,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
           : { en: "Lovers win!", vi: "Tình Nhân thắng!" };
 
     this.addLog(winnerLabel, "info");
-    this.syncState();
 
     this.clearSavedState();
   }
@@ -1326,7 +1292,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     this.state.phaseEndTime = null;
 
     this.clearTimer();
-    this.syncState();
   }
 
   requestResumeGame(): void {
@@ -1350,8 +1315,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
         this.handlePhaseTimeout();
       }
     }, 1000);
-
-    this.syncState();
   }
 
   private clearTimer(): void {
@@ -1404,8 +1367,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     this.state.phaseEndTime = Date.now() + 5000;
     this.state.isPaused = false;
     this.state.pausedTimeRemaining = null;
-
-    this.syncState();
   }
 
   // === Bot AI ===
@@ -1890,8 +1851,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     if (this.state.logs.length > 100) {
       this.state.logs = this.state.logs.slice(-100);
     }
-
-    this.syncState();
   }
 
   private addPlayerHistory(
@@ -1911,8 +1870,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
       day: this.state.day,
       isSecret,
     });
-
-    this.syncState();
   }
 
   private handleResetGame(): void {
@@ -1932,7 +1889,6 @@ export default class Werewolf extends BaseGame<WerewolfState> {
     });
 
     this.state = newState;
-    this.syncState();
   }
 
   // === Public API ===

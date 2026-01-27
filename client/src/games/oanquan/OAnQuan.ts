@@ -30,7 +30,6 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
       ...this.state,
       players: players.map((p) => ({ ...p, isBot: false })),
     };
-    this.syncState();
   }
 
   getMyPlayerIndex(): number {
@@ -88,7 +87,7 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
     };
 
     this.checkPopulationIfNeeded();
-    this.syncState();
+
     this.checkBotTurn();
   }
 
@@ -99,7 +98,6 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
       winner: null,
       lastMove: undefined,
     };
-    this.syncState();
   }
 
   private addBot() {
@@ -117,7 +115,6 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
       players: [...this.state.players, newPlayer],
       playerScores: { ...this.state.playerScores, [botId]: 0 },
     };
-    this.syncState();
   }
 
   private removeBot(index: number | undefined) {
@@ -135,7 +132,6 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
         players: newPlayers,
         playerScores: newScores,
       };
-      this.syncState();
     }
   }
 
@@ -206,8 +202,6 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
       gamePhase,
       currentTurn: this.state.currentTurn, // Updated by checkPopulation possibly
     };
-
-    this.syncState();
 
     if (!this.state.winner) {
       this.checkBotTurn();

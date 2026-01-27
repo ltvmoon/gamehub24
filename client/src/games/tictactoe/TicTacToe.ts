@@ -74,8 +74,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
       this.state.currentTurn = this.state.currentTurn === "X" ? "O" : "X";
     }
 
-    this.syncState();
-
     // Check if it's bot's turn
     this.checkBotTurn();
   }
@@ -123,7 +121,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
       lastMoveIndex: null,
       gamePhase: "waiting",
     };
-    this.syncState();
   }
 
   updatePlayers(players: Player[]): void {
@@ -139,8 +136,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
         this.state.players.O = null;
       }
     }
-
-    this.syncState();
   }
 
   // Request reset (client-side)
@@ -161,7 +156,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     if (this.state.board.some((cell) => cell !== null)) return;
 
     this.state.currentTurn = this.state.currentTurn === "X" ? "O" : "X";
-    this.syncState();
 
     // Check if it became bot's turn
     this.checkBotTurn();
@@ -189,7 +183,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
       isHost: false,
       isBot: true,
     };
-    this.syncState();
   }
 
   removeBot(): void {
@@ -198,7 +191,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     if (!this.state.players.O?.isBot) return;
 
     this.state.players.O = null;
-    this.syncState();
   }
 
   // Start Game
@@ -207,7 +199,6 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
     if (!this.state.players.X || !this.state.players.O) return;
 
     this.state.gamePhase = "playing";
-    this.syncState();
 
     // Check if bot goes first
     this.checkBotTurn();

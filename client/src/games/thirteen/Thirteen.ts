@@ -81,7 +81,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         break;
       case "DECLINE_NEW_GAME":
         this.state.newGameRequest = null;
-        this.syncState();
+
         break;
     }
   }
@@ -319,14 +319,13 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     if (player.hand.length === 0) {
       this.state.winner = playerId;
       this.state.gamePhase = "ended";
-      this.syncState();
+
       this.clearSavedState();
       return;
     }
 
     // Move to next player
     this.advanceTurn();
-    this.syncState();
 
     // Check for bot turn
     this.checkBotTurn();
@@ -364,8 +363,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     } else {
       this.advanceTurn();
     }
-
-    this.syncState();
 
     this.checkBotTurn();
   }
@@ -422,8 +419,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       passed: false,
     };
     this.state = { ...this.state, players: newPlayers };
-
-    this.syncState();
   }
 
   private handleJoinSlot(
@@ -448,8 +443,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       passed: false,
     };
     this.state = { ...this.state, players: newPlayers };
-
-    this.syncState();
   }
 
   private handleRemovePlayer(slotIndex: number): void {
@@ -471,8 +464,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       passed: false,
     };
     this.state = { ...this.state, players: newPlayers };
-
-    this.syncState();
   }
 
   // ============== Game Flow ==============
@@ -490,8 +481,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     this.state.currentTrick = [];
     this.state.lastCombination = null;
     this.state.lastPlayedBy = null;
-
-    this.syncState();
 
     this.checkBotTurn();
   }
@@ -513,7 +502,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
 
   private handleNewGameRequest(playerId: string, playerName: string): void {
     this.state.newGameRequest = { fromId: playerId, fromName: playerName };
-    this.syncState();
   }
 
   reset(): void {
@@ -537,8 +525,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       gamePhase: "waiting",
       newGameRequest: null,
     };
-
-    this.syncState();
   }
 
   checkGameEnd(): GameResult | null {
@@ -567,8 +553,6 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         }
       }
     }
-
-    this.syncState();
   }
 
   // ============== Bot AI ==============

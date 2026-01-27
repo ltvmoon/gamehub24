@@ -88,7 +88,6 @@ export default class Reversi extends BaseGame<ReversiState> {
     this.state.winner = null;
     this.state.lastMove = null;
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -132,7 +131,6 @@ export default class Reversi extends BaseGame<ReversiState> {
       }
     }
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -148,7 +146,6 @@ export default class Reversi extends BaseGame<ReversiState> {
 
     this.state.turn = this.state.turn === "black" ? "white" : "black";
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -267,7 +264,6 @@ export default class Reversi extends BaseGame<ReversiState> {
     } else {
       // Request undo from human opponent
       this.state.undoRequest = { fromId: playerId, fromName: playerName };
-      this.syncState();
     }
   }
 
@@ -287,13 +283,10 @@ export default class Reversi extends BaseGame<ReversiState> {
     this.state.turn = lastState.turn;
     this.state.undoRequest = null;
     this.state.lastMove = null;
-
-    this.syncState();
   }
 
   private handleDeclineUndo(): void {
     this.state.undoRequest = null;
-    this.syncState();
   }
 
   // ============== Bot AI ==============
@@ -308,8 +301,6 @@ export default class Reversi extends BaseGame<ReversiState> {
       isHost: false,
       isBot: true,
     };
-
-    this.syncState();
   }
 
   private handleRemoveBot(): void {
@@ -317,8 +308,6 @@ export default class Reversi extends BaseGame<ReversiState> {
     if (!this.state.players.white?.isBot) return;
 
     this.state.players.white = null;
-
-    this.syncState();
   }
 
   private checkBotTurn(): void {
@@ -428,13 +417,10 @@ export default class Reversi extends BaseGame<ReversiState> {
       moveHistory: {},
       lastMove: null,
     };
-
-    this.syncState();
   }
 
   updatePlayers(players: Player[]): void {
     if (this.state.gamePhase !== "waiting") {
-      this.syncState();
       return;
     }
 
@@ -442,8 +428,6 @@ export default class Reversi extends BaseGame<ReversiState> {
     this.state.players.black = players[0];
     // Slot 1 (Guest or Bot)
     this.state.players.white = players[1];
-
-    this.syncState();
   }
 
   // ============== Helper Methods ==============

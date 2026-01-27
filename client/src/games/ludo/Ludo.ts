@@ -98,7 +98,6 @@ export default class Ludo extends BaseGame<LudoState> {
     this.state.lastMove = null;
     this.state.consecutiveSixes = 0;
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -134,12 +133,12 @@ export default class Ludo extends BaseGame<LudoState> {
       // if (this.state.consecutiveSixes >= 3) {
       //   // Three 6s in a row = lose turn, but show dice first
       //   this.state.consecutiveSixes = 0;
-      // this.syncState();
+      //
 
       //   // Delay turn change so animation can play (3 seconds total)
       //   setTimeout(() => {
       //     this.nextTurn();
-      // this.syncState();
+      //
       //     this.checkBotTurn();
       //   }, 3000);
       //   return;
@@ -152,13 +151,12 @@ export default class Ludo extends BaseGame<LudoState> {
     const movableTokens = this.getMovableTokens(currentPlayer, dice);
 
     // Broadcast the dice result first so animation plays for everyone
-    this.syncState();
 
     if (movableTokens.length === 0) {
       // No valid moves, delay then end turn (3 seconds for animation + viewing)
       setTimeout(() => {
         this.nextTurn();
-        this.syncState();
+
         this.checkBotTurn();
       }, 3000);
     } else if (movableTokens.length === 1 && !currentPlayer.isBot) {
@@ -213,7 +211,7 @@ export default class Ludo extends BaseGame<LudoState> {
         this.state.winner = playerId;
         this.state.gamePhase = "ended";
         this.clearSavedState();
-        this.syncState();
+
         return;
       }
     }
@@ -227,7 +225,6 @@ export default class Ludo extends BaseGame<LudoState> {
       this.nextTurn();
     }
 
-    this.syncState();
     this.checkBotTurn();
   }
 
@@ -369,8 +366,6 @@ export default class Ludo extends BaseGame<LudoState> {
       username: `Bot ${slotIndex + 1}`,
       isBot: true,
     };
-
-    this.syncState();
   }
 
   private handleRemoveBot(slotIndex: number): void {
@@ -384,8 +379,6 @@ export default class Ludo extends BaseGame<LudoState> {
       username: `Player ${slotIndex + 1}`,
       isBot: false,
     };
-
-    this.syncState();
   }
 
   private checkBotTurn(): void {
@@ -556,8 +549,6 @@ export default class Ludo extends BaseGame<LudoState> {
       lastMove: null,
       consecutiveSixes: 0,
     };
-
-    this.syncState();
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
@@ -581,8 +572,6 @@ export default class Ludo extends BaseGame<LudoState> {
         }
       }
     }
-
-    this.syncState();
   }
 
   // ============== Helper Methods ==============

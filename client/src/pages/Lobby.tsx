@@ -633,8 +633,14 @@ function CreateRoomModal({
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
             >
               {allGames.map((game) => (
-                <option key={game.id} value={game.id}>
+                <option
+                  key={game.id}
+                  value={game.id}
+                  disabled={!game.isAvailable}
+                >
                   {ts(game.name)}
+                  {!game.isAvailable &&
+                    ` (${ts({ en: "Coming Soon", vi: "Sắp ra mắt" })})`}
                 </option>
               ))}{" "}
             </select>

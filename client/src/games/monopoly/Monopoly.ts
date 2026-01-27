@@ -92,7 +92,6 @@ export default class Monopoly extends BaseGame<MonopolyState> {
         }
       }
     });
-    this.syncState();
   }
 
   // === Trading ===
@@ -1916,8 +1915,6 @@ export default class Monopoly extends BaseGame<MonopolyState> {
         playerIndex++;
       }
     }
-
-    this.syncState();
   }
 
   getMyPlayerIndex(): number {

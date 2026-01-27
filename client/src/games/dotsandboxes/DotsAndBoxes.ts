@@ -94,7 +94,6 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
       color: slotIndex === 0 ? "red" : "blue",
       score: 0,
     };
-    this.syncState();
   }
 
   private handleRemoveBot(slotIndex: number): void {
@@ -108,14 +107,13 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     if (!this.state.players[slotIndex]?.isBot) return;
 
     this.state.players[slotIndex] = null;
-    this.syncState();
   }
 
   private handleStartGame(): void {
     if (this.canStartGame()) {
       this.reset();
       this.state.gamePhase = "playing";
-      this.syncState();
+
       this.checkBotTurn();
     }
   }
@@ -194,7 +192,6 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     this.state.undoRequest = null; // Clear any pending undo requests on new move
 
     this.updateGameStatus();
-    this.syncState();
 
     // Check for bot turn
     this.checkBotTurn();
@@ -471,8 +468,6 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     };
     this.state.players.forEach((p) => p && (p.score = 0));
     this.moveHistory = [];
-
-    this.syncState();
   }
 
   // Undo Logic
@@ -489,12 +484,10 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     if (this.state.undoRequest) return; // Already requested
 
     this.state.undoRequest = { requesterId: playerId };
-    this.syncState();
   }
 
   private handleRejectUndo(): void {
     this.state.undoRequest = null;
-    this.syncState();
   }
 
   private handleApproveUndo(): void {
@@ -530,7 +523,6 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
     this.state.lastLine = prevMove ? prevMove.line : null;
 
     this.state.undoRequest = null;
-    this.syncState();
   }
 
   updatePlayers(players: Player[]): void {
@@ -553,7 +545,6 @@ export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
         }
       }
     }
-    this.syncState();
   }
 
   // Public API
