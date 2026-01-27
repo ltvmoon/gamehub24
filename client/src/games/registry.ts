@@ -23,7 +23,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import type { BaseGame } from "./BaseGame";
 import type { GameUIProps } from "./types";
-import type { Player } from "../stores/roomStore";
+import type { Room } from "../stores/roomStore";
 import type { GameCategory } from "../constants";
 
 // Localized string type
@@ -39,11 +39,10 @@ export interface GameModule {
   maxPlayers: number;
   isAvailable: boolean;
   createGame?: (
-    roomId: string,
+    room: Room,
     socket: Socket,
     isHost: boolean,
     userId: string,
-    players: Player[],
   ) => Promise<BaseGame<any>>;
   loadUI?: () => Promise<ComponentType<GameUIProps>>;
 }
@@ -64,9 +63,9 @@ games.set("tictactoe", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: TicTacToe } = await import("./tictactoe/TicTacToe");
-    return new TicTacToe(roomId, socket, isHost, userId, players);
+    return new TicTacToe(room, socket, isHost, userId);
   },
   loadUI: () => import("./tictactoe/TicTacToeUI").then((m) => m.default),
 });
@@ -84,9 +83,9 @@ games.set("caro", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Caro } = await import("./caro/Caro");
-    return new Caro(roomId, socket, isHost, userId, players);
+    return new Caro(room, socket, isHost, userId);
   },
   loadUI: () => import("./caro/CaroUI").then((m) => m.default),
 });
@@ -104,9 +103,9 @@ games.set("connect4", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Connect4 } = await import("./connect4/Connect4");
-    return new Connect4(roomId, socket, isHost, userId, players);
+    return new Connect4(room, socket, isHost, userId);
   },
   loadUI: () => import("./connect4/Connect4UI").then((m) => m.default),
 });
@@ -124,9 +123,9 @@ games.set("ludo", {
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Ludo } = await import("./ludo/Ludo");
-    return new Ludo(roomId, socket, isHost, userId, players);
+    return new Ludo(room, socket, isHost, userId);
   },
   loadUI: () => import("./ludo/LudoUI").then((m) => m.default),
 });
@@ -144,9 +143,9 @@ games.set("reversi", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Reversi } = await import("./reversi/Reversi");
-    return new Reversi(roomId, socket, isHost, userId, players);
+    return new Reversi(room, socket, isHost, userId);
   },
   loadUI: () => import("./reversi/ReversiUI").then((m) => m.default),
 });
@@ -164,9 +163,9 @@ games.set("chess", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: ChessGame } = await import("./chess/Chess");
-    return new ChessGame(roomId, socket, isHost, userId, players);
+    return new ChessGame(room, socket, isHost, userId);
   },
   loadUI: () => import("./chess/ChessUI").then((m) => m.default),
 });
@@ -183,9 +182,9 @@ games.set("youtube", {
   minPlayers: 1,
   maxPlayers: 100,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: YouTubeWatch } = await import("./youtube/YouTubeWatch");
-    return new YouTubeWatch(roomId, socket, isHost, userId, players);
+    return new YouTubeWatch(room, socket, isHost, userId);
   },
   loadUI: () => import("./youtube/YouTubeWatchUI").then((m) => m.default),
 });
@@ -202,9 +201,9 @@ games.set("draw", {
   minPlayers: 1,
   maxPlayers: 30,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: CanvasGame } = await import("./draw/Draw");
-    return new CanvasGame(roomId, socket, isHost, userId, players);
+    return new CanvasGame(room, socket, isHost, userId);
   },
   loadUI: () => import("./draw/DrawUI").then((m) => m.default),
 });
@@ -222,9 +221,9 @@ games.set("thirteen", {
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Thirteen } = await import("./thirteen/Thirteen");
-    return new Thirteen(roomId, socket, isHost, userId, players);
+    return new Thirteen(room, socket, isHost, userId);
   },
   loadUI: () => import("./thirteen/ThirteenUI").then((m) => m.default),
 });
@@ -242,10 +241,10 @@ games.set("dotsandboxes", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: DotsAndBoxes } =
       await import("./dotsandboxes/DotsAndBoxes");
-    return new DotsAndBoxes(roomId, socket, isHost, userId, players);
+    return new DotsAndBoxes(room, socket, isHost, userId);
   },
   loadUI: () => import("./dotsandboxes/DotsAndBoxesUI").then((m) => m.default),
 });
@@ -263,9 +262,9 @@ games.set("uno", {
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Uno } = await import("./uno/Uno");
-    return new Uno(roomId, socket, isHost, userId, players);
+    return new Uno(room, socket, isHost, userId);
   },
   loadUI: () => import("./uno/UnoUI").then((m) => m.default),
 });
@@ -283,9 +282,9 @@ games.set("billiard", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Billiard } = await import("./billiard/Billiard");
-    return new Billiard(roomId, socket, isHost, userId, players);
+    return new Billiard(room, socket, isHost, userId);
   },
   loadUI: () => import("./billiard/BilliardUI").then((m) => m.default),
 });
@@ -303,9 +302,9 @@ games.set("monopoly", {
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Monopoly } = await import("./monopoly/Monopoly");
-    return new Monopoly(roomId, socket, isHost, userId, players);
+    return new Monopoly(room, socket, isHost, userId);
   },
   loadUI: () => import("./monopoly/MonopolyUI").then((m) => m.default),
 });
@@ -323,9 +322,9 @@ games.set("oanquan", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: OAnQuan } = await import("./oanquan/OAnQuan");
-    return new OAnQuan(roomId, socket, isHost, userId, players);
+    return new OAnQuan(room, socket, isHost, userId);
   },
   loadUI: () => import("./oanquan/OAnQuanUI").then((m) => m.default),
 });
@@ -343,9 +342,9 @@ games.set("werewolf", {
   minPlayers: 5,
   maxPlayers: 12,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Werewolf } = await import("./werewolf/Werewolf");
-    return new Werewolf(roomId, socket, isHost, userId, players);
+    return new Werewolf(room, socket, isHost, userId);
   },
   loadUI: () => import("./werewolf/WerewolfUI").then((m) => m.default),
 });
@@ -363,9 +362,9 @@ games.set("baucua", {
   minPlayers: 1,
   maxPlayers: 20,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: BauCua } = await import("./baucua/BauCua");
-    return new BauCua(roomId, socket, isHost, userId, players);
+    return new BauCua(room, socket, isHost, userId);
   },
   loadUI: () => import("./baucua/BauCuaUI").then((m) => m.default),
 });
@@ -383,26 +382,31 @@ games.set("poker", {
   minPlayers: 2,
   maxPlayers: 6,
   isAvailable: true,
-  createGame: async (roomId, socket, isHost, userId, players) => {
+  createGame: async (room, socket, isHost, userId) => {
     const { default: Poker } = await import("./poker/Poker");
-    return new Poker(roomId, socket, isHost, userId, players);
+    return new Poker(room, socket, isHost, userId);
   },
   loadUI: () => import("./poker/PokerUI").then((m) => m.default),
 });
 
-// Register Gunny
-games.set("gunny", {
-  id: "gunny",
-  name: { en: "Gunny (Tank)", vi: "Gunny (Bắn Xe Tăng)" },
+// Register GunnyWars
+games.set("gunnywars", {
+  id: "gunnywars",
+  name: { en: "GunnyWars", vi: "Gunny Wars" },
   description: {
     en: "Turn-based artillery game. Adjust angle and power to defeat opponents!",
     vi: "Game bắn súng tọa độ. Căn góc và lực trúng mục tiêu!",
   },
   icon: Crosshair,
-  categories: ["gun", "strategy", "party"],
-  minPlayers: 2,
-  maxPlayers: 4,
-  isAvailable: false,
+  categories: ["strategy", "party"],
+  minPlayers: 1,
+  maxPlayers: 2,
+  isAvailable: true,
+  createGame: async (room, socket, isHost, userId) => {
+    const { default: GunnyWars } = await import("./gunnywars/GunnyWars");
+    return new GunnyWars(room, socket, isHost, userId);
+  },
+  loadUI: () => import("./gunnywars/GunnyWarsUI").then((m) => m.default),
 });
 
 // Registry functions

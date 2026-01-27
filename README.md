@@ -6,6 +6,10 @@
 
 ![GameHub Banner](https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop)
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=HoangTran0410/gamehub24&type=date&legend=top-left)](https://www.star-history.com/#HoangTran0410/gamehub24&type=date&legend=top-left)
+
 ---
 
 ## 📖 What is GameHub?

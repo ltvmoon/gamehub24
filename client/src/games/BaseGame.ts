@@ -1,6 +1,6 @@
 import { Socket } from "socket.io-client";
 import { produce, setAutoFreeze } from "immer";
-import { useRoomStore, type Player } from "../stores/roomStore";
+import { useRoomStore, type Player, type Room } from "../stores/roomStore";
 import { createGameProxy } from "./stateProxy";
 
 // Disable auto-freezing to allow mutable state in games
@@ -18,6 +18,7 @@ export interface GameResult {
 }
 
 export abstract class BaseGame<T> {
+  public room: Room;
   public roomId: string;
   public socket: Socket;
   public isHost: boolean;
@@ -28,7 +29,7 @@ export abstract class BaseGame<T> {
   private stateListeners: ((state: T) => void)[] = [];
   private updateScheduled: boolean = false;
 
-  protected get state(): T {
+  public get state(): T {
     return this._state;
   }
 
@@ -39,7 +40,7 @@ export abstract class BaseGame<T> {
   // Auto broadcast state to all guests
   // IMPORTANT: Only use for turn based games
   // Realtime game (state updates every frame) should use manual state sync
-  public autoBroadcast: boolean = true;
+  protected autoBroadcast: boolean = true;
 
   // Optimization: State syncing
   private lastSyncedState?: T;
@@ -47,19 +48,13 @@ export abstract class BaseGame<T> {
   private isOptimizationEnabled: boolean = true;
   private stateVersion: number = 0;
 
-  constructor(
-    roomId: string,
-    socket: Socket,
-    isHost: boolean,
-    userId: string,
-    players: Player[] = [],
-  ) {
-    this.roomId = roomId;
+  constructor(room: Room, socket: Socket, isHost: boolean, userId: string) {
+    this.room = room;
+    this.roomId = room.id;
+    this.players = room.players;
     this.socket = socket;
     this.isHost = isHost;
     this.userId = userId;
-    this.players = players;
-    this.players = players;
 
     const initState = this.getInitState();
     this._state = this.setState(initState);

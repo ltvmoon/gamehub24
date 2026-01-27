@@ -50,7 +50,7 @@ export default function GameContainer({
     const needsNewGame =
       !gameInstance ||
       (gameInstance as any).roomId !== roomId ||
-      (gameInstance as any).assignedGameType !== gameType;
+      (gameInstance as any).gameName !== gameType;
 
     if (!needsNewGame) {
       // Same room, just update players
@@ -96,13 +96,7 @@ export default function GameContainer({
         // Load game class and UI in parallel
         const [game, UI]: [BaseGame<any>, ComponentType<GameUIProps>] =
           await Promise.all([
-            gameModule.createGame(
-              roomId,
-              socket,
-              isHost,
-              userId,
-              currentRoom.players,
-            ),
+            gameModule.createGame(currentRoom, socket, isHost, userId),
             gameModule.loadUI(),
           ]);
 
@@ -155,9 +149,6 @@ export default function GameContainer({
         // guest sync state from host
         else {
         }
-
-        // Tag instance for change detection
-        (game as any).assignedGameType = gameType;
 
         setGameInstance(game);
         setGameUI(() => UI);
