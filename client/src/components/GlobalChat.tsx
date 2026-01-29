@@ -22,9 +22,9 @@ export default function GlobalChat() {
 
   const compactMode = currentRoom != undefined;
 
-  const isMinimizedRef = useRef(isGlobalChatOpen);
+  const isOpenRef = useRef(isGlobalChatOpen);
   useEffect(() => {
-    isMinimizedRef.current = isGlobalChatOpen;
+    isOpenRef.current = isGlobalChatOpen;
   }, [isGlobalChatOpen]);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function GlobalChat() {
 
     const handleMessage = (msg: ChatMessage) => {
       setMessages((prev) => [...prev, msg]);
-      if (isMinimizedRef.current) {
+      if (!isOpenRef.current) {
         setUnreadCount((prev) => prev + 1);
       }
     };

@@ -21,6 +21,13 @@ const updates: {
 }[] = [
   {
     type: "new",
+    en: "New game: Maze Race",
+    vi: "Game mới: Đua Mê Cung",
+    gameId: "maze",
+    timestamp: 1769669794704,
+  },
+  {
+    type: "new",
     en: "New feature: Global chat",
     vi: "Chức năng mới: Chat tổng",
     timestamp: 1769360911300,

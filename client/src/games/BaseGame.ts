@@ -44,7 +44,7 @@ export abstract class BaseGame<T> {
 
   // Optimization: State syncing
   private lastSyncedState?: T;
-  private lastSyncedHash?: string;
+  private lastSyncedJson?: string;
   private isOptimizationEnabled: boolean = true;
   private stateVersion: number = 0;
 
@@ -60,8 +60,8 @@ export abstract class BaseGame<T> {
     this._state = this.setState(initState);
 
     // Initialize sync tracking (Host only needs this, but safe to init)
-    this.lastSyncedState = JSON.parse(JSON.stringify(this.state));
-    this.lastSyncedHash = getHash(this.state);
+    this.lastSyncedJson = JSON.stringify(this.state);
+    this.lastSyncedState = JSON.parse(this.lastSyncedJson);
 
     // All players listen for game actions
     this.socket.on("game:action", this.onSocketGameAction.bind(this));
@@ -185,13 +185,20 @@ export abstract class BaseGame<T> {
   public broadcastState(forceFull = false): void {
     if (this.isHost) {
       const state = this.getState();
-      const currentHash = getHash(state);
+      let currentJson: string;
 
-      // 1. Optimization: Skip if state hasn't changed (hash check)
+      try {
+        currentJson = JSON.stringify(state);
+      } catch (e) {
+        console.error("Failed to stringify state for broadcast:", e);
+        return;
+      }
+
+      // 1. Optimization: Skip if state hasn't changed (string check)
       if (
         this.isOptimizationEnabled &&
         !forceFull &&
-        this.lastSyncedHash === currentHash
+        this.lastSyncedJson === currentJson
       ) {
         return;
       }
@@ -211,7 +218,7 @@ export abstract class BaseGame<T> {
               version: this.stateVersion,
             });
           }
-          this.updateLastSynced(state, currentHash);
+          this.updateLastSynced(currentJson);
           return;
         }
       }
@@ -227,13 +234,13 @@ export abstract class BaseGame<T> {
       }
 
       // Update tracking and Auto-save
-      this.updateLastSynced(state, currentHash);
+      this.updateLastSynced(currentJson);
     }
   }
 
-  private updateLastSynced(state: T, hash: string) {
-    this.lastSyncedState = JSON.parse(JSON.stringify(state));
-    this.lastSyncedHash = hash;
+  private updateLastSynced(json: string) {
+    this.lastSyncedJson = json;
+    this.lastSyncedState = JSON.parse(json);
     this.saveStateToStorage();
   }
 
@@ -370,21 +377,6 @@ export abstract class BaseGame<T> {
 }
 
 // --- Helper Functions ---
-
-function getHash(obj: any): string {
-  try {
-    const str = JSON.stringify(obj);
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash.toString(36);
-  } catch (e) {
-    return Date.now().toString(); // Fallback
-  }
-}
 
 const DELETED_VALUE = "__$$DELETED$$__";
 

@@ -7,7 +7,6 @@ import {
   Spade,
   Grid2X2,
   Columns3,
-  LayoutGrid,
   Layers,
   CircleDot,
   ChessRook,
@@ -18,6 +17,8 @@ import {
   Shrimp,
   Coins,
   Crosshair,
+  Accessibility,
+  SquareDashedBottom,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
@@ -236,7 +237,7 @@ games.set("dotsandboxes", {
     en: "Classic strategy game. Connect dots to close boxes!",
     vi: "Nối các điểm để đóng ô vuông!",
   },
-  icon: LayoutGrid,
+  icon: SquareDashedBottom,
   categories: ["puzzle", "strategy"],
   minPlayers: 2,
   maxPlayers: 2,
@@ -387,6 +388,26 @@ games.set("poker", {
     return new Poker(room, socket, isHost, userId);
   },
   loadUI: () => import("./poker/PokerUI").then((m) => m.default),
+});
+
+// Register Maze
+games.set("maze", {
+  id: "maze",
+  name: { en: "Maze Race", vi: "Đua Mê Cung" },
+  description: {
+    en: "Race to the finish line in a procedurally generated maze!",
+    vi: "Đua về đích trong mê cung được tạo ngẫu nhiên!",
+  },
+  icon: Accessibility,
+  categories: ["puzzle", "party", "strategy"],
+  minPlayers: 1,
+  maxPlayers: 10,
+  isAvailable: true,
+  createGame: async (room, socket, isHost, userId) => {
+    const { default: Maze } = await import("./maze/Maze");
+    return new Maze(room, socket, isHost, userId);
+  },
+  loadUI: () => import("./maze/MazeUI").then((m) => m.default),
 });
 
 // Register GunnyWars
