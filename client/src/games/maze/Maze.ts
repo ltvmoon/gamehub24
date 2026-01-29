@@ -18,6 +18,7 @@ export default class Maze extends BaseGame<MazeState> {
   // Cache the maze grid to avoid regenerating it constantly
   // The grid is deterministic based on seed + config
   private mazeGrid: Cell[][] | null = null;
+  private seed: number | null = null;
 
   constructor(room: any, socket: any, isHost: boolean, userId: string) {
     super(room, socket, isHost, userId);
@@ -44,6 +45,15 @@ export default class Maze extends BaseGame<MazeState> {
       },
       winners: [],
     };
+  }
+
+  public onStateUpdate(state: MazeState): void {
+    super.onStateUpdate(state);
+
+    if (this.seed !== state.seed) {
+      this.mazeGrid = null;
+      this.seed = state.seed;
+    }
   }
 
   // Helper to ensure maze grid exists and matches current state
