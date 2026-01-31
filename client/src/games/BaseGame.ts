@@ -234,34 +234,33 @@ export abstract class BaseGame<T> {
     this.stateVersion++;
 
     const hasSomeone = this.hasSomeoneElseInRoom();
-    if (!hasSomeone) return;
+    if (hasSomeone) {
+      console.log(this.pendingPatches);
 
-    console.log(this.pendingPatches);
+      // 2. Optimization: Send accumulated patch if possible
+      if (!forceFull && this.hasPendingPatch && this.pendingPatches.size > 0) {
+        // Compact patches to object
+        const pathesObject: Record<string, any> = {};
+        for (const [pathKey, { value }] of this.pendingPatches.entries()) {
+          pathesObject[pathKey] = value;
+        }
 
-    // 2. Optimization: Send accumulated patch if possible
-    if (!forceFull && this.hasPendingPatch && this.pendingPatches.size > 0) {
-      // Compact patches to object
-      const pathesObject: Record<string, any> = {};
-      for (const [pathKey, { value }] of this.pendingPatches.entries()) {
-        pathesObject[pathKey] = value;
+        this.socket.emit("game:state:patch", {
+          roomId: this.roomId,
+          patch: pathesObject,
+          version: this.stateVersion,
+        });
       }
-
-      this.socket.emit("game:state:patch", {
-        roomId: this.roomId,
-        patch: pathesObject,
-        version: this.stateVersion,
-      });
-    }
-    // 3. Fallback: Send full state
-    // only emit if there are someone else in the room
-    else {
-      const state = this.getState();
-      console.log("send full state", state);
-      this.socket.emit("game:state", {
-        roomId: this.roomId,
-        state: { ...state },
-        version: this.stateVersion,
-      });
+      // 3. Fallback: Send full state
+      else {
+        const state = this.getState();
+        console.log("send full state", state);
+        this.socket.emit("game:state", {
+          roomId: this.roomId,
+          state: { ...state },
+          version: this.stateVersion,
+        });
+      }
     }
 
     this.updateLastSynced();
