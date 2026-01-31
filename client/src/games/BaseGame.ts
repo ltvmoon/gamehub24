@@ -44,7 +44,8 @@ export abstract class BaseGame<T> {
 
   // Optimization: State syncing
   private stateVersion: number = 0;
-  private pendingPatches: Array<{ path: string[]; value: any }> = [];
+  private pendingPatches: Map<string, { path: string[]; value: any }> =
+    new Map();
   private hasPendingPatch: boolean = false;
   private lastSnapshot: T | null = null;
 
@@ -128,19 +129,24 @@ export abstract class BaseGame<T> {
     const isFullUpdate =
       !this.lastSnapshot ||
       !this.hasPendingPatch ||
-      (this.hasPendingPatch && this.pendingPatches.length === 0);
+      (this.hasPendingPatch && this.pendingPatches.size === 0);
 
     if (isFullUpdate) {
       // Deep clone for initial snapshot or when root state is replaced
       this.lastSnapshot = JSON.parse(JSON.stringify(state));
-    } else {
+    } else if (this.pendingPatches.size > 0) {
       // Incrementally update the snapshot immutably using Immer
+      // Note: We use the patches BEFORE clearing them (clearing happens in updateLastSynced)
       this.lastSnapshot = produce(this.lastSnapshot, (draft: any) => {
-        for (const { path, value } of this.pendingPatches) {
+        for (const { path, value } of this.pendingPatches.values()) {
           applyMutation(draft, path, value);
         }
       });
-      console.log("lastSnapshot", this.lastSnapshot);
+      console.log(
+        "lastSnapshot updated with",
+        this.pendingPatches.size,
+        "patches",
+      );
     }
 
     this.stateListeners.forEach((listener) => listener(this.lastSnapshot!));
@@ -186,7 +192,7 @@ export abstract class BaseGame<T> {
         : state;
 
     this.hasPendingPatch = true;
-    this.pendingPatches = []; // Clear any old patches as we have a new root state
+    this.pendingPatches.clear(); // Clear any old patches as we have a new root state
     this.scheduleUpdate();
 
     return this._state;
@@ -194,7 +200,8 @@ export abstract class BaseGame<T> {
 
   private recordPatch(path: string[], value: any) {
     this.hasPendingPatch = true;
-    this.pendingPatches.push({
+    const pathKey = path.join(".");
+    this.pendingPatches.set(pathKey, {
       path,
       value: value === undefined ? DELETED_VALUE : value,
     });
@@ -232,15 +239,12 @@ export abstract class BaseGame<T> {
     console.log(this.pendingPatches);
 
     // 2. Optimization: Send accumulated patch if possible
-    if (!forceFull && this.hasPendingPatch && this.pendingPatches.length > 0) {
+    if (!forceFull && this.hasPendingPatch && this.pendingPatches.size > 0) {
       // Compact patches to object
-      const pathesObject = this.pendingPatches.reduce(
-        (acc, patch) => {
-          acc[patch.path.join(".")] = patch.value;
-          return acc;
-        },
-        {} as Record<string, any>,
-      );
+      const pathesObject: Record<string, any> = {};
+      for (const [pathKey, { value }] of this.pendingPatches.entries()) {
+        pathesObject[pathKey] = value;
+      }
 
       this.socket.emit("game:state:patch", {
         roomId: this.roomId,
@@ -264,7 +268,7 @@ export abstract class BaseGame<T> {
   }
 
   private updateLastSynced() {
-    this.pendingPatches = [];
+    this.pendingPatches.clear();
     this.hasPendingPatch = false;
     if (this.isHost) this.saveStateToStorage();
   }

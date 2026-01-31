@@ -704,11 +704,7 @@ export default class Uno extends BaseGame<UnoState> {
       card,
       chosenColor,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestDrawCard(): void {
@@ -716,11 +712,7 @@ export default class Uno extends BaseGame<UnoState> {
       type: "DRAW_CARD",
       playerId: this.userId,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestCallUno(): void {
@@ -728,11 +720,7 @@ export default class Uno extends BaseGame<UnoState> {
       type: "CALL_UNO",
       playerId: this.userId,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestCatchUno(targetId: string): void {
@@ -741,20 +729,12 @@ export default class Uno extends BaseGame<UnoState> {
       playerId: this.userId,
       targetId,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestAddBot(slotIndex: number): void {
     const action: UnoAction = { type: "ADD_BOT", slotIndex };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestJoinSlot(slotIndex: number, playerName: string): void {
@@ -764,29 +744,17 @@ export default class Uno extends BaseGame<UnoState> {
       playerId: this.userId,
       playerName,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestRemovePlayer(slotIndex: number): void {
     const action: UnoAction = { type: "REMOVE_PLAYER", slotIndex };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestStartGame(): void {
     const action: UnoAction = { type: "START_GAME" };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestNewGame(): void {

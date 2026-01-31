@@ -174,6 +174,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
     } else {
       game.requestPlayCard(card);
     }
+    debugger;
   };
 
   const handleColorSelect = (color: CardColor) => {
