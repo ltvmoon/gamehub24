@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import GunnyWars from "./GunnyWars";
 import type { Tank, Projectile, MoveDirection } from "./types";
-import { GamePhase, WeaponType } from "./types";
+import { GamePhase } from "./types";
 import {
   WORLD_WIDTH,
   WORLD_HEIGHT,
@@ -9,6 +9,7 @@ import {
   SELECTABLE_WEAPONS,
   GRAVITY,
   MAX_POWER,
+  WEAPONS,
 } from "./constants";
 import {
   ArrowLeft,
@@ -65,7 +66,10 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Current player info
-  const currentTank = state.tanks[state.currentTurnIndex];
+  const currentTankInState = state.tanks[state.currentTurnIndex];
+  const currentTank = currentTankInState
+    ? game.getVisualTank(currentTankInState)
+    : undefined;
   const isMyTurn = game.isMyTurn();
 
   // Local angle/power/position for live UI updates (sync on release/stop move)
@@ -171,7 +175,6 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
   // Handle resize (window + container with ResizeObserver)
   useEffect(() => {
     const handleResize = () => {
-      console.log("handleResize");
       if (containerRef.current) {
         const _vh = isFullscreen
           ? containerRef.current.clientHeight
@@ -249,9 +252,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           cameraRef.current.mode === "FOLLOW_PROJECTILE" &&
           game.projectiles.length > 0
         ) {
-          const moving = game.projectiles.filter(
-            (p: Projectile) => p.weapon !== WeaponType.LANDMINE_ARMED,
-          );
+          const moving = game.projectiles;
           if (moving.length > 0) {
             const avgX =
               moving.reduce((sum: number, p: Projectile) => sum + p.x, 0) /
@@ -465,6 +466,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           ctx,
           tank,
           isMyTank ? (localAngleRef.current ?? tank.angle) : tank.angle,
+          zoom,
         );
       }
 
@@ -485,30 +487,30 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
 
         ctx.save();
 
-        if (p.weapon === WeaponType.LANDMINE_ARMED) {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-          ctx.fillStyle = "#ff0000";
-          ctx.fill();
-          if (Math.floor(Date.now() / 200) % 2 === 0) {
-            ctx.fillStyle = "#fff";
-            ctx.beginPath();
-            ctx.arc(p.x, p.y - 2, 1, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        } else {
-          const color =
-            SELECTABLE_WEAPONS.find((w) => w.type === p.weapon)?.color ||
-            "#38bdf8";
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.fillStyle = "#fff";
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        // if (p.weapon === WeaponType.LANDMINE_ARMED) {
+        //   ctx.beginPath();
+        //   ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+        //   ctx.fillStyle = "#ff0000";
+        //   ctx.fill();
+        //   if (Math.floor(Date.now() / 200) % 2 === 0) {
+        //     ctx.fillStyle = "#fff";
+        //     ctx.beginPath();
+        //     ctx.arc(p.x, p.y - 5, 5, 0, Math.PI * 2);
+        //     ctx.fill();
+        //   }
+        // } else {
+        const color =
+          SELECTABLE_WEAPONS.find((w) => w.type === p.weapon)?.color ||
+          "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        // }
         ctx.restore();
       }
 
@@ -546,6 +548,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       ctx: CanvasRenderingContext2D,
       tank: Tank,
       angle: number,
+      zoom: number,
     ) => {
       ctx.save();
       ctx.translate(tank.x, tank.y);
@@ -576,22 +579,52 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       ctx.fillRect(0, -3, 25, 6);
       ctx.restore();
 
+      // UI Overlay (Non-scaling)
+      ctx.save();
+      // Inverse scale to keep UI size constant on screen
+      ctx.scale(1 / zoom, 1 / zoom);
+
       // Health bar
-      ctx.translate(0, -40);
+      ctx.translate(0, -40 * zoom); // Adjust translation by zoom to keep world position relative to tank
+
+      // Tank Name
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 12px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(tank.name, 0, -10);
+
       ctx.fillStyle = "#334155";
       ctx.fillRect(-20, 0, 40, 6);
       ctx.fillStyle = tank.health > 30 ? "#4ade80" : "#ef4444";
       ctx.fillRect(-19, 1, 38 * (tank.health / tank.maxHealth), 4);
 
-      // Current turn indicator
+      // Fuel bar
+      ctx.translate(0, 8);
+      ctx.fillStyle = "#334155";
+      ctx.fillRect(-20, 0, 40, 4);
+      ctx.fillStyle = "#f59e0b";
+      ctx.fillRect(-19, 1, 38 * (tank.fuel / MAX_FUEL), 2);
+
+      // Indicators and Labels
       if (game.state.tanks[game.state.currentTurnIndex]?.id === tank.id) {
+        // Current turn indicator
         ctx.beginPath();
-        ctx.moveTo(0, -10);
-        ctx.lineTo(-6, -18);
-        ctx.lineTo(6, -18);
+        ctx.moveTo(0, -15);
+        ctx.lineTo(-6, -23);
+        ctx.lineTo(6, -23);
         ctx.fillStyle = "#facc15";
         ctx.fill();
+
+        // Weapon name
+        const weapon = WEAPONS[tank.weapon];
+        if (weapon) {
+          ctx.fillStyle = weapon.color;
+          ctx.font = "bold 12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(weapon.name, 0, -35);
+        }
       }
+      ctx.restore();
 
       ctx.restore();
     };
@@ -820,7 +853,6 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       if (!myTank) return;
 
       if (myTank.isMoving && myTank.moveDir === dir) {
-        myTank.isMoving = false;
         game.moveStop();
       }
     },
@@ -857,7 +889,6 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       state.phase === GamePhase.IMPACT
     ) {
       cameraRef.current.mode = "FOLLOW_PROJECTILE";
-      game.runPhysicsLoop();
     } else if (state.phase === GamePhase.AIMING) {
       cameraRef.current.mode = "FOLLOW_PLAYER";
     }
@@ -1016,46 +1047,49 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           </h2>
 
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
-              <User className="text-blue-400" />
-              <span className="font-medium">
-                {state.players[1].username ||
-                  ts({ en: "Waiting...", vi: "Đang đợi..." })}
-              </span>
-              <span className="ml-auto text-xs text-gray-500">
-                {ts({ en: "Host", vi: "Chủ phòng" })}
-              </span>
-            </div>
+            {state.players.map((p, index) => (
+              <div
+                key={(p.id || "bot") + index}
+                className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg"
+              >
+                {p.id === "BOT" ? (
+                  <Bot size={18} className="text-red-400" />
+                ) : (
+                  <User
+                    size={18}
+                    className={
+                      index === 0 ? "text-blue-400" : "text-emerald-400"
+                    }
+                  />
+                )}
+                <span className="font-medium">
+                  {p.username || ts({ en: "Waiting...", vi: "Đang đợi..." })}
+                </span>
+                {index === 0 && (
+                  <span className="ml-auto text-xs text-gray-500">
+                    {ts({ en: "Host", vi: "Chủ phòng" })}
+                  </span>
+                )}
+                {p.id === "BOT" && game.isHost && (
+                  <button
+                    onClick={() => game.requestRemoveBot()}
+                    className="ml-auto text-red-400 hover:text-red-300 transition-colors p-2 bg-red-400/20 rounded-lg"
+                  >
+                    <UserMinus size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
 
-            <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
-              {state.players[2].id === "BOT" ? (
-                <Bot className="text-red-400" />
-              ) : (
-                <User className="text-red-400" />
-              )}
-              <span className="font-medium">
-                {state.players[2].username ||
-                  ts({ en: "Empty slot", vi: "Chỗ trống" })}
-              </span>
-              {!state.players[2].id && game.isHost && (
-                <button
-                  onClick={() => game.requestAddBot()}
-                  className="ml-auto px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm flex items-center gap-1"
-                >
-                  <UserPlus size={14} />
-                  {ts({ en: "Add Bot", vi: "Thêm Bot" })}
-                </button>
-              )}
-              {state.players[2].id === "BOT" && game.isHost && (
-                <button
-                  onClick={() => game.requestRemoveBot()}
-                  className="ml-auto px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm flex items-center gap-1"
-                >
-                  <UserMinus size={14} />
-                  {ts({ en: "Remove", vi: "Xóa" })}
-                </button>
-              )}
-            </div>
+            {game.isHost && (
+              <button
+                onClick={() => game.requestAddBot()}
+                className="w-full p-3 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-gray-500 transition-all flex items-center justify-center gap-2"
+              >
+                <UserPlus size={18} />
+                {ts({ en: "Add Bot", vi: "Thêm Bot" })}
+              </button>
+            )}
           </div>
 
           {game.isHost && (
@@ -1093,9 +1127,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           width={viewportSize.width}
           height={viewportSize.height}
           className="absolute inset-0 block"
-          style={{
-            zIndex: 0,
-          }}
+          style={{ zIndex: 0 }}
         />
         {/* Main 2D canvas for tanks, projectiles, UI */}
         <canvas
@@ -1105,16 +1137,11 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           className="absolute inset-0 block"
           onClick={handleCanvasClick}
           onTouchEnd={handleCanvasTouchEnd}
-          style={{
-            zIndex: 1,
-          }}
+          style={{ zIndex: 1 }}
         />
 
         <div
-          style={{
-            width: viewportSize.width,
-            height: viewportSize.height,
-          }}
+          style={{ width: viewportSize.width, height: viewportSize.height }}
         />
 
         {/* Wind Indicator */}
@@ -1131,18 +1158,18 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
         </div>
 
         {/* Zoom Controls & Fullscreen */}
-        <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
+        <div className="absolute bottom-4 right-4 flex flex-row gap-1 z-20 opacity-20 hover:opacity-100 transition-all duration-300">
           <button
             onClick={() => handleZoom("in")}
-            className="bg-gray-800/80 hover:bg-gray-700 p-3 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
           >
-            <ZoomIn size={24} />
+            <ZoomIn size={18} />
           </button>
           <button
             onClick={() => handleZoom("out")}
-            className="bg-gray-800/80 hover:bg-gray-700 p-3 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
           >
-            <ZoomOut size={24} />
+            <ZoomOut size={18} />
           </button>
           <button
             onClick={async () => {
@@ -1154,17 +1181,16 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                 setIsFullscreen(false);
               }
             }}
-            className="bg-gray-800/80 hover:bg-gray-700 p-3 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
           >
-            {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
           </button>
         </div>
 
         {/* Drag Hint */}
         <div className="absolute top-4 right-4 text-gray-500 text-xs flex items-center gap-2 pointer-events-none opacity-50">
           <MoveHorizontal size={14} />{" "}
-          {ts({ en: "Drag to pan", vi: "Kéo để di chuyển" })}
+          {ts({ en: "Drag to pan camera", vi: "Kéo để di chuyển camera" })}
         </div>
 
         {/* Game Over */}
@@ -1186,10 +1212,11 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
 
       {/* HUD Controls */}
       <div className="bg-gray-900 border-t border-gray-800 p-2 @md:p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-10 shrink-0">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-12 gap-2 @md:gap-4 items-center">
+        <div className="max-w-7xl mx-auto flex flex-col gap-3">
+          {/* Row 1: Turn/Fuel + Movement + Fire */}
+          <div className="grid grid-cols-12 gap-2 @md:gap-4 items-stretch">
             {/* Status Panel */}
-            <div className="col-span-12 @md:col-span-3 @lg:col-span-2 bg-gray-800/50 rounded-lg p-2 border border-gray-700 flex flex-row @md:flex-col items-center @md:items-stretch justify-between gap-2 @md:gap-4">
+            <div className="col-span-12 @md:col-span-3 bg-gray-800/50 rounded-lg p-2 border border-gray-700 flex items-center justify-center gap-2">
               {/* Turn */}
               <div className="flex items-center gap-2">
                 {currentTank?.isBot ? (
@@ -1201,182 +1228,172 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                   />
                 )}
                 <span
-                  className={`font-bold uppercase tracking-wider text-sm @md:text-base ${
+                  className={`font-bold uppercase tracking-wider text-xs @md:text-sm ${
                     isMyTurn ? "text-blue-400" : "text-red-400"
                   }`}
                 >
-                  {isMyTurn
-                    ? ts({ en: "Your Turn", vi: "Lượt của bạn" })
-                    : currentTank?.isBot
+                  {state.players.find((p) => p.tankId === currentTank?.id)
+                    ?.username ||
+                    (currentTank?.isBot
                       ? "Bot"
-                      : ts({ en: "Enemy", vi: "Đối thủ" })}
+                      : ts({ en: "Turn", vi: "Lượt" }))}
                 </span>
-              </div>
-              {/* Fuel */}
-              <div className="flex flex-col @md:block items-end @md:items-start min-w-[100px]">
-                <div className="flex justify-between w-full text-[10px] text-gray-400 uppercase font-bold">
-                  <span>{ts({ en: "Fuel", vi: "Nhiên liệu" })}</span>
-                  <span>{Math.floor(currentTank?.fuel || 0)}</span>
-                </div>
-                <div className="w-24 @md:w-full bg-gray-700 h-1.5 rounded-full overflow-hidden mt-1">
-                  <div
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 h-full transition-all"
-                    style={{
-                      width: `${((currentTank?.fuel || 0) / MAX_FUEL) * 100}%`,
-                    }}
-                  />
-                </div>
               </div>
             </div>
 
-            {/* Controls (disabled when not my turn) */}
+            {/* Movement */}
             <div
-              className={`col-span-12 @md:col-span-9 @lg:col-span-10 grid grid-cols-12 gap-2 transition-all duration-300 ${
+              className={`col-span-6 @md:col-span-3 flex gap-1 ${
                 !isMyTurn || state.phase !== GamePhase.AIMING
                   ? "opacity-40 pointer-events-none grayscale"
                   : ""
               }`}
             >
-              {/* Movement */}
-              <div className="col-span-3 @md:col-span-2 flex flex-col justify-center h-full">
-                <div className="flex gap-1 h-full max-h-16">
-                  <button
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-blue-600 active:text-white rounded border border-gray-700 flex items-center justify-center transition-colors"
-                    onMouseDown={() => handleMoveStart(-1)}
-                    onMouseUp={() => handleMoveEnd(-1)}
-                    onMouseLeave={() => handleMoveEnd(-1)}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      handleMoveStart(-1);
-                    }}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleMoveEnd(-1);
-                    }}
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <button
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-blue-600 active:text-white rounded border border-gray-700 flex items-center justify-center transition-colors"
-                    onMouseDown={() => handleMoveStart(1)}
-                    onMouseUp={() => handleMoveEnd(1)}
-                    onMouseLeave={() => handleMoveEnd(1)}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      handleMoveStart(1);
-                    }}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleMoveEnd(1);
-                    }}
-                  >
-                    <ArrowRight size={20} />
-                  </button>
+              <button
+                className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-blue-600 active:text-white rounded border border-gray-700 flex items-center justify-center transition-colors"
+                onMouseDown={() => handleMoveStart(-1)}
+                onMouseUp={() => handleMoveEnd(-1)}
+                onMouseLeave={() => handleMoveEnd(-1)}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleMoveStart(-1);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleMoveEnd(-1);
+                }}
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <button
+                className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-blue-600 active:text-white rounded border border-gray-700 flex items-center justify-center transition-colors"
+                onMouseDown={() => handleMoveStart(1)}
+                onMouseUp={() => handleMoveEnd(1)}
+                onMouseLeave={() => handleMoveEnd(1)}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleMoveStart(1);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleMoveEnd(1);
+                }}
+              >
+                <ArrowRight size={20} />
+              </button>
+            </div>
+
+            {/* Fire Button */}
+            <div
+              className={`col-span-6 @md:col-span-6 ${
+                !isMyTurn || state.phase !== GamePhase.AIMING
+                  ? "opacity-40 pointer-events-none grayscale"
+                  : ""
+              }`}
+            >
+              <button
+                onClick={() => game.fire()}
+                className="w-full h-full min-h-[44px] bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-lg tracking-widest rounded-lg shadow-lg active:scale-95 transition-transform border-t border-red-400 flex items-center justify-center"
+              >
+                {ts({ en: "FIRE", vi: "BẮN" })}
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: Angle + Power + Weapon */}
+          <div
+            className={`grid grid-cols-12 gap-2 @md:gap-4 items-center ${
+              !isMyTurn || state.phase !== GamePhase.AIMING
+                ? "opacity-40 pointer-events-none grayscale"
+                : ""
+            }`}
+          >
+            {/* Angle & Power */}
+            <div className="col-span-12 @md:col-span-7 grid grid-cols-2 gap-4">
+              {/* Angle */}
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between text-[10px] font-bold text-gray-400">
+                  <span>{ts({ en: "ANG", vi: "GÓC" })}</span>
+                  <span className="text-blue-400">
+                    {Math.round(localAngle ?? currentTank?.angle ?? 0)}°
+                  </span>
                 </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="180"
+                  value={180 - (localAngle ?? currentTank?.angle ?? 0)}
+                  onChange={(e) => {
+                    const val = 180 - parseInt(e.target.value);
+                    setLocalAngle(val);
+                  }}
+                  onMouseUp={() => {
+                    if (localAngle !== null) {
+                      game.commitAngle(localAngle);
+                      setLocalAngle(null);
+                    }
+                  }}
+                  onTouchEnd={() => {
+                    if (localAngle !== null) {
+                      game.commitAngle(localAngle);
+                      setLocalAngle(null);
+                    }
+                  }}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
               </div>
-
-              {/* Sliders & Weapons */}
-              <div className="col-span-6 @md:col-span-7 @lg:col-span-8 flex flex-col justify-center gap-2">
-                <div className="flex gap-4">
-                  {/* Angle */}
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between text-[10px] font-bold text-gray-400">
-                      <span>{ts({ en: "ANG", vi: "GÓC" })}</span>
-                      <span className="text-blue-400">
-                        {Math.round(localAngle ?? currentTank?.angle ?? 0)}°
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="180"
-                      value={180 - (localAngle ?? currentTank?.angle ?? 0)}
-                      onChange={(e) => {
-                        const val = 180 - parseInt(e.target.value);
-                        setLocalAngle(val);
-                        cameraRef.current.mode = "FOLLOW_PLAYER";
-                      }}
-                      onMouseUp={() => {
-                        if (localAngle !== null) {
-                          game.commitAngle(localAngle);
-                          setLocalAngle(null);
-                        }
-                      }}
-                      onTouchEnd={() => {
-                        if (localAngle !== null) {
-                          game.commitAngle(localAngle);
-                          setLocalAngle(null);
-                        }
-                      }}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
-                  </div>
-                  {/* Power */}
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between text-[10px] font-bold text-gray-400">
-                      <span>{ts({ en: "PWR", vi: "LỰC" })}</span>
-                      <span className="text-red-400">
-                        {Math.round(localPower ?? currentTank?.power ?? 0)}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={localPower ?? currentTank?.power ?? 0}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        setLocalPower(val);
-                        cameraRef.current.mode = "FOLLOW_PLAYER";
-                      }}
-                      onMouseUp={() => {
-                        if (localPower !== null) {
-                          game.commitPower(localPower);
-                          setLocalPower(null);
-                        }
-                      }}
-                      onTouchEnd={() => {
-                        if (localPower !== null) {
-                          game.commitPower(localPower);
-                          setLocalPower(null);
-                        }
-                      }}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                    />
-                  </div>
+              {/* Power */}
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between text-[10px] font-bold text-gray-400">
+                  <span>{ts({ en: "PWR", vi: "LỰC" })}</span>
+                  <span className="text-red-400">
+                    {Math.round(localPower ?? currentTank?.power ?? 0)}
+                  </span>
                 </div>
-
-                {/* Weapon Selection */}
-                <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
-                  {SELECTABLE_WEAPONS.map((w) => (
-                    <button
-                      key={w.type}
-                      onClick={() => game.selectWeapon(w.type)}
-                      className="flex-1 min-w-[60px] py-1 text-[10px] @md:text-xs font-bold border rounded transition-all whitespace-nowrap cursor-pointer hover:bg-slate-600"
-                      style={{
-                        backgroundColor:
-                          currentTank?.weapon === w.type ? w.color : undefined,
-                        borderColor:
-                          currentTank?.weapon === w.type ? w.color : undefined,
-                        color:
-                          currentTank?.weapon === w.type ? "white" : "#9ca3af",
-                      }}
-                    >
-                      {w.name}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={localPower ?? currentTank?.power ?? 0}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setLocalPower(val);
+                  }}
+                  onMouseUp={() => {
+                    if (localPower !== null) {
+                      game.commitPower(localPower);
+                      setLocalPower(null);
+                    }
+                  }}
+                  onTouchEnd={() => {
+                    if (localPower !== null) {
+                      game.commitPower(localPower);
+                      setLocalPower(null);
+                    }
+                  }}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                />
               </div>
+            </div>
 
-              {/* Fire Button */}
-              <div className="col-span-3 @md:col-span-3 @lg:col-span-2">
+            {/* Weapon Selection */}
+            <div className="col-span-12 @md:col-span-5 flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+              {SELECTABLE_WEAPONS.map((w) => (
                 <button
-                  onClick={() => game.fire()}
-                  className="w-full h-full min-h-[60px] bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-lg @md:text-2xl tracking-widest rounded-lg shadow-lg shadow-red-900/40 active:scale-95 transition-transform border-t border-red-400 flex items-center justify-center"
+                  key={w.type}
+                  onClick={() => game.selectWeapon(w.type)}
+                  className="flex-1 min-w-[60px] py-1.5 text-[10px] font-bold border rounded transition-all whitespace-nowrap cursor-pointer hover:bg-slate-600"
+                  style={{
+                    backgroundColor:
+                      currentTank?.weapon === w.type ? w.color : undefined,
+                    borderColor:
+                      currentTank?.weapon === w.type ? w.color : undefined,
+                    color: currentTank?.weapon === w.type ? "white" : "#9ca3af",
+                  }}
                 >
-                  {ts({ en: "FIRE", vi: "BẮN" })}
+                  {w.name}
                 </button>
-              </div>
+              ))}
             </div>
           </div>
         </div>

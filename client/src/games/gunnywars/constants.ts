@@ -31,7 +31,7 @@ export const WEAPONS: Record<WeaponType, Weapon> = {
     type: WeaponType.SCATTER,
     name: "Shotgun",
     damage: 10,
-    radius: 20,
+    radius: 30,
     color: "#facc15", // Neon Yellow
     count: 3,
     spread: 10,
@@ -51,7 +51,7 @@ export const WEAPONS: Record<WeaponType, Weapon> = {
     type: WeaponType.DRILL,
     name: "Digger",
     damage: 15,
-    radius: 25, // Radius determines tunnel width
+    radius: 40, // Radius determines tunnel width
     color: "#a3e635", // Neon Lime
     count: 1,
     terrainDamageMultiplier: 1, // Handled via carveTunnel
@@ -97,7 +97,7 @@ export const WEAPONS: Record<WeaponType, Weapon> = {
     type: WeaponType.BUILDER,
     name: "Builder",
     damage: 0,
-    radius: 50,
+    radius: 100,
     color: "#60a5fa",
     count: 1,
     terrainDamageMultiplier: 0,
@@ -111,36 +111,41 @@ export const WEAPONS: Record<WeaponType, Weapon> = {
     count: 1,
     terrainDamageMultiplier: 0,
   },
-  [WeaponType.LANDMINE]: {
-    type: WeaponType.LANDMINE,
-    name: "Mine",
-    damage: 50,
-    radius: 15, // Size of the mine visually
-    color: "#ef4444",
-    count: 1,
-    terrainDamageMultiplier: 0,
-  },
-  [WeaponType.LANDMINE_ARMED]: {
-    // Internal
-    type: WeaponType.LANDMINE_ARMED,
-    name: "Mine (Armed)",
-    damage: 80, // High damage on contact
-    radius: 60, // Explosion radius
-    color: "#ff0000",
-    count: 1,
-    terrainDamageMultiplier: 1,
-  },
+  // [WeaponType.LANDMINE]: {
+  //   type: WeaponType.LANDMINE,
+  //   name: "Mine",
+  //   damage: 50,
+  //   radius: 15, // Size of the mine visually
+  //   color: "#ef4444",
+  //   count: 1,
+  //   terrainDamageMultiplier: 0,
+  // },
+  // [WeaponType.LANDMINE_ARMED]: {
+  //   // Internal
+  //   type: WeaponType.LANDMINE_ARMED,
+  //   name: "Mine (Armed)",
+  //   damage: 80, // High damage on contact
+  //   radius: 60, // Explosion radius
+  //   color: "#ff0000",
+  //   count: 1,
+  //   terrainDamageMultiplier: 1,
+  // },
 };
 
 // Get user-selectable weapons (exclude internal types)
 export const SELECTABLE_WEAPONS = Object.values(WEAPONS).filter(
-  (w) =>
-    w.type !== WeaponType.AIRSTRIKE_BOMB &&
-    w.type !== WeaponType.LANDMINE_ARMED,
+  (w) => w.type !== WeaponType.AIRSTRIKE_BOMB,
+  // &&  w.type !== WeaponType.LANDMINE_ARMED,
 );
 
 // Tank Colors
-export const TANK_COLORS = {
-  player1: "#3b82f6", // Blue
-  player2: "#ef4444", // Red
-};
+export const TANK_COLORS = [
+  "#3b82f6", // Blue
+  "#ef4444", // Red
+  "#10b981", // Emerald
+  "#f59e0b", // Amber
+  "#8b5cf6", // Violet
+  "#ec4899", // Pink
+  "#06b6d4", // Cyan
+  "#f97316", // Orange
+];

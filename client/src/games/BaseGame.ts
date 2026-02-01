@@ -49,6 +49,19 @@ export abstract class BaseGame<T> {
   private hasPendingPatch: boolean = false;
   private lastSnapshot: T | null = null;
 
+  // Game persistent state name (e.g. "tictactoe")
+  protected gameName: string = "unknown";
+  public setGameName(name: string): void {
+    this.gameName = name;
+  }
+
+  private getState(): T {
+    if (!this.state) {
+      throw new Error("Game state is not initialized");
+    }
+    return this.state;
+  }
+
   constructor(room: Room, socket: Socket, isHost: boolean, userId: string) {
     this.room = room;
     this.roomId = room.id;
@@ -100,9 +113,30 @@ export abstract class BaseGame<T> {
 
   public makeAction(action: GameAction) {
     if (this.isHost) {
+      // Execute locally
       this.onSocketGameAction({ action });
+      // Relay to all others in room
+      if (this.hasSomeoneElseInRoom()) {
+        this.socket.emit("game:action", {
+          roomId: this.roomId,
+          action,
+        });
+      }
     } else {
+      // Guest sends to Host (via server relay)
       this.sendSocketGameAction(action);
+    }
+  }
+
+  // Send action to all players (including self via server relay)
+  protected sendSocketGameAction(action: GameAction): void {
+    if (this.hasSomeoneElseInRoom()) {
+      this.socket.emit("game:action", {
+        roomId: this.roomId,
+        action,
+      });
+    } else {
+      this.onSocketGameAction({ action });
     }
   }
 
@@ -110,19 +144,6 @@ export abstract class BaseGame<T> {
     this.players = players;
 
     this.syncState(false);
-  }
-
-  // Game persistent state name (e.g. "tictactoe")
-  protected gameName: string = "unknown";
-  public setGameName(name: string): void {
-    this.gameName = name;
-  }
-
-  private getState(): T {
-    if (!this.state) {
-      throw new Error("Game state is not initialized");
-    }
-    return this.state;
   }
 
   public onStateUpdate(state: T): void {
@@ -282,15 +303,27 @@ export abstract class BaseGame<T> {
     this.socket.emit("game:request_sync", { roomId: this.roomId });
   }
 
-  // Send action to all players (including self via server relay)
-  protected sendSocketGameAction(action: GameAction): void {
-    if (this.hasSomeoneElseInRoom()) {
-      this.socket.emit("game:action", {
-        roomId: this.roomId,
-        action,
-      });
-    } else {
-      this.onSocketGameAction({ action });
+  // Host receives sync request
+  protected onRequestSync(data: {
+    requesterSocketId?: string;
+    targetUser?: string;
+  }): void {
+    if (this.isHost) {
+      if (data.requesterSocketId) {
+        // Optimization: Send state ONLY to the requester
+        const state = this.getState();
+        console.log("onRequestSync -> send state", state);
+        this.socket.emit("game:state:direct", {
+          roomId: this.roomId,
+          targetUser: data.targetUser,
+          targetSocketId: data.requesterSocketId,
+          state: { ...state },
+          version: this.stateVersion,
+        });
+      } else {
+        // Fallback: Broadcast to everyone
+        this.syncState(true);
+      }
     }
   }
 
@@ -343,30 +376,6 @@ export abstract class BaseGame<T> {
       // Update version
       if (typeof data.version === "number") {
         this.stateVersion = data.version;
-      }
-    }
-  }
-
-  // Host receives sync request
-  protected onRequestSync(data: {
-    requesterSocketId?: string;
-    targetUser?: string;
-  }): void {
-    if (this.isHost) {
-      if (data.requesterSocketId) {
-        // Optimization: Send state ONLY to the requester
-        const state = this.getState();
-        console.log("onRequestSync -> send state", state);
-        this.socket.emit("game:state:direct", {
-          roomId: this.roomId,
-          targetUser: data.targetUser,
-          targetSocketId: data.requesterSocketId,
-          state: { ...state },
-          version: this.stateVersion,
-        });
-      } else {
-        // Fallback: Broadcast to everyone
-        this.syncState(true);
       }
     }
   }

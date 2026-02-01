@@ -19,11 +19,11 @@ export const WeaponType = {
   AIRSTRIKE: "AIRSTRIKE",
   BUILDER: "BUILDER",
   TELEPORT: "TELEPORT",
-  LANDMINE: "LANDMINE",
+  // LANDMINE: "LANDMINE",
   HEAL: "HEAL",
   // Internal types
   AIRSTRIKE_BOMB: "AIRSTRIKE_BOMB",
-  LANDMINE_ARMED: "LANDMINE_ARMED",
+  // LANDMINE_ARMED: "LANDMINE_ARMED",
 } as const;
 export type WeaponType = (typeof WeaponType)[keyof typeof WeaponType];
 
@@ -63,6 +63,7 @@ export type MoveDirection = -1 | 1;
 // Tank (Player)
 export interface Tank {
   id: string;
+  name: string;
   playerId: string | null; // null for bot, or the player's userId
   isBot: boolean;
   x: number;
@@ -136,10 +137,7 @@ export interface GunnyWarsState {
   wind: number;
   winner: string | null; // "Player 1", "Player 2", etc.
   turnTimeEnd: number;
-  players: {
-    1: PlayerInfo;
-    2: PlayerInfo;
-  };
+  players: PlayerInfo[];
   terrainSeed: number; // For synchronized terrain generation
   terrainMods: TerrainModification[];
   isSimulating: boolean;

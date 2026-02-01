@@ -9,6 +9,7 @@ import {
   WeaponType,
   type MoveDirection,
   type FireShotData,
+  type PlayerInfo,
 } from "./types";
 import {
   WORLD_WIDTH,
@@ -33,13 +34,12 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   // TerrainShaderRenderer - for GPU accelerated rendering
   private terrainShaderRenderer: TerrainShaderRenderer | null = null;
 
-  // Animation loop
-  private animationFrameId: number | null = null;
+  // Sync modifications
+  private lastSyncedModCount = 0;
 
   // LOCAL-ONLY simulation data (not synced over network)
   private _projectiles: Projectile[] = [];
   private _particles: Particle[] = [];
-  private lastSyncedModCount = 0;
 
   get projectiles(): Projectile[] {
     return this._projectiles;
@@ -68,19 +68,12 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       wind: 0,
       winner: null,
       turnTimeEnd: 0,
-      players: {
-        1: {
-          id: this.players[0]?.id || null,
-          username: this.players[0]?.username || null,
-          tankId: null,
-        },
-        2: {
-          id: this.players[1]?.id || null,
-          username: this.players[1]?.username || null,
-          tankId: null,
-        },
-      },
-      terrainSeed: Math.random() * 10000,
+      players: this.players.map((p) => ({
+        id: p.id || null,
+        username: p.username || null,
+        tankId: null,
+      })),
+      terrainSeed: Math.round(Math.random() * 1000000),
       terrainMods: [],
       isSimulating: false,
     };
@@ -232,6 +225,10 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     console.log("onSocketGameAction", data);
 
     switch (action.type) {
+      // guest/host simulate
+      case "FIRE_SHOT":
+        this.fireTank(action.shot);
+        break;
       case "COMMIT_ANGLE":
         this.handleCommitAngle(action.angle, action.playerId);
         break;
@@ -247,27 +244,27 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       case "MOVE_STOP":
         this.handleMoveStop(action.x, action.y, action.fuel, action.playerId);
         break;
-      case "FIRE":
-        this.handleFire(action.playerId);
-        break;
-      case "FIRE_SHOT":
-        this.fireTank(action.shot);
-        console.log("FIRE_SHOT");
-        // Run physics
-        // this.runPhysicsLoop();
-        break;
-      case "START_GAME":
-        this.handleStartGame();
-        break;
-      case "RESET_GAME":
-        this.reset();
-        break;
-      case "ADD_BOT":
-        this.addBot();
-        break;
-      case "REMOVE_BOT":
-        this.removeBot();
-        break;
+      default:
+        if (!this.isHost) return;
+
+        switch (action.type) {
+          case "FIRE":
+            this.handleFire(action.playerId);
+            break;
+
+          case "START_GAME":
+            this.handleStartGame();
+            break;
+          case "RESET_GAME":
+            this.reset();
+            break;
+          case "ADD_BOT":
+            this.addBot();
+            break;
+          case "REMOVE_BOT":
+            this.removeBot();
+            break;
+        }
     }
   }
 
@@ -316,14 +313,6 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     // Set movement flags - all clients will simulate locally
     tank.isMoving = true;
     tank.moveDir = direction;
-    if (direction === -1) {
-      tank.angle = Math.max(90, Math.min(180, tank.angle));
-    } else {
-      tank.angle = Math.max(0, Math.min(90, tank.angle));
-    }
-
-    // Run physics
-    this.runPhysicsLoop();
   }
 
   // Called when player stops moving - clear flags and sync final position
@@ -385,55 +374,67 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     // Keep terrain in sync
     this.syncTerrain();
 
-    if (this.state.phase !== GamePhase.AIMING) return;
+    if (!this.terrainMap) return;
 
-    this.state.tanks.forEach((tank) => {
-      // If tank is moving (flag from server/local action), simulate it
-      if (tank.isMoving && tank.moveDir) {
-        // Get current sim state or init from tank
-        let simState = this._tankSimulations.get(tank.id);
-        if (!simState) {
-          simState = {
-            x: tank.x,
-            y: tank.y,
-            fuel: tank.fuel,
-            angle: tank.angle,
-          };
-          this._tankSimulations.set(tank.id, simState);
-        }
+    if (this.state.phase === GamePhase.AIMING) {
+      this.state.tanks.forEach((tank) => {
+        // If tank is moving (flag from server/local action), simulate it
+        if (tank.isMoving && tank.moveDir) {
+          // Get current sim state or init from tank
+          let simState = this._tankSimulations.get(tank.id);
+          if (!simState) {
+            simState = {
+              x: tank.x,
+              y: tank.y,
+              fuel: tank.fuel,
+              angle: tank.angle,
+            };
+            this._tankSimulations.set(tank.id, simState);
+          }
 
-        // Create a temp tank with sim properties for calculation
-        const simTank = { ...tank, ...simState };
-        // const gravityResult = this.gravityTank(simTank);
-        // simState.x = gravityResult.x;
-        // simState.y = gravityResult.y;
+          // Create a temp tank with sim properties for calculation
+          const simTank = { ...tank, ...simState };
+          const moveResult = this.calculateTankMovement(simTank, tank.moveDir);
 
-        const moveResult = this.calculateTankMovement(simTank, tank.moveDir);
+          if (moveResult) {
+            // Update SIMULATION state only
+            simState.x = moveResult.x;
+            simState.y = moveResult.y;
+            simState.fuel = moveResult.fuel;
+          } else {
+            // If this is the local player, tell server we stopped
+            if (tank.playerId === this.userId) {
+              this.moveStop();
+            }
 
-        if (moveResult) {
-          // Update SIMULATION state only
-          simState.x = moveResult.x;
-          simState.y = moveResult.y;
-          simState.fuel = moveResult.fuel;
-          simState.angle = moveResult.angle;
+            // Stop moving if logic fails
+            tank.isMoving = false;
+            tank.moveDir = undefined;
+            this._tankSimulations.delete(tank.id);
+          }
         } else {
-          // Stop moving if logic fails
-          tank.isMoving = false; // This is a flag, safe to update locally as it will be synced by Stop action
-          tank.moveDir = undefined;
-          this._tankSimulations.delete(tank.id);
-
-          // If this is the local player, tell server we stopped
-          if (tank.playerId === this.userId) {
-            this.moveStop();
+          // Not moving, clear sim if exists
+          if (this._tankSimulations.has(tank.id)) {
+            this._tankSimulations.delete(tank.id);
           }
         }
-      } else {
-        // Not moving, clear sim if exists
-        if (this._tankSimulations.has(tank.id)) {
-          this._tankSimulations.delete(tank.id);
-        }
-      }
-    });
+      });
+    }
+
+    // Physics Simulation (Gravity, Projectiles, Particles)
+    const tanksMoving = this.updateTankPhysics();
+    const projectilesMoving = this.updateProjectilePhysics();
+    const particlesMoving = this.updateParticlePhysics();
+
+    const allSettled = this.checkPhaseTransitions(
+      tanksMoving,
+      projectilesMoving,
+      particlesMoving,
+    );
+
+    if (allSettled && this.state.isSimulating) {
+      this.onSimulationEnd();
+    }
   }
 
   // Helper for UI to get the *visual* tank state (including local simulation)
@@ -482,11 +483,11 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
     let { x, y, fuel, angle } = tank;
 
-    if (moveDir === -1) {
-      angle = Math.max(90, Math.min(180, angle));
-    } else {
-      angle = Math.max(0, Math.min(90, angle));
-    }
+    // if (moveDir === -1) {
+    //   angle = Math.max(90, Math.min(180, angle));
+    // } else {
+    //   angle = Math.max(0, Math.min(90, angle));
+    // }
 
     const nextX = Math.max(
       15,
@@ -521,7 +522,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       }
     }
 
-    return { x, y, fuel, angle };
+    return { x, y, fuel: Math.max(0, fuel), angle };
   }
 
   private fireTank(shot: FireShotData): void {
@@ -571,39 +572,6 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     this.state.phase = GamePhase.PROJECTILE_MOVING;
   }
 
-  public runPhysicsLoop(): void {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-    }
-
-    const step = () => {
-      const allStopped = this.updatePhysics();
-
-      if (!allStopped) {
-        this.animationFrameId = requestAnimationFrame(step);
-      } else {
-        this.animationFrameId = null;
-        this.onSimulationEnd();
-      }
-    };
-
-    this.animationFrameId = requestAnimationFrame(step);
-  }
-
-  private updatePhysics(): boolean {
-    if (!this.terrainMap) return true;
-
-    const tanksMoving = this.updateTankPhysics();
-    const projectilesMoving = this.updateProjectilePhysics();
-    const particlesMoving = this.updateParticlePhysics();
-
-    return this.checkPhaseTransitions(
-      tanksMoving,
-      projectilesMoving,
-      particlesMoving,
-    );
-  }
-
   private updateTankPhysics(): boolean {
     let tanksMoving = false;
 
@@ -642,10 +610,10 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       if (!p.active) return;
 
       // Landmines don't move after being armed
-      if (p.weapon === WeaponType.LANDMINE_ARMED) {
-        this.checkLandmineExplosion(p);
-        return;
-      }
+      // if (p.weapon === WeaponType.LANDMINE_ARMED) {
+      //   this.checkLandmineExplosion(p);
+      //   return;
+      // }
 
       projectilesMoving = true;
 
@@ -741,7 +709,9 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
     // Check if any moving projectiles remain (excluding landmines)
     const activeMovingProjectilesCount = this._projectiles.filter(
-      (p) => p.active && p.weapon !== WeaponType.LANDMINE_ARMED,
+      (p) => p.active,
+
+      // && p.weapon !== WeaponType.LANDMINE_ARMED,
     ).length;
 
     if (
@@ -777,31 +747,31 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     const weapon = WEAPONS[projectile.weapon] || WEAPONS[WeaponType.BASIC];
 
     // Landmine deployment
-    if (weapon.type === WeaponType.LANDMINE) {
-      projectile.weapon = WeaponType.LANDMINE_ARMED;
-      projectile.vx = 0;
-      projectile.vy = 0;
-      projectile.y -= 2;
-      return;
-    }
+    // if (weapon.type === WeaponType.LANDMINE) {
+    //   projectile.weapon = WeaponType.LANDMINE_ARMED;
+    //   projectile.vx = 0;
+    //   projectile.vy = 0;
+    //   projectile.y -= 2;
+    //   return;
+    // }
 
     // Terrain effects - Push to state (Host only)
     if (this.isHost) {
       if (weapon.type === WeaponType.BUILDER) {
         this.state.terrainMods.push({
           type: "add",
-          x: projectile.x,
-          y: projectile.y,
-          radius: weapon.radius,
+          x: Math.round(projectile.x),
+          y: Math.round(projectile.y),
+          radius: Math.round(weapon.radius),
         });
       } else if (weapon.type === WeaponType.DRILL) {
         this.state.terrainMods.push({
           type: "carve",
-          x: projectile.x,
-          y: projectile.y,
+          x: Math.round(projectile.x),
+          y: Math.round(projectile.y),
           vx: projectile.vx,
           vy: projectile.vy,
-          radius: weapon.radius,
+          radius: Math.round(weapon.radius),
           length: 150,
         });
       } else if (
@@ -812,9 +782,9 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         const destroyRadius = weapon.radius * weapon.terrainDamageMultiplier;
         this.state.terrainMods.push({
           type: "destroy",
-          x: projectile.x,
-          y: projectile.y,
-          radius: destroyRadius,
+          x: Math.round(projectile.x),
+          y: Math.round(projectile.y),
+          radius: Math.round(destroyRadius),
         });
       }
     }
@@ -966,9 +936,11 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       this.createParticles(x, y, 20, "spark", 3, "#ffffff");
     } else if (weapon.type === WeaponType.BUILDER) {
       this.createParticles(x, y, 20, "smoke", 1, "#64748b");
-    } else if (weapon.type === WeaponType.LANDMINE_ARMED) {
-      this.createParticles(x, y, 40, "fire", 2, "#ef4444");
-    } else if (weapon.type === WeaponType.HEAL) {
+    }
+    // else if (weapon.type === WeaponType.LANDMINE_ARMED) {
+    //   this.createParticles(x, y, 40, "fire", 2, "#ef4444");
+    // }
+    else if (weapon.type === WeaponType.HEAL) {
       this.createParticles(x, y, 20, "glow", 2, "#4ade80");
       this.createParticles(x, y, 15, "spark", 1.5, "#ffffff");
     } else {
@@ -1058,6 +1030,8 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   }
 
   private onSimulationEnd(): void {
+    if (!this.state.isSimulating) return;
+
     this.state.isSimulating = false;
 
     // Check winner
@@ -1066,12 +1040,11 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       this.state.phase = GamePhase.GAME_OVER;
       if (aliveTanks.length === 1) {
         const winner = aliveTanks[0];
-        const playerInfo =
-          winner.playerId === this.state.players[1].id
-            ? this.state.players[1]
-            : this.state.players[2];
+        const winnerPlayer = this.state.players.find(
+          (p) => p.id === winner.playerId,
+        );
         this.state.winner =
-          playerInfo.username || (winner.isBot ? "Bot" : "Player");
+          winnerPlayer?.username || (winner.isBot ? "Bot" : "Player");
       } else {
         this.state.winner = "Draw";
       }
@@ -1172,7 +1145,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         const options = [
           WeaponType.BASIC,
           WeaponType.BARRAGE,
-          WeaponType.LANDMINE,
+          // WeaponType.LANDMINE,
         ];
         this.botState.targetWeapon =
           options[Math.floor(Math.random() * options.length)];
@@ -1254,50 +1227,37 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
   private handleStartGame(): void {
     if (this.state.phase !== GamePhase.WAITING) return;
-    if (!this.state.players[1].id || !this.state.players[2].id) return;
 
     // Initialize terrain
     this.initTerrain();
 
-    // Create tanks
-    const t1X = Math.floor(Math.random() * (WORLD_WIDTH - 100));
-    const t2X = WORLD_WIDTH - t1X;
-    const t1Y = this.getTerrainHeight(t1X);
-    const t2Y = this.getTerrainHeight(t2X);
+    // Create tanks - spread them out across the world
+    const playerCount = this.state.players.length;
+    const spacing = WORLD_WIDTH / (playerCount + 1);
 
-    this.state.tanks = [
-      {
-        id: "tank-1",
-        playerId: this.state.players[1].id,
-        isBot: this.state.players[1].id === "BOT",
-        x: t1X,
-        y: t1Y,
+    this.state.tanks = this.state.players.map((player, index) => {
+      const tankId = `tank-${index + 1}`;
+      player.tankId = tankId;
+
+      const x = Math.floor(spacing * (index + 1));
+      const y = this.getTerrainHeight(x);
+
+      return {
+        id: tankId,
+        name: player.username || (player.id === "BOT" ? "Bot" : "Player"),
+        playerId: player.id,
+        isBot: player.id === "BOT",
+        x,
+        y,
         angle: 45,
         power: 50,
         health: INITIAL_HEALTH,
         maxHealth: INITIAL_HEALTH,
-        color: TANK_COLORS.player1,
+        color: TANK_COLORS[index % TANK_COLORS.length],
         weapon: WeaponType.BASIC,
         fuel: MAX_FUEL,
-      },
-      {
-        id: "tank-2",
-        playerId: this.state.players[2].id,
-        isBot: this.state.players[2].id === "BOT",
-        x: t2X,
-        y: t2Y,
-        angle: 45,
-        power: 50,
-        health: INITIAL_HEALTH,
-        maxHealth: INITIAL_HEALTH,
-        color: TANK_COLORS.player2,
-        weapon: WeaponType.BASIC,
-        fuel: MAX_FUEL,
-      },
-    ];
-
-    this.state.players[1].tankId = "tank-1";
-    this.state.players[2].tankId = "tank-2";
+      };
+    });
 
     this.state.phase = GamePhase.AIMING;
     this.state.wind = Math.random() * 0.05 - 0.025;
@@ -1307,29 +1267,40 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   }
 
   reset(): void {
-    this.stopSimulation();
     this.state.phase = GamePhase.WAITING;
     this.state.tanks = [];
     this.state.currentTurnIndex = 0;
     this.state.wind = 0;
     this.state.winner = null;
     this.state.turnTimeEnd = 0;
-    this.state.players[1].tankId = null;
-    this.state.players[2].tankId = null;
-    this.state.terrainSeed = Math.random() * 10000;
+    this.state.players.forEach((p) => {
+      p.tankId = null;
+    });
+    this.state.terrainSeed = Math.round(Math.random() * 1000000);
     this.state.terrainMods = [];
     this.state.isSimulating = false;
   }
 
   addBot(): void {
+    if (!this.isHost) return;
     if (this.state.phase !== GamePhase.WAITING) return;
-    this.state.players[2] = { id: "BOT", username: "Bot", tankId: null };
+    this.state.players.push({
+      id: "BOT",
+      username: `Bot ${this.state.players.filter((p) => p.id === "BOT").length + 1}`,
+      tankId: null,
+    });
   }
 
   removeBot(): void {
+    if (!this.isHost) return;
     if (this.state.phase !== GamePhase.WAITING) return;
-    if (this.state.players[2].id !== "BOT") return;
-    this.state.players[2] = { id: null, username: null, tankId: null };
+    const lastBotIndex = [...this.state.players]
+      .reverse()
+      .findIndex((p) => p.id === "BOT");
+    if (lastBotIndex !== -1) {
+      const actualIndex = this.state.players.length - 1 - lastBotIndex;
+      this.state.players.splice(actualIndex, 1);
+    }
   }
 
   requestAddBot(): void {
@@ -1392,9 +1363,9 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     const sim = this._tankSimulations.get(tank.id);
     const action: GunnyWarsAction = {
       type: "MOVE_STOP",
-      x: sim?.x || tank.x,
-      y: sim?.y || tank.y,
-      fuel: sim?.fuel || tank.fuel,
+      x: sim?.x ?? tank.x,
+      y: sim?.y ?? tank.y,
+      fuel: sim?.fuel ?? tank.fuel,
       playerId: this.userId,
     };
     this.makeAction(action);
@@ -1433,34 +1404,34 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
   canStartGame(): boolean {
     return (
-      !!this.state.players[1].id &&
-      !!this.state.players[2].id &&
-      this.state.phase === GamePhase.WAITING
+      this.state.players.length > 1 && this.state.phase === GamePhase.WAITING
     );
   }
 
   updatePlayers(players: { id: string; username: string }[]): void {
-    this.state.players[1].id = players[0]?.id || null;
-    this.state.players[1].username = players[0]?.username || null;
+    const isHost = this.players[0]?.id === this.userId;
+    if (!isHost) return;
 
-    if (players[1]) {
-      this.state.players[2].id = players[1].id;
-      this.state.players[2].username = players[1].username;
-    } else if (this.state.players[2].id !== "BOT") {
-      this.state.players[2].id = null;
-      this.state.players[2].username = null;
-    }
-  }
+    const currentPlayers = [...this.state.players];
+    const bots = currentPlayers.filter((p) => p.id === "BOT");
 
-  private stopSimulation(): void {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
+    // Rebuild players array: matched room players + existing bots
+    const newPlayers: PlayerInfo[] = players.map((p) => {
+      const existing = currentPlayers.find((ep) => ep.id === p.id);
+      return {
+        id: p.id,
+        username: p.username,
+        tankId: existing?.tankId || null,
+      };
+    });
+
+    // Add bots back
+    newPlayers.push(...bots);
+
+    this.state.players = newPlayers;
   }
 
   destroy(): void {
-    this.stopSimulation();
     super.destroy();
   }
 }
