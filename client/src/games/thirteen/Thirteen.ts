@@ -847,11 +847,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       playerId: this.userId,
       cards,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestPass(): void {
@@ -859,20 +855,12 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       type: "PASS",
       playerId: this.userId,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestAddBot(slotIndex: number): void {
     const action: ThirteenAction = { type: "ADD_BOT", slotIndex };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestJoinSlot(slotIndex: number, playerName: string): void {
@@ -882,29 +870,17 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       playerId: this.userId,
       playerName,
     };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestRemovePlayer(slotIndex: number): void {
     const action: ThirteenAction = { type: "REMOVE_PLAYER", slotIndex };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestStartGame(): void {
     const action: ThirteenAction = { type: "START_GAME" };
-    if (this.isHost) {
-      this.onSocketGameAction({ action });
-    } else {
-      this.sendSocketGameAction(action);
-    }
+    this.makeAction(action);
   }
 
   requestNewGame(): void {
@@ -918,7 +894,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         playerId: this.userId,
         playerName: player?.username || "Guest",
       };
-      this.sendSocketGameAction(action);
+      this.makeAction(action);
     }
   }
 

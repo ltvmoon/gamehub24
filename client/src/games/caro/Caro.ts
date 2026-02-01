@@ -27,27 +27,27 @@ export default class Caro extends BaseGame<CaroState> {
   onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as CaroAction;
 
-    if (this.isHost) {
-      switch (action.type) {
-        case "MAKE_MOVE":
-          this.makeMove(action);
-          break;
-        case "UNDO_REQUEST":
-          this.handleUndoRequest(action.playerId);
-          break;
-        case "UNDO_RESPONSE":
-          this.handleUndoResponse(action.accepted);
-          break;
-        case "SWITCH_TURN":
-          this.handleSwitchTurn();
-          break;
-        case "RESET_GAME":
-          this.reset();
-          break;
-        case "START_GAME":
-          this.handleStartGame();
-          break;
-      }
+    if (!this.isHost) return;
+
+    switch (action.type) {
+      case "MAKE_MOVE":
+        this.makeMove(action);
+        break;
+      case "UNDO_REQUEST":
+        this.handleUndoRequest(action.playerId);
+        break;
+      case "UNDO_RESPONSE":
+        this.handleUndoResponse(action.accepted);
+        break;
+      case "SWITCH_TURN":
+        this.handleSwitchTurn();
+        break;
+      case "RESET_GAME":
+        this.reset();
+        break;
+      case "START_GAME":
+        this.handleStartGame();
+        break;
     }
   }
 
@@ -187,31 +187,27 @@ export default class Caro extends BaseGame<CaroState> {
       col,
       playerId: this.userId,
     };
-    this.isHost ? this.makeMove(action) : this.sendSocketGameAction(action);
+    this.makeAction(action);
   }
 
   requestUndo(): void {
     const action: CaroAction = { type: "UNDO_REQUEST", playerId: this.userId };
-    this.isHost
-      ? this.handleUndoRequest(this.userId)
-      : this.sendSocketGameAction(action);
+    this.makeAction(action);
   }
 
   responseUndo(accepted: boolean): void {
     const action: CaroAction = { type: "UNDO_RESPONSE", accepted };
-    this.isHost
-      ? this.handleUndoResponse(accepted)
-      : this.sendSocketGameAction(action);
+    this.makeAction(action);
   }
 
   switchTurn(): void {
     const action: CaroAction = { type: "SWITCH_TURN" };
-    this.isHost ? this.handleSwitchTurn() : this.sendSocketGameAction(action);
+    this.makeAction(action);
   }
 
   requestReset(): void {
     const action: CaroAction = { type: "RESET_GAME" };
-    this.isHost ? this.reset() : this.sendSocketGameAction(action);
+    this.makeAction(action);
   }
 
   // --- Host Handlers ---
@@ -309,11 +305,8 @@ export default class Caro extends BaseGame<CaroState> {
   }
 
   startGame(): void {
-    if (this.isHost) {
-      this.handleStartGame();
-    } else {
-      this.sendSocketGameAction({ type: "START_GAME" });
-    }
+    const action: CaroAction = { type: "START_GAME" };
+    this.makeAction(action);
   }
 
   canStartGame(): boolean {

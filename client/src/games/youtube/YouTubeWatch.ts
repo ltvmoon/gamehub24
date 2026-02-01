@@ -27,22 +27,15 @@ export default class YouTubeWatch extends BaseGame<YouTubeWatchState> {
   onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as YouTubeWatchAction;
 
-    if (action.type === "SET_VIDEO") {
-      this.handleSetVideo(action.payload);
-    } else if (action.type === "TOGGLE_GUEST_CONTROL") {
-      if (this.isHost) {
-        this.handleToggleGuestControl(action.payload);
-      }
-    }
-  }
+    if (!this.isHost) return;
 
-  makeAction(action: YouTubeWatchAction): void {
-    if (this.isHost) {
-      if (action.type === "SET_VIDEO") this.handleSetVideo(action.payload);
-      if (action.type === "TOGGLE_GUEST_CONTROL")
+    switch (action.type) {
+      case "SET_VIDEO":
+        this.handleSetVideo(action.payload);
+        break;
+      case "TOGGLE_GUEST_CONTROL":
         this.handleToggleGuestControl(action.payload);
-    } else {
-      this.sendSocketGameAction(action);
+        break;
     }
   }
 

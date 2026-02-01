@@ -518,13 +518,18 @@ export class TerrainMap {
   /**
    * Apply a list of modifications (for receiving synced state)
    */
-  applyModifications(mods: TerrainModification[]): void {
-    // Clear and re-apply all
-    this.quadtree.clear();
-    this.modifications = [];
-    this.modificationCounter = 0;
-    // Clear ring buffer cache by invalidating all keys
-    this.baseHeightKeys.fill(-999999);
+  applyModifications(
+    mods: TerrainModification[],
+    clearFirst: boolean = true,
+  ): void {
+    if (clearFirst) {
+      // Clear and re-apply all
+      this.quadtree.clear();
+      this.modifications = [];
+      this.modificationCounter = 0;
+      // Clear ring buffer cache by invalidating all keys
+      this.baseHeightKeys.fill(-999999);
+    }
 
     for (const mod of mods) {
       this.addModification(mod);
@@ -650,6 +655,16 @@ export class TerrainRenderer {
   private chunkAccessOrder: string[] = []; // LRU tracking
   // === OPTIMIZATION: Track chunks that are entirely sky (no solid) ===
   private skyChunks = new Set<string>();
+
+  /**
+   * Clear all cached chunks and metadata.
+   */
+  clearCache(): void {
+    this.chunks.clear();
+    this.dirtyChunks.clear();
+    this.chunkAccessOrder = [];
+    this.skyChunks.clear();
+  }
 
   /**
    * Check if a chunk is entirely sky (no terrain).

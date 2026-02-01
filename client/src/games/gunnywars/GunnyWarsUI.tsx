@@ -516,15 +516,20 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       const currentTankBase = game.state.tanks[game.state.currentTurnIndex];
       if (
         currentTankBase &&
-        game.isMyTurn() &&
+        // game.isMyTurn() &&
         game.state.phase === GamePhase.AIMING
       ) {
         const currentTank = game.getVisualTank(currentTankBase);
+        const isMyTurn = game.isMyTurn();
         drawTrajectory(
           ctx,
           currentTank,
-          localAngleRef.current ?? currentTankBase.angle,
-          localPowerRef.current ?? currentTankBase.power,
+          isMyTurn
+            ? (localAngleRef.current ?? currentTankBase.angle)
+            : currentTankBase.angle,
+          isMyTurn
+            ? (localPowerRef.current ?? currentTankBase.power)
+            : currentTankBase.power,
         );
       }
 
@@ -579,7 +584,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       ctx.fillRect(-19, 1, 38 * (tank.health / tank.maxHealth), 4);
 
       // Current turn indicator
-      if (state.tanks[state.currentTurnIndex]?.id === tank.id) {
+      if (game.state.tanks[game.state.currentTurnIndex]?.id === tank.id) {
         ctx.beginPath();
         ctx.moveTo(0, -10);
         ctx.lineTo(-6, -18);
@@ -612,7 +617,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
         x += vx * 3;
         y += vy * 3;
         vy += GRAVITY * 3;
-        vx += state.wind * 3;
+        vx += game.state.wind * 3;
         ctx.lineTo(x, y);
       }
 
@@ -631,9 +636,6 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       vpW: number,
       vpH: number,
     ) => {
-      // Read from ref for live data
-      const liveState = game.state;
-
       // Clear hit areas for this frame
       indicatorHitAreasRef.current.clear();
 
@@ -647,7 +649,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       const viewTop = camY + margin;
       const viewBottom = camY + viewH - margin;
 
-      for (const tankBase of liveState.tanks) {
+      for (const tankBase of game.state.tanks) {
         if (tankBase.health <= 0) continue;
 
         const tank = game.getVisualTank(tankBase);
@@ -772,7 +774,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       if (
         e.key === " " &&
         game.isMyTurn() &&
-        state.phase === GamePhase.AIMING
+        game.state.phase === GamePhase.AIMING
       ) {
         e.preventDefault();
         game.fire();
@@ -791,25 +793,25 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [game, state.phase]);
+  }, [game]);
 
   // Movement helpers
   const handleMoveStart = useCallback(
     (dir: MoveDirection) => {
       console.log("move start");
-      if (state.phase !== GamePhase.AIMING || !game.isMyTurn()) return;
+      if (game.state.phase !== GamePhase.AIMING || !game.isMyTurn()) return;
       const myTank = game.getMyTank();
       if (!myTank) return;
 
-      if (!myTank.isMoving || myTank.movingDirection !== dir) {
+      if (!myTank.isMoving || myTank.moveDir !== dir) {
         console.log("inside move start");
         myTank.isMoving = true;
-        myTank.movingDirection = dir;
+        myTank.moveDir = dir;
         game.moveStart(dir);
         cameraRef.current.mode = "FOLLOW_PLAYER";
       }
     },
-    [game, state.phase],
+    [game],
   );
 
   const handleMoveEnd = useCallback(
@@ -817,12 +819,12 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       const myTank = game.getMyTank();
       if (!myTank) return;
 
-      if (myTank.isMoving && myTank.movingDirection === dir) {
+      if (myTank.isMoving && myTank.moveDir === dir) {
         myTank.isMoving = false;
         game.moveStop();
       }
     },
-    [game, state.phase],
+    [game],
   );
 
   // Movement loop (Keyboard)
@@ -845,15 +847,17 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [game, handleMoveStart, handleMoveEnd, state.phase]);
+  }, [game, handleMoveStart, handleMoveEnd]);
 
   // Update camera mode based on game phase
   useEffect(() => {
     if (
       state.phase === GamePhase.PROJECTILE_MOVING ||
-      state.phase === GamePhase.FIRING
+      state.phase === GamePhase.FIRING ||
+      state.phase === GamePhase.IMPACT
     ) {
       cameraRef.current.mode = "FOLLOW_PROJECTILE";
+      game.runPhysicsLoop();
     } else if (state.phase === GamePhase.AIMING) {
       cameraRef.current.mode = "FOLLOW_PLAYER";
     }
@@ -1290,6 +1294,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                       onChange={(e) => {
                         const val = 180 - parseInt(e.target.value);
                         setLocalAngle(val);
+                        cameraRef.current.mode = "FOLLOW_PLAYER";
                       }}
                       onMouseUp={() => {
                         if (localAngle !== null) {
@@ -1322,6 +1327,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                       onChange={(e) => {
                         const val = parseInt(e.target.value);
                         setLocalPower(val);
+                        cameraRef.current.mode = "FOLLOW_PLAYER";
                       }}
                       onMouseUp={() => {
                         if (localPower !== null) {
@@ -1349,17 +1355,11 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                       className="flex-1 min-w-[60px] py-1 text-[10px] @md:text-xs font-bold border rounded transition-all whitespace-nowrap cursor-pointer hover:bg-slate-600"
                       style={{
                         backgroundColor:
-                          currentTank?.selectedWeapon === w.type
-                            ? w.color
-                            : undefined,
+                          currentTank?.weapon === w.type ? w.color : undefined,
                         borderColor:
-                          currentTank?.selectedWeapon === w.type
-                            ? w.color
-                            : undefined,
+                          currentTank?.weapon === w.type ? w.color : undefined,
                         color:
-                          currentTank?.selectedWeapon === w.type
-                            ? "white"
-                            : "#9ca3af",
+                          currentTank?.weapon === w.type ? "white" : "#9ca3af",
                       }}
                     >
                       {w.name}

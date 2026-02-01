@@ -72,10 +72,10 @@ export interface Tank {
   health: number;
   maxHealth: number;
   color: string;
-  selectedWeapon: WeaponType;
+  weapon: WeaponType;
   fuel: number; // For movement
   isMoving?: boolean;
-  movingDirection?: MoveDirection;
+  moveDir?: MoveDirection;
 }
 
 // Projectile (LOCAL ONLY - not synced, simulated from fire event)
@@ -100,6 +100,7 @@ export interface FireShotData {
   power: number;
   weapon: WeaponType;
   wind: number;
+  seed: number;
 }
 
 // Player info
@@ -140,7 +141,7 @@ export interface GunnyWarsState {
     2: PlayerInfo;
   };
   terrainSeed: number; // For synchronized terrain generation
-  terrainModifications: TerrainModification[];
+  terrainMods: TerrainModification[];
   isSimulating: boolean;
 }
 

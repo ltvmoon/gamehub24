@@ -137,13 +137,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
 
   // Request reset (client-side)
   requestReset(): void {
-    if (this.isHost) {
-      this.reset();
-    } else {
-      this.sendSocketGameAction({
-        type: "RESET_GAME",
-      });
-    }
+    this.makeAction({ type: "RESET_GAME" });
   }
 
   // Switch Turn Logic
@@ -159,13 +153,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
   }
 
   switchTurn(): void {
-    if (this.isHost) {
-      this.handleSwitchTurn();
-    } else {
-      this.sendSocketGameAction({
-        type: "SWITCH_TURN",
-      });
-    }
+    this.makeAction({ type: "SWITCH_TURN" });
   }
 
   // Bot Management
@@ -202,11 +190,7 @@ export default class TicTacToe extends BaseGame<TicTacToeState> {
   }
 
   startGame(): void {
-    if (this.isHost) {
-      this.handleStartGame();
-    } else {
-      this.sendSocketGameAction({ type: "START_GAME" });
-    }
+    this.makeAction({ type: "START_GAME" });
   }
 
   canStartGame(): boolean {

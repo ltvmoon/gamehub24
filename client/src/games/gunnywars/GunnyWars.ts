@@ -8,6 +8,7 @@ import {
   GamePhase,
   WeaponType,
   type MoveDirection,
+  type FireShotData,
 } from "./types";
 import {
   WORLD_WIDTH,
@@ -38,6 +39,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   // LOCAL-ONLY simulation data (not synced over network)
   private _projectiles: Projectile[] = [];
   private _particles: Particle[] = [];
+  private lastSyncedModCount = 0;
 
   get projectiles(): Projectile[] {
     return this._projectiles;
@@ -79,21 +81,99 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         },
       },
       terrainSeed: Math.random() * 10000,
-      terrainModifications: [],
+      terrainMods: [],
       isSimulating: false,
     };
   }
 
   // Initialize terrain (use chunk-based rendering)
   initTerrain(): void {
+    if (
+      this.terrainMap &&
+      this.terrainMap.getSeed() === this.state.terrainSeed
+    ) {
+      this.syncTerrain();
+      return;
+    }
+
     // Initialize TerrainMap for collision detection
     this.terrainMap = new TerrainMap(this.state.terrainSeed);
     // Initialize TerrainRenderer for chunk-based visual rendering
     this.terrainRenderer = new TerrainRenderer();
 
-    // Apply any existing modifications (for state sync)
-    if (this.state.terrainModifications.length > 0) {
-      this.terrainMap.applyModifications(this.state.terrainModifications);
+    this.lastSyncedModCount = 0;
+    this.syncTerrain();
+  }
+
+  public onStateUpdate(state: GunnyWarsState): void {
+    super.onStateUpdate(state);
+    this.syncTerrain();
+  }
+
+  protected onSocketGameState(data: {
+    state: GunnyWarsState;
+    version?: number;
+    roomId?: string;
+  }): void {
+    super.onSocketGameState(data);
+    this.initTerrain();
+  }
+
+  /**
+   * Keep local terrain components (map, renderer, shader) in sync with state.terrainModifications
+   */
+  private syncTerrain(): void {
+    if (!this.terrainMap) return;
+
+    const currentCount = this.state.terrainMods.length;
+    if (currentCount === this.lastSyncedModCount) return;
+
+    // Handle full reset or backwards sync
+    if (currentCount < this.lastSyncedModCount) {
+      this.terrainMap.reset(this.state.terrainSeed);
+      if (this.terrainRenderer) this.terrainRenderer.clearCache();
+      this.lastSyncedModCount = 0;
+    }
+
+    // Apply incremental modifications
+    const newMods = this.state.terrainMods.slice(this.lastSyncedModCount);
+    if (newMods.length > 0) {
+      this.terrainMap.applyModifications(newMods, false); // false = append mode
+
+      // Invalidate visual cache if CPU renderer exists
+      if (this.terrainRenderer) {
+        for (const mod of newMods) {
+          const radius =
+            mod.type === "destroy"
+              ? mod.radius *
+                (WEAPONS[WeaponType.BASIC].terrainDamageMultiplier || 1.2) // Default to BASIC if not found
+              : mod.radius;
+
+          if (
+            mod.type === "carve" &&
+            mod.vx !== undefined &&
+            mod.vy !== undefined
+          ) {
+            this.terrainRenderer.invalidateTunnel(
+              mod.x,
+              mod.y,
+              mod.vx,
+              mod.vy,
+              mod.radius,
+              mod.length || 100,
+            );
+          } else {
+            this.terrainRenderer.invalidateArea(mod.x, mod.y, radius);
+          }
+        }
+      }
+
+      // Update GPU shader renderer
+      if (this.terrainShaderRenderer) {
+        this.terrainShaderRenderer.uploadModifications(this.state.terrainMods);
+      }
+
+      this.lastSyncedModCount = currentCount;
     }
   }
 
@@ -130,29 +210,26 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
   // Initialize GPU shader renderer (call from UI with WebGL canvas)
   initShaderRenderer(canvas: HTMLCanvasElement): boolean {
-    this.terrainShaderRenderer = new TerrainShaderRenderer();
+    if (!this.terrainShaderRenderer) {
+      this.terrainShaderRenderer = new TerrainShaderRenderer();
+    }
     const success = this.terrainShaderRenderer.init(canvas);
     if (success && this.terrainMap) {
-      // Upload initial modifications
-      this.terrainShaderRenderer.uploadModifications(
-        this.terrainMap.getModifications(),
-      );
+      this.terrainShaderRenderer.uploadModifications(this.state.terrainMods);
     }
     return success;
   }
 
-  // Update shader renderer with latest modifications
-  updateShaderModifications(): void {
-    if (this.terrainShaderRenderer && this.terrainMap) {
-      this.terrainShaderRenderer.uploadModifications(
-        this.terrainMap.getModifications(),
-      );
-    }
+  private seededRandom(seed: number): number {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
   }
 
   // Socket action handler
   onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as GunnyWarsAction;
+
+    console.log("onSocketGameAction", data);
 
     switch (action.type) {
       case "COMMIT_ANGLE":
@@ -172,6 +249,12 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         break;
       case "FIRE":
         this.handleFire(action.playerId);
+        break;
+      case "FIRE_SHOT":
+        this.fireTank(action.shot);
+        console.log("FIRE_SHOT");
+        // Run physics
+        // this.runPhysicsLoop();
         break;
       case "START_GAME":
         this.handleStartGame();
@@ -216,7 +299,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     if (!this.isPlayerTurn(playerId)) return;
     if (this.state.phase !== GamePhase.AIMING) return;
 
-    tank.selectedWeapon = weapon;
+    tank.weapon = weapon;
   }
 
   // Called when player starts moving - set flags for optimistic sync
@@ -232,7 +315,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
     // Set movement flags - all clients will simulate locally
     tank.isMoving = true;
-    tank.movingDirection = direction;
+    tank.moveDir = direction;
     if (direction === -1) {
       tank.angle = Math.max(90, Math.min(180, tank.angle));
     } else {
@@ -257,7 +340,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
     // Clear movement flags and sync final position
     tank.isMoving = false;
-    tank.movingDirection = undefined;
+    tank.moveDir = undefined;
     tank.x = x;
     tank.y = y;
     tank.fuel = fuel;
@@ -267,16 +350,27 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   }
 
   private handleFire(playerId: string): void {
+    if (!this.isHost) return;
     if (this.state.phase !== GamePhase.AIMING) return;
     if (!this.isPlayerTurn(playerId)) return;
 
     const tank = this.getTankByPlayerId(playerId);
     if (!tank) return;
 
-    this.fireTank(tank);
+    // Create deterministic shot data
+    const shotData: FireShotData = {
+      tankId: tank.id,
+      x: tank.x,
+      y: tank.y,
+      angle: tank.angle,
+      power: tank.power,
+      weapon: tank.weapon,
+      wind: this.state.wind,
+      seed: Math.random(),
+    };
 
-    // Run physics
-    this.runPhysicsLoop();
+    // Broadcast to all clients (including self)
+    this.makeAction({ type: "FIRE_SHOT", shot: shotData });
   }
 
   // --- Game Logic ---
@@ -288,11 +382,14 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   >();
 
   public update(): void {
+    // Keep terrain in sync
+    this.syncTerrain();
+
     if (this.state.phase !== GamePhase.AIMING) return;
 
     this.state.tanks.forEach((tank) => {
       // If tank is moving (flag from server/local action), simulate it
-      if (tank.isMoving && tank.movingDirection) {
+      if (tank.isMoving && tank.moveDir) {
         // Get current sim state or init from tank
         let simState = this._tankSimulations.get(tank.id);
         if (!simState) {
@@ -311,10 +408,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         // simState.x = gravityResult.x;
         // simState.y = gravityResult.y;
 
-        const moveResult = this.calculateTankMovement(
-          simTank,
-          tank.movingDirection,
-        );
+        const moveResult = this.calculateTankMovement(simTank, tank.moveDir);
 
         if (moveResult) {
           // Update SIMULATION state only
@@ -325,7 +419,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         } else {
           // Stop moving if logic fails
           tank.isMoving = false; // This is a flag, safe to update locally as it will be synced by Stop action
-          tank.movingDirection = undefined;
+          tank.moveDir = undefined;
           this._tankSimulations.delete(tank.id);
 
           // If this is the local player, tell server we stopped
@@ -430,35 +524,38 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     return { x, y, fuel, angle };
   }
 
-  private fireTank(tank: Tank): void {
+  private fireTank(shot: FireShotData): void {
     this.state.phase = GamePhase.FIRING;
     this.state.isSimulating = true;
 
-    const rad = (tank.angle * Math.PI) / 180;
-    const speed = (tank.power / 100) * MAX_POWER;
+    const rad = (shot.angle * Math.PI) / 180;
+    const speed = (shot.power / 100) * MAX_POWER;
 
     // Barrel length - spawn projectile at barrel tip to avoid immediate collision
     const barrelLength = 30;
 
-    const createProj = (angleOffset: number = 0): Projectile => {
+    const createProj = (
+      angleOffset: number = 0,
+      seedOffset: number = 0,
+    ): Projectile => {
       const finalRad = rad + (angleOffset * Math.PI) / 180;
       // Spawn at barrel tip position
-      const spawnX = tank.x + Math.cos(finalRad) * barrelLength;
-      const spawnY = tank.y - 10 - Math.sin(finalRad) * barrelLength;
+      const spawnX = shot.x + Math.cos(finalRad) * barrelLength;
+      const spawnY = shot.y - 10 - Math.sin(finalRad) * barrelLength;
       return {
-        id: Math.random().toString(36),
+        id: (shot.seed + seedOffset).toString(36),
         x: spawnX,
         y: spawnY,
         vx: Math.cos(finalRad) * speed,
         vy: -Math.sin(finalRad) * speed,
         radius: 5,
-        weapon: tank.selectedWeapon,
-        ownerId: tank.id,
+        weapon: shot.weapon,
+        ownerId: shot.tankId,
         active: true,
       };
     };
 
-    const weaponData = WEAPONS[tank.selectedWeapon];
+    const weaponData = WEAPONS[shot.weapon];
     const count = weaponData.count;
     const spread = weaponData.spread || 0;
 
@@ -467,13 +564,14 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       if (count > 1) {
         angleOffset = -(((count - 1) * spread) / 2) + i * spread;
       }
-      this._projectiles.push(createProj(angleOffset));
+      this._projectiles.push(createProj(angleOffset, i * 0.001));
     }
 
+    // Set phase after projectiles are created
     this.state.phase = GamePhase.PROJECTILE_MOVING;
   }
 
-  private runPhysicsLoop(): void {
+  public runPhysicsLoop(): void {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
     }
@@ -495,23 +593,32 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   private updatePhysics(): boolean {
     if (!this.terrainMap) return true;
 
-    const state = this.state;
-    let tanksMoving = false;
-    let projectilesMoving = false;
-    let particlesMoving = false;
+    const tanksMoving = this.updateTankPhysics();
+    const projectilesMoving = this.updateProjectilePhysics();
+    const particlesMoving = this.updateParticlePhysics();
 
-    // --- Sim Tanks ---
+    return this.checkPhaseTransitions(
+      tanksMoving,
+      projectilesMoving,
+      particlesMoving,
+    );
+  }
+
+  private updateTankPhysics(): boolean {
+    let tanksMoving = false;
+
+    // --- Sim Tanks (Local visual movement) ---
     this._tankSimulations.forEach((sim) => {
       const { x, y, moving } = this.gravityTank(sim.x, sim.y, 100);
       if (moving) {
         sim.x = x;
         sim.y = y;
-        tanksMoving = moving;
+        tanksMoving = true;
       }
     });
 
-    // --- Tank Gravity ---
-    state.tanks.forEach((tank) => {
+    // --- Tank Gravity (Actual synced state) ---
+    this.state.tanks.forEach((tank) => {
       const { x, y, health, moving } = this.gravityTank(
         tank.x,
         tank.y,
@@ -521,25 +628,22 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         tank.x = x;
         tank.y = y;
         tank.health = health;
-        tanksMoving = moving;
+        tanksMoving = true;
       }
     });
 
-    // --- Projectile Physics ---
+    return tanksMoving;
+  }
+
+  private updateProjectilePhysics(): boolean {
+    let projectilesMoving = false;
+
     this._projectiles.forEach((p) => {
       if (!p.active) return;
 
-      // Landmines don't move
+      // Landmines don't move after being armed
       if (p.weapon === WeaponType.LANDMINE_ARMED) {
-        // Check tank collision
-        state.tanks.forEach((tank) => {
-          if (tank.health <= 0) return;
-          const dx = tank.x - p.x;
-          const dy = tank.y - 10 - p.y;
-          if (Math.sqrt(dx * dx + dy * dy) < 20) {
-            this.explode(p);
-          }
-        });
+        this.checkLandmineExplosion(p);
         return;
       }
 
@@ -549,7 +653,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       p.x += p.vx;
       p.y += p.vy;
       p.vy += GRAVITY;
-      p.vx += state.wind;
+      p.vx += this.state.wind;
 
       // Trail particles
       if (Math.random() > 0.3) {
@@ -557,21 +661,8 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       }
 
       // Tank collision
-      for (const tank of state.tanks) {
-        if (tank.health <= 0) continue;
-        if (
-          tank.id === p.ownerId &&
-          Math.abs(p.x - tank.x) < 20 &&
-          Math.abs(p.y - tank.y) < 20
-        )
-          continue;
-
-        const dx = tank.x - p.x;
-        const dy = tank.y - 10 - p.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 15) {
-          this.explode(p);
-          return;
-        }
+      if (this.checkProjectileTankCollision(p)) {
+        return;
       }
 
       // Out of bounds
@@ -586,7 +677,47 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       }
     });
 
-    // --- Particles ---
+    // Cleanup inactive projectiles
+    this._projectiles = this._projectiles.filter((p) => p.active);
+
+    return projectilesMoving;
+  }
+
+  private checkLandmineExplosion(p: Projectile): void {
+    this.state.tanks.forEach((tank) => {
+      if (tank.health <= 0) return;
+      const dx = tank.x - p.x;
+      const dy = tank.y - 10 - p.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 20) {
+        this.explode(p);
+      }
+    });
+  }
+
+  private checkProjectileTankCollision(p: Projectile): boolean {
+    for (const tank of this.state.tanks) {
+      if (tank.health <= 0) continue;
+
+      // Prevent self-collision immediately after firing
+      if (
+        tank.id === p.ownerId &&
+        Math.abs(p.x - tank.x) < 20 &&
+        Math.abs(p.y - tank.y) < 20
+      )
+        continue;
+
+      const dx = tank.x - p.x;
+      const dy = tank.y - 10 - p.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 15) {
+        this.explode(p);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private updateParticlePhysics(): boolean {
+    let particlesMoving = false;
     this._particles.forEach((p) => {
       p.x += p.vx;
       p.y += p.vy;
@@ -598,21 +729,27 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       particlesMoving = true;
     });
     this._particles = this._particles.filter((p) => p.life > 0);
+    return particlesMoving;
+  }
 
-    // Cleanup projectiles
-    this._projectiles = this._projectiles.filter((p) => p.active);
+  private checkPhaseTransitions(
+    tanksMoving: boolean,
+    projectilesMoving: boolean,
+    particlesMoving: boolean,
+  ): boolean {
+    const state = this.state;
 
-    // Check if any moving projectiles remain
-    const activeMovingProjectiles = this._projectiles.filter(
+    // Check if any moving projectiles remain (excluding landmines)
+    const activeMovingProjectilesCount = this._projectiles.filter(
       (p) => p.active && p.weapon !== WeaponType.LANDMINE_ARMED,
-    );
+    ).length;
 
     if (
-      activeMovingProjectiles.length === 0 &&
+      activeMovingProjectilesCount === 0 &&
       state.phase === GamePhase.PROJECTILE_MOVING
     ) {
       state.phase = GamePhase.IMPACT;
-      state.turnTimeEnd = Date.now() + 1000; // 1 seconds delay after impact
+      state.turnTimeEnd = Date.now() + 1000; // 1 second delay after impact
     }
 
     // Handle impact delay
@@ -625,6 +762,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       }
     }
 
+    // Standard stop check
     return (
       !tanksMoving &&
       !projectilesMoving &&
@@ -647,47 +785,42 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       return;
     }
 
-    // Terrain effects - update TerrainMap (collision) and TerrainRenderer (visuals)
-    if (weapon.type === WeaponType.BUILDER) {
-      this.terrainMap?.addCircle(projectile.x, projectile.y, weapon.radius);
-      this.terrainRenderer?.invalidateArea(
-        projectile.x,
-        projectile.y,
-        weapon.radius,
-      );
-    } else if (weapon.type === WeaponType.DRILL) {
-      this.terrainMap?.carveTunnel(
-        projectile.x,
-        projectile.y,
-        projectile.vx,
-        projectile.vy,
-        weapon.radius,
-        150,
-      );
-      this.terrainRenderer?.invalidateTunnel(
-        projectile.x,
-        projectile.y,
-        projectile.vx,
-        projectile.vy,
-        weapon.radius,
-        150,
-      );
-    } else if (
-      weapon.type !== WeaponType.TELEPORT &&
-      weapon.type !== WeaponType.AIRSTRIKE &&
-      weapon.type !== WeaponType.HEAL
-    ) {
-      const destroyRadius = weapon.radius * weapon.terrainDamageMultiplier;
-      this.terrainMap?.destroyCircle(projectile.x, projectile.y, destroyRadius);
-      this.terrainRenderer?.invalidateArea(
-        projectile.x,
-        projectile.y,
-        destroyRadius,
-      );
+    // Terrain effects - Push to state (Host only)
+    if (this.isHost) {
+      if (weapon.type === WeaponType.BUILDER) {
+        this.state.terrainMods.push({
+          type: "add",
+          x: projectile.x,
+          y: projectile.y,
+          radius: weapon.radius,
+        });
+      } else if (weapon.type === WeaponType.DRILL) {
+        this.state.terrainMods.push({
+          type: "carve",
+          x: projectile.x,
+          y: projectile.y,
+          vx: projectile.vx,
+          vy: projectile.vy,
+          radius: weapon.radius,
+          length: 150,
+        });
+      } else if (
+        weapon.type !== WeaponType.TELEPORT &&
+        weapon.type !== WeaponType.AIRSTRIKE &&
+        weapon.type !== WeaponType.HEAL
+      ) {
+        const destroyRadius = weapon.radius * weapon.terrainDamageMultiplier;
+        this.state.terrainMods.push({
+          type: "destroy",
+          x: projectile.x,
+          y: projectile.y,
+          radius: destroyRadius,
+        });
+      }
     }
 
-    // Update GPU shader renderer with new modifications
-    this.updateShaderModifications();
+    // Sync local map immediately for the next step of simulation
+    this.syncTerrain();
 
     // Visual effects
     this.createExplosionParticles(projectile.x, projectile.y, weapon);
@@ -695,8 +828,8 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     // Special abilities
     this.handleSpecialWeapons(projectile, weapon);
 
-    // Damage/Heal
-    if (weapon.damage > 0) {
+    // Damage/Heal - Host only
+    if (this.isHost && weapon.damage > 0) {
       this.state.tanks.forEach((tank) => {
         const dx = tank.x - projectile.x;
         const dy = tank.y - 10 - projectile.y;
@@ -709,6 +842,27 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
           if (magnitude > 0) {
             if (weapon.type === WeaponType.HEAL) {
               tank.health = Math.min(tank.maxHealth, tank.health + magnitude);
+            } else {
+              tank.health = Math.max(0, tank.health - magnitude);
+            }
+          }
+        }
+      });
+    }
+
+    // Visual effects (Local to all clients)
+    if (weapon.damage > 0) {
+      this.state.tanks.forEach((tank) => {
+        const dx = tank.x - projectile.x;
+        const dy = tank.y - 10 - projectile.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < weapon.radius + 20) {
+          const magnitude = Math.floor(
+            weapon.damage * (1 - dist / (weapon.radius + 50)),
+          );
+          if (magnitude > 0) {
+            if (weapon.type === WeaponType.HEAL) {
               this.createParticles(
                 tank.x,
                 tank.y - 10,
@@ -718,7 +872,6 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
                 "#4ade80",
               );
             } else {
-              tank.health = Math.max(0, tank.health - magnitude);
               this.createParticles(tank.x, tank.y - 10, 10, "spark", 2);
             }
           }
@@ -735,6 +888,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   ): void {
     // Teleport
     if (weapon.type === WeaponType.TELEPORT) {
+      if (!this.isHost) return; // Host only handles teleport movement
       const owner = this.state.tanks.find((t) => t.id === projectile.ownerId);
       if (owner) {
         let target: Tank | null = null;
@@ -760,11 +914,8 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
           target.y = owner.y;
           owner.x = tx;
           owner.y = ty;
-          this.createParticles(owner.x, owner.y, 20, "glow", 2, "#c084fc");
-          this.createParticles(target.x, target.y, 20, "glow", 2, "#c084fc");
         } else {
           // Teleport to impact
-          this.createParticles(owner.x, owner.y, 20, "smoke", 1);
           owner.x = projectile.x;
           owner.y = projectile.y;
           let safety = 0;
@@ -772,21 +923,26 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
             owner.y--;
             safety++;
           }
-          this.createParticles(owner.x, owner.y, 20, "glow", 2, "#c084fc");
         }
       }
     }
 
-    // Airstrike
+    // Airstrike - Semi-deterministic
     if (weapon.type === WeaponType.AIRSTRIKE) {
+      // Use projectile ID as base for seed
+      const baseSeed = Number(projectile.id) || 0;
+
       for (let i = 0; i < 8; i++) {
-        const offset = (Math.random() - 0.5) * 100;
+        const seed = baseSeed + i * 0.1;
+        const offset = (this.seededRandom(seed) - 0.5) * 100;
+        const yOffset = -this.seededRandom(seed + 0.05) * 200;
+
         this._projectiles.push({
-          id: Math.random().toString(36),
+          id: (baseSeed + 1 + i * 0.1).toString(),
           x: projectile.x + offset,
-          y: -Math.random() * 200,
+          y: yOffset,
           vx: 0,
-          vy: 5 + Math.random() * 5,
+          vy: 5 + this.seededRandom(seed + 0.07) * 5,
           radius: 5,
           weapon: WeaponType.AIRSTRIKE_BOMB,
           ownerId: projectile.ownerId,
@@ -979,7 +1135,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   private planBotMove(bot: Tank): void {
     this.botState.moveDir = Math.random() > 0.5 ? 1 : -1;
     this.botState.moveTimer = Math.floor(Math.random() * 30);
-    this.botState.aimTimer = 20;
+    this.botState.aimTimer = 1; // instant aim
 
     const target = this.state.tanks.find(
       (t) => t.id !== bot.id && t.health > 0,
@@ -1042,7 +1198,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     // Set movement flags at start (if bot needs to move)
     if (this.botState.moveTimer > 0 && !bot.isMoving) {
       bot.isMoving = true;
-      bot.movingDirection = this.botState.moveDir; // Safe: moveDir is -1 or 1 here
+      bot.moveDir = this.botState.moveDir; // Safe: moveDir is -1 or 1 here
       if (this.botState.moveDir === -1) {
         bot.angle = Math.max(90, Math.min(180, bot.angle));
       } else {
@@ -1059,7 +1215,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         if (this.botState.moveTimer <= 0) {
           // Movement finished - clear flag, position already updated by local sim
           bot.isMoving = false;
-          bot.movingDirection = undefined;
+          bot.moveDir = undefined;
         }
         requestAnimationFrame(step);
         return;
@@ -1067,7 +1223,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
       // Aim phase
       if (this.botState.aimTimer > 0) {
-        bot.selectedWeapon = this.botState.targetWeapon;
+        bot.weapon = this.botState.targetWeapon;
 
         // Faster interpolation
         const angDiff = this.botState.targetAngle - bot.angle;
@@ -1121,7 +1277,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         health: INITIAL_HEALTH,
         maxHealth: INITIAL_HEALTH,
         color: TANK_COLORS.player1,
-        selectedWeapon: WeaponType.BASIC,
+        weapon: WeaponType.BASIC,
         fuel: MAX_FUEL,
       },
       {
@@ -1135,7 +1291,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         health: INITIAL_HEALTH,
         maxHealth: INITIAL_HEALTH,
         color: TANK_COLORS.player2,
-        selectedWeapon: WeaponType.BASIC,
+        weapon: WeaponType.BASIC,
         fuel: MAX_FUEL,
       },
     ];
@@ -1161,7 +1317,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     this.state.players[1].tankId = null;
     this.state.players[2].tankId = null;
     this.state.terrainSeed = Math.random() * 10000;
-    this.state.terrainModifications = [];
+    this.state.terrainMods = [];
     this.state.isSimulating = false;
   }
 

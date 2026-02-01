@@ -675,7 +675,7 @@ export default function RoomPage() {
           </div>
         </main>
 
-        <footer className="p-4 shrink-0">
+        <footer className="p-4 shrink-0  pt-16">
           <p className="text-text-muted text-xs text-center">
             &copy; {new Date().getFullYear()} GameHub24. Made with ❤️ by{" "}
             <span className="text-primary">

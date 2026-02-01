@@ -34,26 +34,25 @@ export default class ChessGame extends BaseGame<ChessState> {
   onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as ChessAction;
     console.log("[Chess] handleAction:", action, "isHost:", this.isHost);
+    if (!this.isHost) return;
 
-    if (this.isHost) {
-      switch (action.type) {
-        case "MAKE_MOVE":
-          this.makeAction(action);
-          break;
-        case "RESET_GAME": // Legacy or direct reset
-          this.reset();
-          break;
-        case "NEW_GAME_REQUEST":
-          this.handleNewGameRequest(action.playerId);
-          break;
-        case "NEW_GAME_RESPONSE":
-          this.handleNewGameResponse(action.accepted);
-          break;
-      }
+    switch (action.type) {
+      case "MAKE_MOVE":
+        this.makeMove(action);
+        break;
+      case "RESET_GAME": // Legacy or direct reset
+        this.reset();
+        break;
+      case "NEW_GAME_REQUEST":
+        this.handleNewGameRequest(action.playerId);
+        break;
+      case "NEW_GAME_RESPONSE":
+        this.handleNewGameResponse(action.accepted);
+        break;
     }
   }
 
-  makeAction(action: GameAction): void {
+  makeMove(action: GameAction): void {
     const { from, to, promotion, playerId } = action as {
       from: string;
       to: string;
@@ -168,7 +167,7 @@ export default class ChessGame extends BaseGame<ChessState> {
       promotion,
       playerId: this.userId,
     };
-    this.isHost ? this.makeAction(action) : this.sendSocketGameAction(action);
+    this.makeAction(action);
   }
 
   async requestReset(): Promise<void> {
@@ -192,9 +191,7 @@ export default class ChessGame extends BaseGame<ChessState> {
       type: "NEW_GAME_REQUEST",
       playerId: this.userId,
     };
-    this.isHost
-      ? this.handleNewGameRequest(this.userId)
-      : this.sendSocketGameAction(action);
+    this.makeAction(action);
   }
 
   // --- Handlers ---

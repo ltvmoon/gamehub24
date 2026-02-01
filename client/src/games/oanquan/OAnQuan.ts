@@ -36,24 +36,24 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
   onSocketGameAction(data: { action: GameAction }): void {
     const action = data.action as OAnQuanAction;
 
-    if (this.isHost) {
-      switch (action.type) {
-        case "START_GAME":
-          this.startGame();
-          break;
-        case "RESET":
-          this.resetGame();
-          break;
-        case "ADD_BOT":
-          this.addBot();
-          break;
-        case "REMOVE_BOT":
-          this.removeBot(action.botIndex);
-          break;
-        case "MOVE":
-          this.processMove(action);
-          break;
-      }
+    if (!this.isHost) return;
+
+    switch (action.type) {
+      case "START_GAME":
+        this.startGame();
+        break;
+      case "RESET":
+        this.resetGame();
+        break;
+      case "ADD_BOT":
+        this.addBot();
+        break;
+      case "REMOVE_BOT":
+        this.removeBot(action.botIndex);
+        break;
+      case "MOVE":
+        this.processMove(action);
+        break;
     }
   }
 
@@ -306,28 +306,23 @@ export default class OAnQuan extends BaseGame<OAnQuanState> {
   }
 
   requestStartGame() {
-    if (this.isHost) this.startGame();
-    else this.sendSocketGameAction({ type: "START_GAME" });
+    this.makeAction({ type: "START_GAME" });
   }
 
   requestResetGame() {
-    if (this.isHost) this.resetGame();
-    else this.sendSocketGameAction({ type: "RESET" });
+    this.makeAction({ type: "RESET" });
   }
 
   requestAddBot(index: number) {
-    if (this.isHost) this.addBot();
-    else this.sendSocketGameAction({ type: "ADD_BOT", botIndex: index });
+    this.makeAction({ type: "ADD_BOT", botIndex: index });
   }
 
   requestRemoveBot(index: number) {
-    if (this.isHost) this.removeBot(index);
-    else this.sendSocketGameAction({ type: "REMOVE_BOT", botIndex: index });
+    this.makeAction({ type: "REMOVE_BOT", botIndex: index });
   }
 
   requestMove(squareId: number, direction: "left" | "right") {
-    if (this.isHost) this.processMove({ type: "MOVE", squareId, direction });
-    else this.sendSocketGameAction({ type: "MOVE", squareId, direction });
+    this.makeAction({ type: "MOVE", squareId, direction });
   }
 }
 

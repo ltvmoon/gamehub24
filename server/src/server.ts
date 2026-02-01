@@ -485,7 +485,7 @@ io.on("connection", (socket: Socket) => {
 
   // Relay game actions
   socket.on("game:action", (data: { roomId: string; action: any }) => {
-    log(`game:action ${userId} -> ${data.roomId}`);
+    log(`game:action ${userId} -> ${data.roomId}: ${JSON.stringify(data)}`);
     socket.to(data.roomId).emit("game:action", data);
   });
 

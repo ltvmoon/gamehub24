@@ -785,7 +785,7 @@ function PlayerSlotDisplay({
             ))}
           {slot.passed && (
             <span className="text-[10px] text-yellow-400">
-              {ts({ en: "Passed", vi: "Đã bỏ" })}
+              {ts({ en: "Passed", vi: "Bỏ lượt" })}
             </span>
           )}
         </div>

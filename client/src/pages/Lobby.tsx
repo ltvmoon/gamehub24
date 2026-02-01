@@ -369,7 +369,7 @@ export default function Lobby() {
         <SettingsModal onClose={() => setShowSettingsModal(false)} />
       )}
 
-      <footer className="p-4">
+      <footer className="p-4 pt-16">
         <p className="text-text-muted text-xs text-center">
           &copy; {new Date().getFullYear()} GameHub24. Made with ❤️ by{" "}
           <span className="text-primary">
