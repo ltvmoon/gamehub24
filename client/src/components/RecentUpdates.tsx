@@ -20,6 +20,13 @@ const updates: {
   link?: string;
 }[] = [
   {
+    type: "new",
+    en: "New game: Gunny Wars",
+    vi: "Game mới: Gunny Wars",
+    gameId: "gunny",
+    timestamp: 1769989670074,
+  },
+  {
     type: "fix",
     en: "Fix bug hang web: Uno",
     vi: "Fix bug đứng web: Uno",

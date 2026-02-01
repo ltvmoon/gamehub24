@@ -651,17 +651,6 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     return projectilesMoving;
   }
 
-  private checkLandmineExplosion(p: Projectile): void {
-    this.state.tanks.forEach((tank) => {
-      if (tank.health <= 0) return;
-      const dx = tank.x - p.x;
-      const dy = tank.y - 10 - p.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 20) {
-        this.explode(p);
-      }
-    });
-  }
-
   private checkProjectileTankCollision(p: Projectile): boolean {
     for (const tank of this.state.tanks) {
       if (tank.health <= 0) continue;
