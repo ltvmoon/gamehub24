@@ -61,7 +61,7 @@ export default function BettingModal({
   const maxBet = currentBalance;
 
   return createPortal(
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 glass-blur p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-800/50">

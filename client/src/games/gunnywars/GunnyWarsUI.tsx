@@ -1162,7 +1162,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
   if (state.phase === GamePhase.WAITING) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-gray-950 text-white p-4">
-        <h1 className="text-4xl font-black mb-8 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+        <h1 className="text-4xl font-black mb-8 bg-linear-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
           GunnyWars
         </h1>
 
@@ -1222,7 +1222,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
               <button
                 onClick={() => game.startGame()}
                 disabled={!game.canStartGame()}
-                className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full py-3 bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <div className="flex items-center gap-2">
                   <Play size={20} />
@@ -1236,7 +1236,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
               <button
                 onClick={() => game.requestStartExploration()}
                 disabled={state.players.length > 1}
-                className="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full py-3 bg-linear-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <div className="flex items-center gap-2">
                   <Compass size={20} />
@@ -1292,7 +1292,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
         />
 
         {/* Wind Indicator */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-2 rounded-full border border-gray-700 flex items-center gap-3 shadow-lg pointer-events-none">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 glass-blur px-6 py-2 rounded-full border border-gray-700 flex items-center gap-3 shadow-lg pointer-events-none">
           <span className="text-xs font-bold text-gray-400 tracking-wider">
             {ti({ en: "WIND", vi: "GIÓ" })}
           </span>
@@ -1323,7 +1323,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
               )
                 game.requestReset();
             }}
-            className="bg-red-800/80 hover:bg-red-700 p-2 rounded-full border border-red-600 text-red-200 shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            className="bg-red-800/80 hover:bg-red-700 p-2 rounded-full border border-red-600 text-red-200 shadow-lg glass-blur transition-transform active:scale-95"
             title="Exit to Menu"
           >
             <LogOut size={18} />
@@ -1346,7 +1346,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                 )
                   game.requestRegenerateMap();
               }}
-              className="bg-purple-800/80 hover:bg-purple-700 p-2 rounded-full border border-purple-600 text-purple-200 shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+              className="bg-purple-800/80 hover:bg-purple-700 p-2 rounded-full border border-purple-600 text-purple-200 shadow-lg glass-blur transition-transform active:scale-95"
               title="Regenerate Map"
             >
               <RotateCw size={18} />
@@ -1355,7 +1355,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           {/* GPU/CPU Toggle */}
           <button
             onClick={() => setForceGpuRender(!forceGpuRender)}
-            className={`px-3 py-2 rounded-full border text-xs font-bold shadow-lg backdrop-blur-sm transition-all active:scale-95 ${
+            className={`px-3 py-2 rounded-full border text-xs font-bold shadow-lg glass-blur transition-all active:scale-95 ${
               forceGpuRender
                 ? "bg-green-800/80 hover:bg-green-700 border-green-600 text-green-200"
                 : "bg-amber-800/80 hover:bg-amber-700 border-amber-600 text-amber-200"
@@ -1365,13 +1365,13 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           </button>
           <button
             onClick={() => handleZoom("in")}
-            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg glass-blur transition-transform active:scale-95"
           >
             <ZoomIn size={18} />
           </button>
           <button
             onClick={() => handleZoom("out")}
-            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg glass-blur transition-transform active:scale-95"
           >
             <ZoomOut size={18} />
           </button>
@@ -1385,7 +1385,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                 setIsFullscreen(false);
               }
             }}
-            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            className="bg-gray-800/80 hover:bg-gray-700 p-2 rounded-full border border-gray-600 text-white shadow-lg glass-blur transition-transform active:scale-95"
           >
             {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
           </button>
@@ -1400,7 +1400,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
         {/* Game Over */}
         {state.phase === GamePhase.GAME_OVER && (
           <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-50">
-            <h1 className="text-5xl @md:text-7xl font-black mb-6 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 text-transparent bg-clip-text">
+            <h1 className="text-5xl @md:text-7xl font-black mb-6 bg-linear-to-r from-yellow-400 via-pink-500 to-purple-600 text-transparent bg-clip-text">
               {state.winner} {ts({ en: "WINS", vi: "THẮNG" })}
             </h1>
             <button
@@ -1520,7 +1520,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
             >
               <button
                 onClick={() => game.fire()}
-                className="w-full h-full min-h-[44px] bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-lg tracking-widest rounded-lg shadow-lg active:scale-95 transition-transform border-t border-red-400 flex items-center justify-center"
+                className="w-full h-full min-h-[44px] bg-linear-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-lg tracking-widest rounded-lg shadow-lg active:scale-95 transition-transform border-t border-red-400 flex items-center justify-center"
               >
                 {ts({ en: "FIRE", vi: "BẮN" })}
               </button>

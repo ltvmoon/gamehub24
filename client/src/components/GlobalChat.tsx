@@ -135,7 +135,7 @@ export default function GlobalChat() {
 
   return (
     <Portal>
-      <div className="fixed bottom-4 right-4 z-40 w-80 md:w-96 bg-background-secondary/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-scaleIn max-h-[600px] h-[500px]">
+      <div className="fixed bottom-4 right-4 z-40 w-80 md:w-96 bg-background-secondary/95 glass-blur border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-scaleIn max-h-[600px] h-[500px]">
         {/* Header */}
         <div className="p-3 border-b border-white/10 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">

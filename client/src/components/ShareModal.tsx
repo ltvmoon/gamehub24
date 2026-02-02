@@ -29,7 +29,7 @@ export default function ShareModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-100 animate-fadeIn">
+      <div className="fixed inset-0 bg-black/80 glass-blur flex items-center justify-center z-100 animate-fadeIn">
         <div className="bg-background-secondary border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl mx-4 animate-scaleIn relative">
           <button
             onClick={onClose}

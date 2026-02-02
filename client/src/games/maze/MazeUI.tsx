@@ -503,7 +503,7 @@ const MazeUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
     });
 
     const className =
-      "absolute flex items-center justify-center bg-white/10 hover:bg-white/40 rounded-full backdrop-blur-sm transition-all hover:scale-110 active:scale-95 z-30 border border-white/10 shadow-lg ring-1 ring-black/20 opacity-50";
+      "absolute flex items-center justify-center bg-white/10 hover:bg-white/40 rounded-full glass-blur transition-all hover:scale-110 active:scale-95 z-30 border border-white/10 shadow-lg ring-1 ring-black/20 opacity-50";
 
     return (
       <>
@@ -566,7 +566,7 @@ const MazeUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
               e.stopPropagation();
               handleTeleport();
             }}
-            className="absolute flex items-center justify-center bg-purple-500/80 hover:bg-purple-400 rounded-full backdrop-blur-sm transition-all hover:scale-110 active:scale-95 z-40 border border-white/20 shadow-[0_0_15px_rgba(168,85,247,0.5)] animate-pulse opacity-50"
+            className="absolute flex items-center justify-center bg-purple-500/80 hover:bg-purple-400 rounded-full glass-blur transition-all hover:scale-110 active:scale-95 z-40 border border-white/20 shadow-[0_0_15px_rgba(168,85,247,0.5)] animate-pulse opacity-50"
             style={{
               width: `${BUTTON_SIZE}px`,
               height: `${BUTTON_SIZE}px`,

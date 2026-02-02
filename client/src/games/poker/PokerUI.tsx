@@ -368,7 +368,7 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
         {/* Community Cards & Pot */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-4 z-0 w-full max-w-md">
           {/* Pot Display */}
-          <div className="bg-black/40 px-6 py-2 rounded-full border border-yellow-500/30 backdrop-blur-sm flex items-center gap-2">
+          <div className="bg-black/40 px-6 py-2 rounded-full border border-yellow-500/30 glass-blur flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-yellow-500" />
             <span className="text-yellow-400 font-bold text-lg">
               {ti({ en: "Pot", vi: "Tổng" })}: {state.pot}
@@ -460,7 +460,7 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
       </div>
 
       {/* Controls - Fixed Bottom Bar */}
-      <div className="w-full shrink-0 p-2 bg-slate-900/80 backdrop-blur-md border-t border-slate-700 flex flex-col items-center justify-between gap-4 z-20">
+      <div className="w-full shrink-0 p-2 bg-slate-900/80 glass-blur border-t border-slate-700 flex flex-col items-center justify-between gap-4 z-20">
         {/* Game State Info */}
         <div className="flex flex-row flex-wrap items-center justify-center gap-4 text-xs text-slate-400">
           <span>

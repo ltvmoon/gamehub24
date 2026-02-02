@@ -616,7 +616,7 @@ export default function RoomPage() {
               }`}
             >
               {isSpectator && (
-                <div className="absolute top-0 left-0 right-0 bg-blue-500/80 text-white text-xs py-1 px-4 text-center z-50 backdrop-blur-sm">
+                <div className="absolute top-0 left-0 right-0 bg-blue-500/80 text-white text-xs py-1 px-4 text-center z-50 glass-blur">
                   {ti({
                     en: "You are spectating. Wait for host to add you to the game.",
                     vi: "Bạn đang xem. Chờ chủ phòng thêm vào game.",
@@ -737,7 +737,7 @@ function PasswordPromptModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-100 animate-fadeIn">
+      <div className="fixed inset-0 bg-black/80 glass-blur flex items-center justify-center z-100 animate-fadeIn">
         <div className="bg-background-secondary border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl mx-4 animate-scaleIn">
           <div className="flex flex-col items-center text-center mb-6">
             <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mb-4 text-yellow-500">
@@ -822,7 +822,7 @@ function ChangeGameModal({
   return (
     <Portal>
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-100 animate-fadeIn"
+        className="fixed inset-0 bg-black/80 glass-blur flex items-center justify-center z-100 animate-fadeIn"
         onClick={onClose}
       >
         <div

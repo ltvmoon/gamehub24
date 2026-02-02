@@ -29,14 +29,6 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const { ti, ts, language, setLanguage } = useLanguage();
   const { enableGlassEffects, setEnableGlassEffects } = useSettingsStore();
 
-  useEffect(() => {
-    if (enableGlassEffects) {
-      document.body.classList.remove("no-glass");
-    } else {
-      document.body.classList.add("no-glass");
-    }
-  }, [enableGlassEffects]);
-
   const [url, setUrl] = useState(getServerUrl());
   const [newUsername, setNewUsername] = useState("");
   const [previewUsername, setPreviewUsername] = useState("");
@@ -120,7 +112,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   return (
     <Portal>
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
+        className="fixed inset-0 bg-black/80 glass-blur flex items-center justify-center z-50 animate-fadeIn"
         // onClick={onClose}
       >
         <div

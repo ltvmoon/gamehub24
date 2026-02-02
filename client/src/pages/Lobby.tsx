@@ -10,6 +10,7 @@ import {
   LogIn,
   Star,
   MessageSquare,
+  Github,
 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
@@ -152,7 +153,7 @@ export default function Lobby() {
 
               <button
                 onClick={() => setShowJoinModal(true)}
-                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 backdrop-blur-sm"
+                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 glass-blur"
               >
                 <LogIn className="w-5 h-5" />
                 {ti({ en: "Join Room", vi: "Vào Phòng" })}
@@ -167,7 +168,7 @@ export default function Lobby() {
                     roomDiv.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 backdrop-blur-sm"
+                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 glass-blur"
               >
                 <Users className="w-5 h-5" />
                 {ti({ en: "Public Rooms", vi: "Phòng Công Khai" })} (
@@ -194,6 +195,22 @@ export default function Lobby() {
                 {/* <div className="w-2 h-2 rounded-full bg-blue-500" /> */}
                 <MessageSquare className="w-5 h-5 text-primary" />
                 {ti({ en: "Open Chat", vi: "Mở Chat" })}
+              </button>
+            </div>
+
+            {/* Github button */}
+            <div className="flex items-center justify-center mt-6">
+              <button
+                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 glass-blur"
+                onClick={() =>
+                  window.open(
+                    "https://github.com/hoangtran0410/gamehub24",
+                    "_blank",
+                  )
+                }
+              >
+                <Github className="w-5 h-5" />
+                {ti({ en: "GitHub", vi: "GitHub" })}
               </button>
             </div>
 
@@ -615,7 +632,7 @@ const CreateRoomModal = memo(
 
     return (
       <Portal>
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+        <div className="fixed inset-0 bg-black/80 glass-blur flex items-center justify-center z-50 animate-fadeIn">
           <div className="bg-background-secondary border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl mx-4 text-center">
             <h2 className="font-display text-2xl text-text-primary mb-6">
               {ti({ en: "Create Room", vi: "Tạo Phòng" })}
@@ -791,7 +808,7 @@ const JoinRoomModal = memo(({ onClose }: { onClose: () => void }) => {
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+      <div className="fixed inset-0 bg-black/80 glass-blur flex items-center justify-center z-50 animate-fadeIn">
         <div className="bg-background-secondary border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl mx-4">
           <h2 className="font-display text-2xl text-text-primary mb-6">
             {ti({ en: "Join Room", vi: "Vào Phòng" })}

@@ -228,7 +228,7 @@ const GameHistoryPanel: React.FC<{
         return (
           <div key={day} className="mb-4 relative">
             {/* Day Header */}
-            <div className="sticky top-0 z-10 py-1.5 bg-slate-900/95 backdrop-blur border-b border-white/10 mb-2 flex items-center gap-2">
+            <div className="sticky top-0 z-10 py-1.5 bg-slate-900/95 glass-blur border-b border-white/10 mb-2 flex items-center gap-2">
               <div className="p-1 rounded bg-blue-500/20 text-blue-400">
                 {day === 0 ? (
                   <Gamepad2 className="w-4 h-4" />
@@ -357,7 +357,7 @@ const PlayerHistoryModal: React.FC<{
   const isMe = userId === player.id;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/80 glass-blur">
       <div className="bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-slate-900">
           <div className="flex items-center gap-2">
@@ -1751,7 +1751,7 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
     <div
       className={`${
         fixed
-          ? "fixed top-0 left-0 right-0 z-100 bg-slate-900/95 backdrop-blur-md border-b border-white/10 py-2 animate-in slide-in-from-top duration-300 shadow-2xl"
+          ? "fixed top-0 left-0 right-0 z-100 bg-slate-900/95 glass-blur border-b border-white/10 py-2 animate-in slide-in-from-top duration-300 shadow-2xl"
           : "mb-3"
       } flex justify-center w-full`}
     >
@@ -1759,7 +1759,7 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
         className={`flex justify-between w-full max-w-[450px] ${
           fixed
             ? "px-4"
-            : "bg-slate-900/60 backdrop-blur-md p-2 px-4 rounded-xl border border-white/10 shadow-lg"
+            : "bg-slate-900/60 glass-blur p-2 px-4 rounded-xl border border-white/10 shadow-lg"
         }`}
       >
         <div className="flex items-center gap-2">
@@ -1836,7 +1836,7 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
   );
 
   const renderHistoryModal = () => (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-100 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/80 glass-blur z-100 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-lg w-full h-[80vh] max-h-[90%] overflow-hidden shadow-2xl flex flex-col">
         {/* Header matching PlayerHistoryModal */}
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-slate-900">
@@ -1869,7 +1869,7 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
   );
 
   const renderGameRules = () => (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-100 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/80 glass-blur z-100 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl relative">
         <button
           onClick={() => setShowRules(false)}

@@ -116,7 +116,7 @@ export default function EmojiToolbar() {
 
         {/* Emoji List */}
         <div
-          className={`flex flex-col items-center gap-1 p-2 rounded-2xl bg-slate-900/90 border border-white/10 backdrop-blur-md shadow-2xl origin-bottom-left transition-all duration-300 ease-out
+          className={`flex flex-col items-center gap-1 p-2 rounded-2xl bg-slate-900/90 border border-white/10 glass-blur shadow-2xl origin-bottom-left transition-all duration-300 ease-out
             ${isExpanded ? "opacity-100 scale-100 translate-y-0" : "opacity-0 translate-y-20 pointer-events-none absolute left-14"}`}
         >
           <div className="flex flex-col items-start gap-1 overflow-auto max-w-[75vw] no-scrollbar px-1">
