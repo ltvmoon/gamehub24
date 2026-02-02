@@ -19,10 +19,45 @@
     />
     <!-- Custom styles -->
     <style>
+      :root {
+        --glass-blur: 10px;
+        --glass-bg: rgba(255, 255, 255, 0.05);
+      }
+
+      body.no-glass {
+        --glass-blur: 0px;
+        --glass-bg: rgba(
+          15,
+          23,
+          42,
+          0.95
+        ); /* More opaque background-secondary */
+      }
+
+      /* Global override for Tailwind backdrop-blur classes */
+      body.no-glass [class*="backdrop-blur"] {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
       .glass-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
+        background: var(--glass-bg);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
         border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      @media (max-width: 768px) {
+        .glass-card {
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+          background: rgba(
+            30,
+            41,
+            59,
+            0.8
+          ); /* Slightly more opaque background for mobile */
+        }
       }
 
       /* Scrollbar styling */
@@ -44,10 +79,10 @@
         background: rgba(53, 73, 253, 0.5);
       }
     </style>
-    <script type="module" crossorigin src="./built/index-D3tEkbXB.js"></script>
-    <link rel="modulepreload" crossorigin href="./built/react-vendor-BwdgwnC-.js">
+    <script type="module" crossorigin src="./built/index-BLcGWsmB.js"></script>
+    <link rel="modulepreload" crossorigin href="./built/react-vendor-DeJ0i39y.js">
     <link rel="modulepreload" crossorigin href="./built/socket-DRbsQkF5.js">
-    <link rel="modulepreload" crossorigin href="./built/zustand-Btr8hoUL.js">
+    <link rel="modulepreload" crossorigin href="./built/zustand-ie0NTbcC.js">
     <link rel="stylesheet" crossorigin href="./built/index-BuOXLMoR.css">
   </head>
   <body class="relative bg-background-primary text-text-primary font-body">
