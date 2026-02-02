@@ -83,6 +83,12 @@ class RoomManager {
         const roomId = customRoomId || username;
         // check if room already exists
         if (this.rooms.has(roomId)) {
+            // check user already in room
+            const room = this.rooms.get(roomId);
+            if (room?.players.some((p) => p.id === userId) ||
+                room?.spectators.some((p) => p.id === userId)) {
+                return room;
+            }
             throw new Error("Room name " + roomId + " already exists. Please choose another name.");
         }
         const room = {

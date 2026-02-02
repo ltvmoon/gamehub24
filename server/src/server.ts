@@ -69,7 +69,15 @@ function formatUpTime(diff: number) {
 }
 
 function log(...args: any[]) {
-  console.log(`[${new Date().toLocaleString("vi-VN")}]`, ...args);
+  const now = new Date();
+
+  // This automatically calculates the offset for Vietnam (ICT)
+  const vietnamTime = now.toLocaleString("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour12: false, // Use 24-hour format if preferred
+  });
+
+  console.log(`[${vietnamTime}]`, ...args);
 }
 
 // Health check endpoint

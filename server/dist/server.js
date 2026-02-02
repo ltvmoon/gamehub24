@@ -61,7 +61,13 @@ function formatUpTime(diff) {
     return `${days}d ${hoursRemainder}h ${minutesRemainder}m ${secondsRemainder}s`;
 }
 function log(...args) {
-    console.log(`[${new Date().toLocaleString("vi-VN")}]`, ...args);
+    const now = new Date();
+    // This automatically calculates the offset for Vietnam (ICT)
+    const vietnamTime = now.toLocaleString("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        hour12: false, // Use 24-hour format if preferred
+    });
+    console.log(`[${vietnamTime}]`, ...args);
 }
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -401,7 +407,7 @@ io.on("connection", (socket) => {
     // GAME EVENTS (Pure relay)
     // Relay game actions
     socket.on("game:action", (data) => {
-        log(`game:action ${userId} -> ${data.roomId}`);
+        log(`game:action ${userId} -> ${data.roomId}: ${JSON.stringify(data)}`);
         socket.to(data.roomId).emit("game:action", data);
     });
     // Relay game state
