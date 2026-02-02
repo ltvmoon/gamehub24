@@ -105,6 +105,11 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
     this.lastSyncedModCount = 0;
     this.syncTerrain();
+
+    // If GPU renderer is ready, upload biome data
+    if (this.terrainShaderRenderer?.isReady()) {
+      this.terrainShaderRenderer.uploadBiomeData(this.state.terrainSeed);
+    }
   }
 
   public onStateUpdate(state: GunnyWarsState): void {
@@ -218,6 +223,8 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     const success = this.terrainShaderRenderer.init(canvas);
     if (success && this.terrainMap) {
       this.terrainShaderRenderer.uploadModifications(this.state.terrainMods);
+      // Upload initial biome data
+      this.terrainShaderRenderer.uploadBiomeData(this.state.terrainSeed);
     }
 
     // Also init particle renderer

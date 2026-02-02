@@ -12,7 +12,7 @@ import type { TerrainModification } from "./types";
 // GPU Shader-based Terrain Renderer using WebGL2
 // ============================================================================
 
-const VERTEX_SHADER = `#version 300 es
+const VERTEX_SHADER = /*glsl*/ `#version 300 es
 precision highp float;
 
 // Fullscreen quad vertices (2 triangles)
@@ -30,7 +30,7 @@ void main() {
 }
 `;
 
-const FRAGMENT_SHADER = `#version 300 es
+const FRAGMENT_SHADER = /*glsl*/ `#version 300 es
 precision highp float;
 
 uniform float u_seed;
@@ -41,6 +41,7 @@ uniform vec2 u_worldSize;
 uniform sampler2D u_modTexture;
 uniform int u_modCount;
 uniform float u_time;
+uniform sampler2D u_biomeTexture;
 
 out vec4 fragColor;
 
@@ -104,15 +105,13 @@ float fbm1D(float x, float seed, int octaves) {
   return value;
 }
 
-// === Biome detection (must match CPU) ===
+// === Biome detection (OPTIMIZED: Uses pre-calculated texture) ===
 int getBiomeIndex(float x) {
-  // Match CPU chunk-based rendering (CHUNK_SIZE = 256)
-  // Sample at the center of each 256-pixel chunk
-  float chunkX = floor(x / 256.0) * 256.0 + 128.0;
-  float biomeNoise = fbm1D(chunkX * BIOME_SCALE, u_seed, 2);
+  int chunkIdx = int(floor(x / 256.0));
+  // Limit to available chunks in texture (e.g. 1024)
+  chunkIdx = clamp(chunkIdx, 0, 1023);
+  float biomeNoise = texelFetch(u_biomeTexture, ivec2(chunkIdx, 0), 0).r;
 
-  // Map noise value (0-1) to biome index (0-6)
-  // Sync with CPU distribution logic
   if (biomeNoise < 0.1) return 2; // Valley
   if (biomeNoise < 0.2) return 0; // Plains
   if (biomeNoise < 0.3) return 1; // Mountains
@@ -169,7 +168,16 @@ bool isInTunnel(float px, float py, float sx, float sy, float nx, float ny, floa
 bool isInCrater(float worldX, float worldY, float modX, float modY, float modRadius, out float edgeDist) {
   float dx = worldX - modX;
   float dy = worldY - modY;
-  float dist = sqrt(dx * dx + dy * dy);
+  float distSq = dx * dx + dy * dy;
+
+  // Fast path: if well inside the minimum possible irregular radius, skip noise
+  // Min radius is roughly modRadius * 0.7
+  if (distSq < modRadius * modRadius * 0.49) {
+    edgeDist = sqrt(distSq) - modRadius;
+    return true;
+  }
+
+  float dist = sqrt(distSq);
   float angle = atan(dy, dx);
   vec2 noisePos = vec2(modX + modY * 0.37, angle * 3.0 + modRadius * 0.1);
   float edgeNoise = fbm(noisePos * 0.5) * 0.3 + 0.85;
@@ -242,9 +250,8 @@ vec4 getCloud(vec2 uv, float layer) {
 }
 
 // === Weather Particles (snow, sand) ===
-float weatherParticle(vec2 screenPos, vec2 cameraPos, float particleSize, float fallSpeed, float drift) {
-  // Use a mix of screen and camera position for parallax effect
-  vec2 uv = (screenPos + vec2(cameraPos.x, -cameraPos.y) * 0.4 * u_zoom) / particleSize;
+float weatherParticle(vec2 worldPos, float particleSize, float fallSpeed, float drift) {
+  vec2 uv = worldPos / particleSize;
   vec2 cellId = floor(uv);
   vec2 cellUV = fract(uv);
 
@@ -265,8 +272,9 @@ float weatherParticle(vec2 screenPos, vec2 cameraPos, float particleSize, float 
         vec2 particlePos = neighbor + vec2(randX * 0.8 + 0.1, randY * 0.8 + 0.1);
 
         // Time-based motion with CPU-side modulo for precision
+        // Corrected for World Y-down system: + u_time moves it down
         float timeScale = u_time * 0.0006;
-        float progress = fract(randY * 10.0 - timeScale * fallSpeed * 10.0);
+        float progress = fract(randY * 10.0 + timeScale * fallSpeed * 10.0);
         particlePos.y += progress;
         particlePos.x += sin(u_time * 0.0005 * drift * 5.0 + randX * 6.28) * 0.4;
 
@@ -284,9 +292,9 @@ float weatherParticle(vec2 screenPos, vec2 cameraPos, float particleSize, float 
 }
 
 // === Rain Particles (thin streaks) ===
-float rainParticle(vec2 screenPos, vec2 cameraPos) {
+float rainParticle(vec2 worldPos) {
   // Elongated grid for streaks
-  vec2 uv = (screenPos + vec2(cameraPos.x, -cameraPos.y) * 0.4 * u_zoom) / vec2(8.0, 80.0);
+  vec2 uv = worldPos / vec2(8.0, 80.0);
   vec2 cellId = floor(uv);
   vec2 cellUV = fract(uv);
 
@@ -298,7 +306,8 @@ float rainParticle(vec2 screenPos, vec2 cameraPos) {
 
     if (randX < 0.2) {
       float timeScale = u_time * 0.005;
-      float progress = fract(randY - timeScale * (1.2 + randX));
+      // Corrected for World Y-down system: + u_time moves it down
+      float progress = fract(randY + timeScale * (1.2 + randX));
 
       float xOffset = randX * 5.0; // Random horizontal placement in cell
       float dX = abs(cellUV.x - xOffset);
@@ -325,13 +334,16 @@ vec3 calculateLighting(vec2 worldPos, vec3 baseColor) {
   for (int i = 0; i < u_lightCount; i++) {
     float dx = worldPos.x - u_lightPos[i].x;
     float dy = worldPos.y - u_lightPos[i].y;
-    float dist = sqrt(dx*dx + dy*dy);
+    float distSq = dx*dx + dy*dy;
+    float radius = u_lightRadius[i];
+    float radiusSq = radius * radius;
 
-    if (dist < u_lightRadius[i]) {
-      float atten = 1.0 - smoothstep(0.0, u_lightRadius[i], dist);
+    if (distSq < radiusSq) {
+      // Linear falloff using sqrt only when inside radius
+      float dist = sqrt(distSq);
+      float atten = 1.0 - dist / radius;
       // Square the attenuation for a more natural falloff
-      atten = atten * atten;
-      totalLight += u_lightColor[i] * atten;
+      totalLight += u_lightColor[i] * (atten * atten);
     }
   }
 
@@ -340,26 +352,26 @@ vec3 calculateLighting(vec2 worldPos, vec3 baseColor) {
 }
 
 // === Biome color palettes ===
-vec3 getPlainsColor(float depth, float worldY, float baseH) {
+vec3 getPlainsColor(float depth, float yRel, float baseH) {
   vec3 dirtColor = vec3(0.278, 0.333, 0.412);
   vec3 deepColor = vec3(0.059, 0.090, 0.165);
   vec3 grassColor = vec3(0.133, 0.773, 0.369);
   vec3 grassLight = vec3(0.525, 0.937, 0.675);
 
-  vec3 color = mix(dirtColor, deepColor, worldY / u_worldSize.y);
+  vec3 color = mix(dirtColor, deepColor, yRel);
   if (depth >= 0.0 && depth < 15.0) {
     color = depth < 4.0 ? grassLight : grassColor;
   }
   return color;
 }
 
-vec3 getMountainsColor(float depth, float worldY, float baseH) {
+vec3 getMountainsColor(float depth, float yRel, float baseH) {
   vec3 rockDark = vec3(0.25, 0.25, 0.28);
   vec3 rockLight = vec3(0.45, 0.45, 0.5);
   vec3 snowColor = vec3(0.95, 0.97, 1.0);
   vec3 snowShadow = vec3(0.75, 0.82, 0.9);
 
-  vec3 color = mix(rockLight, rockDark, worldY / u_worldSize.y);
+  vec3 color = mix(rockLight, rockDark, yRel);
 
   // Snow on high peaks
   if (baseH < SNOW_THRESHOLD) {
@@ -370,65 +382,65 @@ vec3 getMountainsColor(float depth, float worldY, float baseH) {
   return color;
 }
 
-vec3 getValleyColor(float depth, float worldY, float baseH) {
+vec3 getValleyColor(float depth, float yRel, float baseH) {
   vec3 grassDark = vec3(0.08, 0.45, 0.22);
   vec3 grassLight = vec3(0.15, 0.65, 0.35);
   vec3 dirtColor = vec3(0.35, 0.25, 0.18);
 
-  vec3 color = mix(grassLight, dirtColor, worldY / u_worldSize.y);
+  vec3 color = mix(grassLight, dirtColor, yRel);
   if (depth >= 0.0 && depth < 12.0) {
     color = depth < 3.0 ? grassLight : grassDark;
   }
   return color;
 }
 
-vec3 getDesertColor(float depth, float worldY, float baseH) {
+vec3 getDesertColor(float depth, float yRel, float baseH) {
   vec3 sandLight = vec3(0.93, 0.85, 0.65);
   vec3 sandDark = vec3(0.75, 0.60, 0.40);
   vec3 rockColor = vec3(0.55, 0.45, 0.35);
 
-  vec3 color = mix(sandLight, rockColor, worldY / u_worldSize.y);
+  vec3 color = mix(sandLight, rockColor, yRel);
   if (depth >= 0.0 && depth < 8.0) {
     color = depth < 3.0 ? sandLight : sandDark;
   }
   return color;
 }
 
-vec3 getTundraColor(float depth, float worldY, float baseH) {
+vec3 getTundraColor(float depth, float yRel, float baseH) {
   vec3 snowWhite = vec3(0.92, 0.95, 0.98);
   vec3 iceBluePale = vec3(0.80, 0.88, 0.95);
   vec3 iceBlue = vec3(0.55, 0.70, 0.85);
   vec3 frozenGround = vec3(0.45, 0.50, 0.55);
 
-  vec3 color = mix(iceBluePale, frozenGround, worldY / u_worldSize.y);
+  vec3 color = mix(iceBluePale, frozenGround, yRel);
   if (depth >= 0.0 && depth < 10.0) {
     color = depth < 3.0 ? snowWhite : iceBlue;
   }
   return color;
 }
 
-vec3 getSwampColor(float worldX, float depth, float worldY, float baseH) {
+vec3 getSwampColor(float worldX, float depth, float yRel, float baseH) {
   vec3 muckColor = vec3(0.15, 0.18, 0.12);
   vec3 waterColor = vec3(0.1, 0.25, 0.15);
   vec3 mossColor = vec3(0.2, 0.4, 0.1);
   vec3 grassColor = vec3(0.1, 0.3, 0.05);
 
-  vec3 color = mix(muckColor, vec3(0.05, 0.08, 0.05), worldY / u_worldSize.y);
+  vec3 color = mix(muckColor, vec3(0.05, 0.08, 0.05), yRel);
   if (depth >= 0.0 && depth < 15.0) {
     color = depth < 4.0 ? mossColor : grassColor;
-    if (noise(vec2(worldX * 0.1, worldY * 0.5)) > 0.6) color = waterColor;
+    if (noise(vec2(worldX * 0.1, (baseH + depth) * 0.5)) > 0.6) color = waterColor;
   }
   return color;
 }
 
-vec3 getVolcanicColor(float worldX, float depth, float worldY, float baseH) {
+vec3 getVolcanicColor(float worldX, float depth, float yRel, float baseH) {
   vec3 basaltColor = vec3(0.12, 0.12, 0.15);
   vec3 ashColor = vec3(0.25, 0.25, 0.28);
   vec3 lavaGlow = vec3(0.8, 0.2, 0.0);
 
-  vec3 color = mix(basaltColor, vec3(0.05, 0.05, 0.08), worldY / u_worldSize.y);
+  vec3 color = mix(basaltColor, vec3(0.05, 0.05, 0.08), yRel);
   if (depth >= 0.0 && depth < 10.0) {
-    float lavaNoise = noise(vec2(worldX * 0.05, worldY * 0.1 + u_time * 0.001));
+    float lavaNoise = noise(vec2(worldX * 0.05, (baseH + depth) * 0.1 + u_time * 0.001));
     color = depth < 3.0 ? ashColor : basaltColor;
     if (lavaNoise > 0.8) color = mix(color, lavaGlow, (lavaNoise - 0.8) * 5.0);
   }
@@ -542,18 +554,12 @@ vec4 getDecorationColor(float worldX, float worldY, float baseH, int biomeIdx) {
 }
 
 // Get biome color with smooth blending at boundaries
-vec3 getBiomeColorBlended(float worldX, float worldY, float baseH) {
-  float depth = worldY - baseH;
-
+vec3 getBiomeColorBlended(float worldX, float depth, float yRel, float baseH) {
   // BIOME_SCALE is very small, so we use a reasonable transition width
   float blendWidth = ${BIOME_BLEND_WIDTH.toFixed(1)};
 
   // Find current and neighbor biomes for blending
   int currentBiome = getBiomeIndex(worldX);
-
-  // Check transitions at chunk boundaries (every 256px) or continuous?
-  // CPU uses CHUNK_SIZE/2 offset for getBiomeIndex sampling.
-  // We want to blend between the zones.
 
   float chunkX = floor(worldX / 256.0) * 256.0 + 128.0;
   float nextChunkX = chunkX + 256.0;
@@ -563,13 +569,13 @@ vec3 getBiomeColorBlended(float worldX, float worldY, float baseH) {
   int prevBiome = getBiomeIndex(prevChunkX);
 
   vec3 color;
-  if (currentBiome == 0) color = getPlainsColor(depth, worldY, baseH);
-  else if (currentBiome == 1) color = getMountainsColor(depth, worldY, baseH);
-  else if (currentBiome == 2) color = getValleyColor(depth, worldY, baseH);
-  else if (currentBiome == 3) color = getDesertColor(depth, worldY, baseH);
-  else if (currentBiome == 4) color = getTundraColor(depth, worldY, baseH);
-  else if (currentBiome == 5) color = getSwampColor(worldX, depth, worldY, baseH);
-  else color = getVolcanicColor(worldX, depth, worldY, baseH);
+  if (currentBiome == 0) color = getPlainsColor(depth, yRel, baseH);
+  else if (currentBiome == 1) color = getMountainsColor(depth, yRel, baseH);
+  else if (currentBiome == 2) color = getValleyColor(depth, yRel, baseH);
+  else if (currentBiome == 3) color = getDesertColor(depth, yRel, baseH);
+  else if (currentBiome == 4) color = getTundraColor(depth, yRel, baseH);
+  else if (currentBiome == 5) color = getSwampColor(worldX, depth, yRel, baseH);
+  else color = getVolcanicColor(worldX, depth, yRel, baseH);
 
   // Smoothly blend with neighbors
   float distToNext = nextChunkX - 128.0 - worldX;
@@ -578,26 +584,26 @@ vec3 getBiomeColorBlended(float worldX, float worldY, float baseH) {
   if (distToNext < 128.0 && nextBiome != currentBiome) {
     float t = smoothstep(128.0, 0.0, distToNext);
     vec3 nextColor;
-    if (nextBiome == 0) nextColor = getPlainsColor(depth, worldY, baseH);
-    else if (nextBiome == 1) nextColor = getMountainsColor(depth, worldY, baseH);
-    else if (nextBiome == 2) nextColor = getValleyColor(depth, worldY, baseH);
-    else if (nextBiome == 3) nextColor = getDesertColor(depth, worldY, baseH);
-    else if (nextBiome == 4) nextColor = getTundraColor(depth, worldY, baseH);
-    else if (nextBiome == 5) nextColor = getSwampColor(worldX, depth, worldY, baseH);
-    else nextColor = getVolcanicColor(worldX, depth, worldY, baseH);
+    if (nextBiome == 0) nextColor = getPlainsColor(depth, yRel, baseH);
+    else if (nextBiome == 1) nextColor = getMountainsColor(depth, yRel, baseH);
+    else if (nextBiome == 2) nextColor = getValleyColor(depth, yRel, baseH);
+    else if (nextBiome == 3) nextColor = getDesertColor(depth, yRel, baseH);
+    else if (nextBiome == 4) nextColor = getTundraColor(depth, yRel, baseH);
+    else if (nextBiome == 5) nextColor = getSwampColor(worldX, depth, yRel, baseH);
+    else nextColor = getVolcanicColor(worldX, depth, yRel, baseH);
     color = mix(color, nextColor, t * 0.5);
   }
 
   if (distToPrev < 128.0 && prevBiome != currentBiome) {
     float t = smoothstep(128.0, 0.0, distToPrev);
     vec3 prevColor;
-    if (prevBiome == 0) prevColor = getPlainsColor(depth, worldY, baseH);
-    else if (prevBiome == 1) prevColor = getMountainsColor(depth, worldY, baseH);
-    else if (prevBiome == 2) prevColor = getValleyColor(depth, worldY, baseH);
-    else if (prevBiome == 3) prevColor = getDesertColor(depth, worldY, baseH);
-    else if (prevBiome == 4) prevColor = getTundraColor(depth, worldY, baseH);
-    else if (prevBiome == 5) prevColor = getSwampColor(worldX, depth, worldY, baseH);
-    else prevColor = getVolcanicColor(worldX, depth, worldY, baseH);
+    if (prevBiome == 0) prevColor = getPlainsColor(depth, yRel, baseH);
+    else if (prevBiome == 1) prevColor = getMountainsColor(depth, yRel, baseH);
+    else if (prevBiome == 2) prevColor = getValleyColor(depth, yRel, baseH);
+    else if (prevBiome == 3) prevColor = getDesertColor(depth, yRel, baseH);
+    else if (prevBiome == 4) prevColor = getTundraColor(depth, yRel, baseH);
+    else if (prevBiome == 5) prevColor = getSwampColor(worldX, depth, yRel, baseH);
+    else prevColor = getVolcanicColor(worldX, depth, yRel, baseH);
     color = mix(color, prevColor, t * 0.5);
   }
 
@@ -613,7 +619,7 @@ void main() {
   bool solid = worldY >= baseH;
   int biomeIdx = getBiomeIndex(worldX);
 
-  float nearestCraterDist = 1000.0;
+  float nearestCraterDistSq = 1000000.0;
   float nearestCraterRadius = 0.0;
 
   // Track terrain modification masking
@@ -627,24 +633,36 @@ void main() {
     float modY = data0.b;
     float modRadius = data0.a;
 
-    if (modType < 0.5) {
+    float dx = worldX - modX;
+    float dy = worldY - modY;
+    float distSq = dx * dx + dy * dy;
+
+    // Early exit for distant modifications (including scorch mark margin)
+    float activeRadius = modRadius * 1.5;
+    if (distSq > activeRadius * activeRadius) {
+      // Still update nearest crater for scorch marks if applicable
+      if (modType < 0.5) {
+        if (distSq < nearestCraterDistSq) {
+          nearestCraterDistSq = distSq;
+          nearestCraterRadius = modRadius;
+        }
+      }
+      continue;
+    }
+
+    if (modType < 0.5) { // Crater
       float edgeDist;
       if (isInCrater(worldX, worldY, modX, modY, modRadius, edgeDist)) {
         solid = false;
         masked = true;
       }
-      float dx = worldX - modX;
-      float dy = worldY - modY;
-      float dist = sqrt(dx * dx + dy * dy);
-      if (dist < nearestCraterDist) {
-        nearestCraterDist = dist;
+      if (distSq < nearestCraterDistSq) {
+        nearestCraterDistSq = distSq;
         nearestCraterRadius = modRadius;
       }
-    } else if (modType < 1.5) {
-      float dx = worldX - modX;
-      float dy = worldY - modY;
-      if (dx * dx + dy * dy <= modRadius * modRadius) solid = true;
-    } else {
+    } else if (modType < 1.5) { // Add
+      if (distSq <= modRadius * modRadius) solid = true;
+    } else { // Tunnel
       vec4 data1 = texelFetch(u_modTexture, ivec2(i, 1), 0);
       if (isInTunnel(worldX, worldY, modX, modY, data1.r, data1.g, modRadius, data1.b)) {
         solid = false;
@@ -653,7 +671,16 @@ void main() {
     }
   }
 
-  // === New: Popup Decorations check (rendered above terrain, hidden by craters) ===
+  // Common calculations for lighting and time
+  float skyT = screenPos.y / u_viewSize.y;
+  float timeOfDay = fract(u_time / ${DAY_NIGHT_CYCLE_DURATION.toFixed(1)});
+  float lightFactor = smoothstep(-0.5, 0.5, cos((timeOfDay - 0.25) * 6.283185));
+  float horizonFactor = smoothstep(0.3, 0.0, abs(timeOfDay - 0.0)) +
+                        smoothstep(0.3, 0.0, abs(timeOfDay - 0.5)) +
+                        smoothstep(0.3, 0.0, abs(timeOfDay - 1.0));
+  horizonFactor = clamp(horizonFactor, 0.0, 1.0);
+
+  // === Popup Decorations check ===
   if (!masked) {
     vec4 deco = getDecorationColor(worldX, worldY, baseH, biomeIdx);
     if (deco.a > 0.0) {
@@ -662,22 +689,8 @@ void main() {
     }
   }
 
-  // === Sky rendering (for non-solid pixels) ===
+  // === Sky rendering ===
   if (!solid) {
-    float skyT = screenPos.y / u_viewSize.y;
-    // === Day/Night Cycle ===
-    float timeOfDay = fract(u_time / ${DAY_NIGHT_CYCLE_DURATION.toFixed(1)});
-
-    // Light factor (0.0 at midnight, 1.0 at noon)
-    // Shifted so 0.25 is noon, 0.75 is midnight
-    float lightFactor = smoothstep(-0.5, 0.5, cos((timeOfDay - 0.25) * 6.283185));
-
-    // Dusk/Dawn factor for reddish horizon
-    float horizonFactor = smoothstep(0.3, 0.0, abs(timeOfDay - 0.0)) +
-                          smoothstep(0.3, 0.0, abs(timeOfDay - 0.5)) +
-                          smoothstep(0.3, 0.0, abs(timeOfDay - 1.0));
-    horizonFactor = clamp(horizonFactor, 0.0, 1.0);
-
     vec3 skyTopNight = vec3(0.008, 0.02, 0.08);
     vec3 skyBotNight = vec3(0.05, 0.08, 0.2);
     vec3 skyTopDay = vec3(0.2, 0.4, 0.8);
@@ -690,7 +703,7 @@ void main() {
 
     vec3 skyColor = mix(skyBot, skyTop, skyT);
 
-    // Stars (only at night)
+    // Stars
     float starIntensity = smoothstep(0.4, 0.1, lightFactor);
     if (starIntensity > 0.0) {
       vec2 starUV = (screenPos + vec2(u_cameraPos.x, -u_cameraPos.y) * 0.05) / 40.0;
@@ -698,58 +711,44 @@ void main() {
       skyColor += vec3(stars) * starIntensity;
     }
 
-    // === Weather particles based on biome ===
-    // Lower threshold globally (0.5 -> 0.3) to make weather more common
+    // Weather
     float weatherIntensity = noise1D(worldX * 0.0005, u_seed + 1234.0);
-    float weatherThreshold = 0.3;
-
-    // Tundra override: Snow is even more frequent
-    if (biomeIdx == 4) weatherThreshold = 0.15;
+    float weatherThreshold = (biomeIdx == 4) ? 0.15 : 0.3;
 
     if (weatherIntensity > weatherThreshold) {
       float intensity = smoothstep(weatherThreshold, weatherThreshold + 0.1, weatherIntensity);
-
-      // Tundra - falling snow
+      vec2 worldPos = vec2(worldX, worldY);
       if (biomeIdx == 4) {
-        float snow = weatherParticle(screenPos, u_cameraPos, 20.0, 0.6, 0.2);
+        float snow = weatherParticle(worldPos, 20.0, 0.6, 0.2);
         skyColor = mix(skyColor, vec3(1.0), snow * 0.5 * intensity);
-      }
-      // Desert - blowing sand/dust
-      else if (biomeIdx == 3) {
-        float sand = weatherParticle(screenPos, u_cameraPos, 25.0, 0.3, 0.7);
+      } else if (biomeIdx == 3) {
+        float sand = weatherParticle(worldPos, 25.0, 0.3, 0.7);
         skyColor = mix(skyColor, vec3(0.9, 0.8, 0.6), sand * 0.2 * intensity);
-      }
-      // Plain, Valley, Swamp - rain
-      else if (biomeIdx == 0 || biomeIdx == 2 || biomeIdx == 5) {
-        float rain = rainParticle(screenPos, u_cameraPos);
+      } else if (biomeIdx == 0 || biomeIdx == 2 || biomeIdx == 5) {
+        float rain = rainParticle(worldPos);
         vec3 rainColor = (biomeIdx == 5) ? vec3(0.4, 0.5, 0.4) : vec3(0.6, 0.7, 0.8);
         skyColor = mix(skyColor, rainColor, rain * 0.5 * intensity);
-      }
-      // Volcanic - rising ash/embers
-      else if (biomeIdx == 6) {
-        // Use weatherParticle with negative fallSpeed for "rising" ash
-        float ash = weatherParticle(screenPos, u_cameraPos, 15.0, -0.3, 0.5);
+      } else if (biomeIdx == 6) {
+        float ash = weatherParticle(worldPos, 15.0, -0.3, 0.5);
         vec3 emberColor = mix(vec3(0.2, 0.2, 0.2), vec3(1.0, 0.3, 0.0), step(0.7, noise(screenPos * 0.1)));
         skyColor = mix(skyColor, emberColor, ash * 0.4 * intensity);
       }
     }
 
-    fragColor = vec4(skyColor, 1.0);
-
-    // Apply lighting to sky (smoke/fog effect)
-    fragColor.rgb = calculateLighting(vec2(worldX, worldY), fragColor.rgb);
+    fragColor = vec4(calculateLighting(vec2(worldX, worldY), skyColor), 1.0);
     return;
   }
 
-  // === Terrain color with biome blending ===
-  vec3 color = getBiomeColorBlended(worldX, worldY, baseH);
+  // === Terrain rendering ===
+  float depth = worldY - baseH;
+  float yRel = worldY / u_worldSize.y;
+  vec3 color = getBiomeColorBlended(worldX, depth, yRel, baseH);
 
   // Texture noise
   float texNoise = fract(sin(dot(vec2(worldX, worldY), vec2(12.9898, 78.233))) * 43758.5453);
   color += (texNoise - 0.5) * 0.04;
 
-  // === Surface Decorations (Grass) ===
-  float depth = worldY - baseH;
+  // Surface Decorations (Grass)
   if (depth >= 0.0 && depth < 25.0) {
     float grassPattern = noise(vec2(worldX * 0.3, worldY * 1.5 + u_seed));
     float grassHeight = noise(vec2(worldX * 0.2 + u_seed, 0.0)) * 15.0 + 8.0;
@@ -768,6 +767,7 @@ void main() {
 
   // Scorch marks
   if (nearestCraterRadius > 0.0) {
+    float nearestCraterDist = sqrt(nearestCraterDistSq);
     float scorchOuter = nearestCraterRadius * 1.4;
     if (nearestCraterDist <= scorchOuter) {
       float scorchT = 1.0 - (nearestCraterDist - nearestCraterRadius * 0.7) / (scorchOuter - nearestCraterRadius * 0.7);
@@ -783,18 +783,9 @@ void main() {
     }
   }
 
-  // Apply Day/Night lighting (re-use factor)
-  float timeOfDay = fract(u_time / ${DAY_NIGHT_CYCLE_DURATION.toFixed(1)});
-  float lightFactor = smoothstep(-0.5, 0.5, cos((timeOfDay - 0.25) * 6.283185));
+  // Day/Night lighting and tint
   float ambLight = mix(0.25, 1.0, lightFactor);
-
-  // Tint during dusk/dawn
-  float horizonFactor = smoothstep(0.3, 0.0, abs(timeOfDay - 0.0)) +
-                        smoothstep(0.3, 0.0, abs(timeOfDay - 0.5)) +
-                        smoothstep(0.3, 0.0, abs(timeOfDay - 1.0));
-  horizonFactor = clamp(horizonFactor, 0.0, 1.0);
   vec3 tint = mix(vec3(1.0), vec3(1.0, 0.8, 0.7), horizonFactor);
-
   color *= ambLight * tint;
 
   // Apply Point Lights
@@ -814,6 +805,7 @@ export class TerrainShaderRenderer {
   private program: WebGLProgram | null = null;
   private vao: WebGLVertexArrayObject | null = null;
   private modTexture: WebGLTexture | null = null;
+  private biomeTexture: WebGLTexture | null = null;
 
   // Uniform locations
   private uniforms: {
@@ -829,6 +821,7 @@ export class TerrainShaderRenderer {
     lightColor: WebGLUniformLocation | null;
     lightRadius: WebGLUniformLocation | null;
     lightCount: WebGLUniformLocation | null;
+    biomeTexture: WebGLUniformLocation | null;
   } = {
     seed: null,
     cameraPos: null,
@@ -842,11 +835,21 @@ export class TerrainShaderRenderer {
     lightColor: null,
     lightRadius: null,
     lightCount: null,
+    biomeTexture: null,
   };
 
   private modTextureData: Float32Array;
   private lastModCount = 0;
   private isInitialized = false;
+
+  // Caching for uploadModifications
+  private lastUploadParams = {
+    camX: -1e9,
+    camY: -1e9,
+    zoom: -1,
+    modArrayRef: null as TerrainModification[] | null,
+    modCount: -1,
+  };
 
   constructor() {
     // 2 rows per modification: [type, x, y, radius] and [nx, ny, length, 0]
@@ -913,6 +916,7 @@ export class TerrainShaderRenderer {
       lightColor: gl.getUniformLocation(program, "u_lightColor"),
       lightRadius: gl.getUniformLocation(program, "u_lightRadius"),
       lightCount: gl.getUniformLocation(program, "u_lightCount"),
+      biomeTexture: gl.getUniformLocation(program, "u_biomeTexture"),
     };
 
     // Create VAO (empty - we use gl_VertexID in shader)
@@ -921,6 +925,14 @@ export class TerrainShaderRenderer {
     // Create modification texture
     this.modTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.modTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    // Create biome texture
+    this.biomeTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.biomeTexture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -952,6 +964,34 @@ export class TerrainShaderRenderer {
   ): void {
     if (!this.gl || !this.modTexture) return;
 
+    // Optimization: Skip re-filtering and re-uploading if camera hasn't moved much
+    // and modification list is the same
+    const camThreshold = 10; // Pixels
+    const isSameMods =
+      this.lastUploadParams.modArrayRef === modifications &&
+      this.lastUploadParams.modCount === modifications.length;
+
+    const isSameViewport =
+      camX !== undefined &&
+      camY !== undefined &&
+      zoom !== undefined &&
+      Math.abs(this.lastUploadParams.camX - camX) < camThreshold &&
+      Math.abs(this.lastUploadParams.camY - camY) < camThreshold &&
+      Math.abs(this.lastUploadParams.zoom - zoom) < 0.01;
+
+    if (isSameMods && isSameViewport) {
+      return;
+    }
+
+    // Update cache params
+    if (camX !== undefined && camY !== undefined && zoom !== undefined) {
+      this.lastUploadParams.camX = camX;
+      this.lastUploadParams.camY = camY;
+      this.lastUploadParams.zoom = zoom;
+    }
+    this.lastUploadParams.modArrayRef = modifications;
+    this.lastUploadParams.modCount = modifications.length;
+
     let filteredMods = modifications;
     if (
       camX !== undefined &&
@@ -960,7 +1000,7 @@ export class TerrainShaderRenderer {
       viewH !== undefined &&
       zoom !== undefined
     ) {
-      const margin = 200; // Large margin to handle irregular crater edges
+      const margin = 300; // Increased margin for safety with irregular edges
       const worldW = viewW / zoom;
       const worldH = viewH / zoom;
 
@@ -969,22 +1009,25 @@ export class TerrainShaderRenderer {
       const viewTop = camY - margin;
       const viewBottom = camY + worldH + margin;
 
-      filteredMods = modifications.filter((mod) => {
-        // Simple bounding box check for culling
+      filteredMods = [];
+      for (let i = 0; i < modifications.length; i++) {
+        const mod = modifications[i];
         const radius =
           mod.type === "carve" ? (mod.length || 100) + mod.radius : mod.radius;
-        const modLeft = mod.x - radius;
-        const modRight = mod.x + radius;
-        const modTop = mod.y - radius;
-        const modBottom = mod.y + radius;
 
-        return !(
-          modRight < viewLeft ||
-          modLeft > viewRight ||
-          modBottom < viewTop ||
-          modTop > viewBottom
-        );
-      });
+        // Simple bounding box check
+        if (
+          mod.x + radius < viewLeft ||
+          mod.x - radius > viewRight ||
+          mod.y + radius < viewTop ||
+          mod.y - radius > viewBottom
+        ) {
+          continue;
+        }
+
+        filteredMods.push(mod);
+        if (filteredMods.length >= MAX_MODIFICATIONS) break;
+      }
     }
 
     const count = Math.min(filteredMods.length, MAX_MODIFICATIONS);
@@ -1084,7 +1127,72 @@ export class TerrainShaderRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.modTexture);
     gl.uniform1i(this.uniforms.modTexture, 0);
 
+    // Bind biome texture
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.biomeTexture);
+    gl.uniform1i(this.uniforms.biomeTexture, 1);
+
     gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  /**
+   * Upload biome noise data to GPU texture.
+   * Called when seed changes or on init.
+   */
+  uploadBiomeData(seed: number): void {
+    const gl = this.gl;
+    if (!gl || !this.biomeTexture) return;
+
+    // We need noise for WORLD_WIDTH / 256 chunks
+    const chunkCount = 1024; // Cover plenty of space
+    const data = new Float32Array(chunkCount * 4); // RGBA32F
+
+    // Mock noise functions - must match TerrainMap.ts logic
+    const hash = (x: number, s: number) => {
+      let p = x * 0.1031 + s * 0.3117;
+      p = p - Math.floor(p);
+      p *= p + 33.33;
+      p *= p + p;
+      return p - Math.floor(p);
+    };
+
+    const noise1D = (x: number, s: number) => {
+      const i = Math.floor(x);
+      const f = x - i;
+      const u = f * f * (3 - 2 * f);
+      return hash(i, s) * (1 - u) + hash(i + 1, s) * u;
+    };
+
+    const fbm1D = (x: number, s: number, octaves: number) => {
+      let value = 0;
+      let amplitude = 0.5;
+      let frequency = 1;
+      for (let i = 0; i < octaves; i++) {
+        value += amplitude * noise1D(x * frequency, s + i * 100);
+        amplitude *= 0.5;
+        frequency *= 2;
+      }
+      return value;
+    };
+
+    for (let i = 0; i < chunkCount; i++) {
+      const chunkX = i * 256 + 128;
+      const biomeNoise = fbm1D(chunkX * BIOME_SCALE, seed, 2);
+      data[i * 4] = biomeNoise; // Store in R channel
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, this.biomeTexture);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA32F,
+      chunkCount,
+      1,
+      0,
+      gl.RGBA,
+      gl.FLOAT,
+      data,
+    );
   }
 
   /**
@@ -1104,6 +1212,7 @@ export class TerrainShaderRenderer {
     if (this.program) gl.deleteProgram(this.program);
     if (this.vao) gl.deleteVertexArray(this.vao);
     if (this.modTexture) gl.deleteTexture(this.modTexture);
+    if (this.biomeTexture) gl.deleteTexture(this.biomeTexture);
 
     this.isInitialized = false;
   }
