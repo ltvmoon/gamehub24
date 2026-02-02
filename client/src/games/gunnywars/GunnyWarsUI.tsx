@@ -26,6 +26,8 @@ import {
   UserMinus,
   Maximize,
   Minimize,
+  Compass,
+  LogOut,
 } from "lucide-react";
 import type { GameUIProps } from "../types";
 import useLanguage from "../../stores/languageStore";
@@ -673,8 +675,13 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
       ctx.translate(0, 8);
       ctx.fillStyle = "#334155";
       ctx.fillRect(-20, 0, 40, 4);
-      ctx.fillStyle = "#f59e0b";
-      ctx.fillRect(-19, 1, 38 * (tank.fuel / MAX_FUEL), 2);
+      ctx.fillStyle = game.state.isExploration ? "#60a5fa" : "#f59e0b";
+      ctx.fillRect(
+        -19,
+        1,
+        38 * (game.state.isExploration ? 1 : tank.fuel / MAX_FUEL),
+        2,
+      );
 
       // Indicators and Labels
       if (game.state.tanks[game.state.currentTurnIndex]?.id === tank.id) {
@@ -1211,14 +1218,36 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           </div>
 
           {game.isHost && (
-            <button
-              onClick={() => game.startGame()}
-              disabled={!game.canStartGame()}
-              className="w-full mt-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold flex items-center justify-center gap-2"
-            >
-              <Play size={20} />
-              {ts({ en: "Start Game", vi: "Bắt đầu" })}
-            </button>
+            <div className="flex flex-col gap-2 mt-6">
+              <button
+                onClick={() => game.startGame()}
+                disabled={!game.canStartGame()}
+                className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <div className="flex items-center gap-2">
+                  <Play size={20} />
+                  {ts({ en: "Start Game", vi: "Bắt đầu" })}
+                </div>
+
+                <span className="text-[10px] opacity-70 font-normal">
+                  {ts({ en: "(2+ players)", vi: "(2+ người chơi)" })}
+                </span>
+              </button>
+              <button
+                onClick={() => game.requestStartExploration()}
+                disabled={state.players.length > 1}
+                className="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <div className="flex items-center gap-2">
+                  <Compass size={20} />
+                  {ts({ en: "Exploration Mode", vi: "Chế độ khám phá" })}
+                </div>
+
+                <span className="text-[10px] opacity-70 font-normal">
+                  {ts({ en: "(1 player)", vi: "(1 người chơi)" })}
+                </span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1277,6 +1306,28 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
 
         {/* Zoom Controls & Fullscreen */}
         <div className="absolute bottom-4 right-4 flex flex-row gap-1 z-20 opacity-30 hover:opacity-100 transition-all duration-300">
+          {/* Return to Menu */}
+          <button
+            onClick={async () => {
+              if (
+                await showConfirm(
+                  ts({
+                    en: "Return to main menu?",
+                    vi: "Quay lại màn hình menu?",
+                  }),
+                  ts({
+                    en: "Back to Menu",
+                    vi: "Quay lại Menu",
+                  }),
+                )
+              )
+                game.requestReset();
+            }}
+            className="bg-red-800/80 hover:bg-red-700 p-2 rounded-full border border-red-600 text-red-200 shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            title="Exit to Menu"
+          >
+            <LogOut size={18} />
+          </button>
           {/* Regenerate Map */}
           {game.isHost && (
             <button
@@ -1369,47 +1420,53 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
           {/* Row 1: Turn/Fuel + Movement + Fire */}
           <div className="grid grid-cols-12 gap-2 @md:gap-4 items-stretch">
             {/* Status Panel */}
-            <div
-              className="col-span-12 @md:col-span-3 bg-gray-800/50 rounded-lg p-2 border border-gray-700 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-700/50 transition-colors"
-              onClick={() => {
-                if (currentTank) {
-                  focusedTankIdRef.current = currentTank.id;
-                  cameraRef.current.mode = "FOLLOW_TANK";
-                }
-              }}
-            >
-              {/* Turn */}
-              <div className="flex items-center gap-2">
-                {currentTank?.isBot ? (
-                  <Bot
-                    size={18}
-                    style={{ color: currentTank?.color || "#f87171" }}
-                  />
-                ) : (
-                  <User
-                    size={18}
+            {!state.isExploration && (
+              <div
+                className="col-span-12 @md:col-span-3 bg-gray-800/50 rounded-lg p-2 border border-gray-700 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-700/50 transition-colors"
+                onClick={() => {
+                  if (currentTank) {
+                    focusedTankIdRef.current = currentTank.id;
+                    cameraRef.current.mode = "FOLLOW_TANK";
+                  }
+                }}
+              >
+                {/* Turn */}
+
+                <div className="flex items-center gap-2">
+                  {currentTank?.isBot ? (
+                    <Bot
+                      size={18}
+                      style={{ color: currentTank?.color || "#f87171" }}
+                    />
+                  ) : (
+                    <User
+                      size={18}
+                      style={{
+                        color:
+                          currentTank?.color ||
+                          (isMyTurn ? "#60a5fa" : "#f87171"),
+                      }}
+                    />
+                  )}
+                  <span
+                    className="font-bold uppercase tracking-wider text-xs @md:text-sm"
                     style={{
                       color:
                         currentTank?.color ||
                         (isMyTurn ? "#60a5fa" : "#f87171"),
                     }}
-                  />
-                )}
-                <span
-                  className="font-bold uppercase tracking-wider text-xs @md:text-sm"
-                  style={{
-                    color:
-                      currentTank?.color || (isMyTurn ? "#60a5fa" : "#f87171"),
-                  }}
-                >
-                  {state.players.find((p) => p.tankId === currentTank?.id)
-                    ?.username ||
-                    (currentTank?.isBot
-                      ? "Bot"
-                      : ts({ en: "Turn", vi: "Lượt" }))}
-                </span>
+                  >
+                    {state.isExploration
+                      ? ts({ en: "Exploration", vi: "Khám phá" })
+                      : state.players.find((p) => p.tankId === currentTank?.id)
+                          ?.username ||
+                        (currentTank?.isBot
+                          ? "Bot"
+                          : ts({ en: "Turn", vi: "Lượt" }))}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Movement */}
             <div

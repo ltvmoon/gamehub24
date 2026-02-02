@@ -84,6 +84,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       terrainSeed: Math.round(Math.random() * 10000),
       terrainMods: [],
       isSimulating: false,
+      isExploration: false,
     };
   }
 
@@ -288,6 +289,9 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
             break;
           case "REMOVE_BOT":
             this.removeBot();
+            break;
+          case "START_EXPLORATION":
+            this.handleStartExploration();
             break;
         }
     }
@@ -517,7 +521,9 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     fuel: number;
     angle: number;
   } | null {
-    if (!this.terrainMap || tank.fuel <= 0) return null;
+    // Distance limit based on fuel
+    if (!this.state.isExploration && tank.fuel <= 0) return null;
+    if (!this.terrainMap) return null;
 
     let { x, y, fuel, angle } = tank;
 
@@ -545,11 +551,11 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         }
       }
       if (climbed) {
-        fuel -= FUEL_CONSUMPTION;
+        if (!this.state.isExploration) fuel -= FUEL_CONSUMPTION;
       }
     } else {
       x = nextX;
-      fuel -= FUEL_CONSUMPTION;
+      if (!this.state.isExploration) fuel -= FUEL_CONSUMPTION;
 
       // Downward Slope
       for (let i = 1; i <= 5; i++) {
@@ -1240,6 +1246,11 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
   private nextTurn(): void {
     const state = this.state;
+    if (state.isExploration) {
+      state.phase = GamePhase.AIMING;
+      state.turnTimeEnd = 0;
+      return;
+    }
     state.currentTurnIndex = (state.currentTurnIndex + 1) % state.tanks.length;
 
     // Skip dead tanks
@@ -1261,7 +1272,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
   // --- Bot AI ---
 
   private checkBotTurn(): void {
-    if (!this.isHost) return;
+    if (!this.isHost || this.state.isExploration) return;
     if (this.state.phase !== GamePhase.AIMING) return;
     if (this.state.isSimulating) return;
 
@@ -1428,6 +1439,44 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     this.handleStartGame();
   }
 
+  handleStartExploration(): void {
+    if (this.state.phase !== GamePhase.WAITING) return;
+
+    // Initialize terrain
+    this.initTerrain();
+
+    // Create ONLY ONE tank for the host
+    const myPlayer = this.state.players[0] || {
+      id: "ME",
+      username: "Explorer",
+    };
+
+    const tankId = `tank-explorer`;
+    const x = Math.floor(WORLD_WIDTH / 2);
+    const y = this.getTerrainHeight(x);
+
+    this.state.tanks = [
+      {
+        id: tankId,
+        name: myPlayer.username || "Explorer",
+        playerId: myPlayer.id,
+        isBot: false,
+        x,
+        y,
+        angle: 45,
+        power: 50,
+        health: INITIAL_HEALTH,
+        maxHealth: INITIAL_HEALTH,
+        color: TANK_COLORS[0],
+        weapon: WeaponType.BASIC,
+        fuel: MAX_FUEL,
+      },
+    ];
+
+    this.state.isExploration = true;
+    this.state.phase = GamePhase.AIMING;
+  }
+
   private handleStartGame(): void {
     if (this.state.phase !== GamePhase.WAITING) return;
 
@@ -1476,6 +1525,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     this.state.wind = 0;
     this.state.winner = null;
     this.state.turnTimeEnd = 0;
+    this.state.isExploration = false;
     this.state.players.forEach((p) => {
       p.tankId = null;
     });
@@ -1514,6 +1564,10 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
   requestAddBot(): void {
     this.makeAction({ type: "ADD_BOT" });
+  }
+
+  requestStartExploration(): void {
+    this.makeAction({ type: "START_EXPLORATION" });
   }
 
   requestRemoveBot(): void {
