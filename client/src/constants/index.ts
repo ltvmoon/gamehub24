@@ -65,6 +65,12 @@ export const updates: {
   link?: string;
 }[] = [
   {
+    type: "fix",
+    en: "Fix UI and optimize games",
+    vi: "Fix giao diện và tối ưu games",
+    timestamp: 1770152415598,
+  },
+  {
     type: "new",
     en: "New game: Gunny Wars",
     vi: "Game mới: Gunny Wars",

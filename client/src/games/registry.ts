@@ -39,6 +39,7 @@ export interface GameModule {
   minPlayers: number;
   maxPlayers: number;
   isAvailable: boolean;
+  lastUpdatedTime?: number;
   createGame?: (
     room: Room,
     socket: Socket,
