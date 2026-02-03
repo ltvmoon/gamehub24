@@ -98,7 +98,7 @@ export default function SidePanel() {
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1a1b26]" />
             )}
           </div>
-          {ti({ en: "Users", vi: "Trong phòng" })}
+          {ti({ en: "Users", vi: "Users" })}
           <span className="bg-white/10 text-xs py-0.5 px-1.5 rounded-md text-text-muted">
             {playersCount}
             {participantCount > playersCount ? `/${participantCount}` : ""}

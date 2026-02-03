@@ -96,7 +96,7 @@ export default function EmojiToolbar() {
     <>
       {/* Toolbar */}
       <div
-        className={`fixed md:bottom-4 md:left-4 bottom-2 left-2 z-100 flex items-end gap-2 max-w-full`}
+        className={`fixed md:bottom-4 md:left-4 bottom-2 left-2 flex items-end gap-2 max-w-full`}
       >
         {/* Toggle Button */}
         <button
@@ -138,7 +138,7 @@ export default function EmojiToolbar() {
       </div>
 
       {/* Floating Emojis */}
-      <div className="fixed bottom-0 top-0 left-0 right-0 inset-0 pointer-events-none overflow-hidden z-500">
+      <div className="fixed bottom-0 top-0 left-0 right-0 inset-0 pointer-events-none overflow-hidden z-100">
         {emojis.map((item) => (
           <div
             key={item.id}

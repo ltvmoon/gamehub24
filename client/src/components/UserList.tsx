@@ -248,7 +248,7 @@ export default function UserList() {
         {spectatorsExpanded && (
           <div className="space-y-1">
             {spectators.length === 0 && (
-              <div className="text-xs text-text-muted italic px-2 py-1">
+              <div className="text-xs text-text-muted italic px-2 py-1 text-center">
                 {ti({ en: "No spectators", vi: "Không có khán giả" })}
               </div>
             )}

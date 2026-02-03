@@ -1,76 +1,17 @@
-import { BaseGame, type GameAction } from "../BaseGame";
-import { getWordsByDifficulty, type Difficulty } from "./words";
-
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface DrawStroke {
-  id: string;
-  playerId: string;
-  points: number[]; // Flat array: [x1, y1, x2, y2, ...]
-  color: string;
-  width: number;
-  duration: number; // How long it took to draw (ms)
-}
-
-export interface GarticRound {
-  drawerId: string;
-  word: string; // The secret word
-  status: "CHOOSING_WORD" | "DRAWING" | "ROUND_END";
-  roundEndTime: number;
-  maskedWord: string; // e.g., "_ _ _ _"
-
-  // Enhancement state
-  isPaused: boolean;
-  pausedRemainingTime?: number; // Time left when paused
-  playerHints: Record<string, number[]>; // playerId -> list of revealed indices
-}
-
 import { calculateSimilarity } from "../../utils/stringUtils";
-
-export interface GameMessage {
-  id: string;
-  senderId: string;
-  content: string | { vi: string; en: string };
-  type: "CHAT" | "GUESS" | "SYSTEM";
-  subType?: "INFO" | "SUCCESS" | "WARNING" | "ERROR";
-  isCorrect?: boolean;
-  similarity?: number;
-  timestamp: number;
-}
-
-export interface CanvasState {
-  mode: "FREE" | "GARTIC";
-  strokes: DrawStroke[];
-
-  // Gartic State
-  gartic?: GarticRound;
-  wordOptions?: string[]; // Options currently offered to drawer
-  scores: Record<string, number>; // playerId -> score
-  guesses: string[]; // IDs of players who guessed correctly this round
-  messages: GameMessage[]; // Chat/Guess log
-  wordLanguage?: "en" | "vi"; // Language for secret word
-  wordDifficulty?: Difficulty;
-}
-
-export interface CanvasAction extends GameAction {
-  type:
-    | "DRAW"
-    | "CLEAR"
-    | "UNDO"
-    | "START_GARTIC"
-    | "CHOOSE_WORD"
-    | "SUBMIT_GUESS"
-    | "NEXT_ROUND"
-    | "SEND_MESSAGE"
-    | "REROLL_OPTIONS"
-    | "PAUSE_GAME"
-    | "BUY_HINT"
-    | "SELECT_DIFFICULTY";
-  payload?: any;
-}
+import { BaseGame, type GameAction } from "../BaseGame";
+import {
+  GAME_MODE,
+  GARTIC_STATUS,
+  MESSAGE_SUBTYPE,
+  MESSAGE_TYPE,
+  WORD_LANGUAGE,
+  type CanvasAction,
+  type CanvasState,
+  type DrawStroke,
+  type GameMessage,
+} from "./types";
+import { getWordsByDifficulty, type Difficulty } from "./words";
 
 export default class CanvasGame extends BaseGame<CanvasState> {
   private roundTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -78,12 +19,12 @@ export default class CanvasGame extends BaseGame<CanvasState> {
 
   getInitState(): CanvasState {
     return {
-      mode: "FREE",
+      mode: GAME_MODE.FREE,
       strokes: [],
       scores: {},
       guesses: [],
       messages: [],
-      wordLanguage: "vi",
+      wordLanguage: WORD_LANGUAGE.VI,
     };
   }
 
@@ -139,7 +80,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
         this.state.strokes.push(action.payload);
       } else if (action.type === "CLEAR") {
         if (
-          this.state.mode === "FREE" ||
+          this.state.mode === GAME_MODE.FREE ||
           (this.state.gartic && this.state.gartic.drawerId === this.userId)
         ) {
           this.state.strokes = [];
@@ -172,8 +113,8 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     if (!this.isHost) return;
 
     // In Gartic mode, only drawer can draw
-    if (this.state.mode === "GARTIC") {
-      if (this.state.gartic?.status !== "DRAWING") return;
+    if (this.state.mode === GAME_MODE.GARTIC) {
+      if (this.state.gartic?.status !== GARTIC_STATUS.DRAWING) return;
       if (this.state.gartic.isPaused) return; // Cannot draw while paused
 
       // Assuming stroke.playerId is reliable (sent by client)
@@ -206,11 +147,11 @@ export default class CanvasGame extends BaseGame<CanvasState> {
   private handleStartGartic() {
     if (!this.isHost) return;
 
-    this.state.mode = "GARTIC";
+    this.state.mode = GAME_MODE.GARTIC;
     this.state.scores = {};
     this.players.forEach((p) => (this.state.scores[p.id] = 0));
     this.state.messages = [];
-    this.state.wordLanguage = "vi"; // Default to VI
+    this.state.wordLanguage = WORD_LANGUAGE.VI; // Default to VI
 
     // Start first round
     this.startNewRound();
@@ -219,15 +160,17 @@ export default class CanvasGame extends BaseGame<CanvasState> {
   private handleChooseWord(word: string) {
     if (!this.isHost) return;
     if (!this.state.gartic) return;
-    if (this.state.gartic.status !== "CHOOSING_WORD") return;
+    if (this.state.gartic.status !== GARTIC_STATUS.CHOOSING_WORD) return;
 
     // Set word
     this.state.gartic.word = word;
     this.state.gartic.maskedWord = word.replace(/\S/g, "_"); // Keep spaces, mask chars
-    this.state.gartic.status = "DRAWING";
+    this.state.gartic.status = GARTIC_STATUS.DRAWING;
 
     this.currentRoundDuration = 60000;
     this.state.gartic.roundEndTime = Date.now() + this.currentRoundDuration; // 60 seconds to draw
+    this.state.gartic.isPaused = false;
+    this.state.gartic.pausedRemainingTime = undefined;
 
     // Clear strokes for new round
     this.state.strokes = [];
@@ -238,7 +181,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
         en: "Drawer has chosen a word! Start guessing!",
         vi: "Người vẽ đã chọn từ! Bắt đầu đoán!",
       },
-      "INFO",
+      MESSAGE_SUBTYPE.INFO,
     );
 
     // Start Timer
@@ -254,9 +197,9 @@ export default class CanvasGame extends BaseGame<CanvasState> {
 
     // Handle normal chat if not Gartic or not in guessing phase
     if (
-      this.state.mode !== "GARTIC" ||
+      this.state.mode !== GAME_MODE.GARTIC ||
       !this.state.gartic ||
-      this.state.gartic.status !== "DRAWING"
+      this.state.gartic.status !== GARTIC_STATUS.DRAWING
     ) {
       this.addChatMessage(playerId, text);
       return;
@@ -292,13 +235,12 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       this.state.guesses.push(playerId);
 
       // Calculate Score
-      // 1st: 10, 2nd: 8, 3rd: 6, others: 4
       const rank = this.state.guesses.length;
       let points = 0;
-      if (rank === 1) points = 10;
-      else if (rank === 2) points = 8;
-      else if (rank === 3) points = 6;
-      else points = 4;
+      if (rank === 1) points = 5;
+      else if (rank === 2) points = 4;
+      else if (rank === 3) points = 3;
+      else points = 2;
 
       this.state.scores[playerId] = (this.state.scores[playerId] || 0) + points;
 
@@ -311,7 +253,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
           en: `${player.username} guessed correctly!`,
           vi: `${player.username} đoán đúng!`,
         },
-        "SUCCESS",
+        MESSAGE_SUBTYPE.SUCCESS,
       );
 
       // Check if everyone guessed (excluding drawer)
@@ -325,7 +267,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       }
     } else {
       // WRONG GUESS
-      const similarity = calculateSimilarity(guess, correctIds);
+      const similarity = Math.round(calculateSimilarity(guess, correctIds));
       this.addChatMessage(playerId, text, similarity);
     }
   }
@@ -340,24 +282,25 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     this.addChatMessage(payload.playerId, payload.text);
   }
 
-  private handleRerollOptions(payload: { language: "en" | "vi" }) {
+  private handleRerollOptions(payload: { language: 0 | 1 }) {
     if (!this.isHost) return;
-    if (this.state.gartic?.status !== "CHOOSING_WORD") return;
+    if (this.state.gartic?.status !== GARTIC_STATUS.CHOOSING_WORD) return;
 
     this.state.wordLanguage = payload.language;
     // Use current difficulty or default to easy
     const difficulty = this.state.wordDifficulty || "easy";
-    const words = getWordsByDifficulty(difficulty, 3, payload.language);
+    const lang = payload.language === WORD_LANGUAGE.EN ? "en" : "vi";
+    const words = getWordsByDifficulty(difficulty, 3, lang);
     this.state.wordOptions = words;
   }
 
   private handleSelectDifficulty(payload: { difficulty: Difficulty }) {
     if (!this.isHost) return;
-    if (this.state.gartic?.status !== "CHOOSING_WORD") return;
+    if (this.state.gartic?.status !== GARTIC_STATUS.CHOOSING_WORD) return;
 
     this.state.wordDifficulty = payload.difficulty;
-    const lang = this.state.wordLanguage || "vi";
-    const words = getWordsByDifficulty(payload.difficulty, 3, lang);
+    const langStr = this.state.wordLanguage === WORD_LANGUAGE.EN ? "en" : "vi";
+    const words = getWordsByDifficulty(payload.difficulty, 3, langStr);
     this.state.wordOptions = words;
 
     // Timeout is already running from startNewRound, no need to reset it unless we want to give more time?
@@ -368,8 +311,8 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     if (!this.isHost) return;
     if (
       !this.state.gartic ||
-      (this.state.gartic.status !== "DRAWING" &&
-        this.state.gartic.status !== "CHOOSING_WORD")
+      (this.state.gartic.status !== GARTIC_STATUS.DRAWING &&
+        this.state.gartic.status !== GARTIC_STATUS.CHOOSING_WORD)
     )
       return;
 
@@ -383,10 +326,10 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       // Restart timer
       if (this.roundTimeout) clearTimeout(this.roundTimeout);
 
-      if (this.state.gartic.status === "CHOOSING_WORD") {
+      if (this.state.gartic.status === GARTIC_STATUS.CHOOSING_WORD) {
         // Resume picking word timeout
         this.roundTimeout = setTimeout(() => {
-          if (this.state.gartic?.status === "CHOOSING_WORD") {
+          if (this.state.gartic?.status === GARTIC_STATUS.CHOOSING_WORD) {
             this.handleChooseWord(this.state.wordOptions?.[0] || "apple");
           }
         }, remaining);
@@ -416,7 +359,11 @@ export default class CanvasGame extends BaseGame<CanvasState> {
 
   private handleBuyHint(playerId: string) {
     if (!this.isHost) return;
-    if (!this.state.gartic || this.state.gartic.status !== "DRAWING") return;
+    if (
+      !this.state.gartic ||
+      this.state.gartic.status !== GARTIC_STATUS.DRAWING
+    )
+      return;
     if (this.state.guesses.includes(playerId)) return; // Already guessed
     if (this.state.gartic.drawerId === playerId) return; // Drawer knows already
 
@@ -454,7 +401,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
           en: `${player?.username} used a hint!`,
           vi: `${player?.username} đã sử dụng gợi ý!`,
         },
-        "INFO",
+        MESSAGE_SUBTYPE.INFO,
       );
     }
   }
@@ -477,8 +424,8 @@ export default class CanvasGame extends BaseGame<CanvasState> {
 
     // Generate words - Default to Easy or previous difficulty
     const difficulty = this.state.wordDifficulty || "easy";
-    const lang = this.state.wordLanguage || "vi"; // Use stored game language
-    const words = getWordsByDifficulty(difficulty, 3, lang);
+    const langStr = this.state.wordLanguage === WORD_LANGUAGE.EN ? "en" : "vi";
+    const words = getWordsByDifficulty(difficulty, 3, langStr);
 
     this.state.wordOptions = words;
     this.state.guesses = [];
@@ -486,7 +433,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     this.state.gartic = {
       drawerId: drawer.id,
       word: "",
-      status: "CHOOSING_WORD",
+      status: GARTIC_STATUS.CHOOSING_WORD,
       roundEndTime: Date.now() + 15000,
       maskedWord: "",
       isPaused: false,
@@ -498,14 +445,14 @@ export default class CanvasGame extends BaseGame<CanvasState> {
         en: `Round starting! ${drawer.username} is choosing a word.`,
         vi: `Vòng mới bắt đầu! ${drawer.username} đang chọn từ.`,
       },
-      "INFO",
+      MESSAGE_SUBTYPE.INFO,
     );
 
     // Timeout for choosing word
     if (this.roundTimeout) clearTimeout(this.roundTimeout);
     this.roundTimeout = setTimeout(() => {
       // Auto-pick if not chosen
-      if (this.state.gartic?.status === "CHOOSING_WORD") {
+      if (this.state.gartic?.status === GARTIC_STATUS.CHOOSING_WORD) {
         this.handleChooseWord(this.state.wordOptions?.[0] || "apple");
       }
     }, 15000);
@@ -515,7 +462,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     if (this.roundTimeout) clearTimeout(this.roundTimeout);
     if (!this.state.gartic) return;
 
-    this.state.gartic.status = "ROUND_END";
+    this.state.gartic.status = GARTIC_STATUS.ROUND_END;
     this.state.gartic.maskedWord = this.state.gartic.word; // Reveal word
     this.state.gartic.roundEndTime = Date.now() + 5000; // 5s break
 
@@ -524,7 +471,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
         en: `Round Ended: ${reason.en}. The word was: ${this.state.gartic.word}`,
         vi: `Vòng kết thúc: ${reason.vi}. Từ cần đoán là: ${this.state.gartic.word}`,
       },
-      "WARNING",
+      MESSAGE_SUBTYPE.WARNING,
     );
 
     // Auto start next round after break
@@ -542,31 +489,31 @@ export default class CanvasGame extends BaseGame<CanvasState> {
       id: Date.now().toString() + Math.random(),
       senderId: playerId,
       content,
-      type: "CHAT",
+      type: MESSAGE_TYPE.CHAT,
       similarity,
       timestamp: Date.now(),
     };
     this.state.messages.push(msg);
-    if (this.state.messages.length > 50) {
-      this.state.messages.shift();
+    if (this.state.messages.length > 100) {
+      this.state.messages.splice(0, 50);
     }
   }
 
   private addSystemMessage(
     content: string | { en: string; vi: string },
-    subType: "INFO" | "SUCCESS" | "WARNING" | "ERROR" = "INFO",
+    subType: (typeof MESSAGE_SUBTYPE)[keyof typeof MESSAGE_SUBTYPE] = MESSAGE_SUBTYPE.INFO,
   ) {
     const msg: GameMessage = {
       id: Date.now().toString() + Math.random(),
       senderId: "SYSTEM",
       content,
-      type: "SYSTEM",
+      type: MESSAGE_TYPE.SYSTEM,
       subType,
       timestamp: Date.now(),
     };
     this.state.messages.push(msg);
-    if (this.state.messages.length > 50) {
-      this.state.messages.shift();
+    if (this.state.messages.length > 100) {
+      this.state.messages.splice(0, 50);
     }
   }
 
@@ -598,7 +545,7 @@ export default class CanvasGame extends BaseGame<CanvasState> {
     this.makeAction({ type: "UNDO", payload: this.userId });
   }
 
-  public rerollOptions(language: "en" | "vi") {
+  public rerollOptions(language: 0 | 1) {
     this.makeAction({ type: "REROLL_OPTIONS", payload: { language } });
   }
 

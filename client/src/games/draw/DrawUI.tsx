@@ -1,9 +1,14 @@
 import React, { useRef, useEffect, useState } from "react";
-import CanvasGame, {
+import {
   type CanvasState,
   type DrawStroke,
   type Point,
-} from "./Draw";
+  GAME_MODE,
+  GARTIC_STATUS,
+  MESSAGE_TYPE,
+  MESSAGE_SUBTYPE,
+  WORD_LANGUAGE,
+} from "./types";
 import { WORD_LIST, type Difficulty } from "./words";
 import {
   Trash2,
@@ -13,7 +18,6 @@ import {
   Clock,
   Gamepad2,
   Pencil,
-  Pause,
   Play,
   Shuffle,
   Languages,
@@ -26,6 +30,7 @@ import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
+import type CanvasGame from "./Draw";
 
 const COLORS = [
   "#f5f5f5", // trắng
@@ -81,7 +86,7 @@ export default function CanvasGameUI({
   const hasInitializedRef = useRef(false);
 
   // Derived state
-  const isGarticMode = state.mode === "GARTIC";
+  const isGarticMode = state.mode === GAME_MODE.GARTIC;
   const isDrawer = isGarticMode && state.gartic?.drawerId === currentUserId;
   const drawer = isGarticMode
     ? game.players.find((p) => p.id === state.gartic?.drawerId)
@@ -91,13 +96,13 @@ export default function CanvasGameUI({
 
   const canDraw =
     !isGarticMode ||
-    (isDrawer && state.gartic?.status === "DRAWING" && !isPaused);
+    (isDrawer && state.gartic?.status === GARTIC_STATUS.DRAWING);
 
   // Hints logic
   const myHints = state.gartic?.playerHints?.[currentUserId ?? ""] || [];
   const displayWord = React.useMemo(() => {
     if (!state.gartic?.word) return "";
-    if (state.gartic.status === "ROUND_END" || isDrawer)
+    if (state.gartic.status === GARTIC_STATUS.ROUND_END || isDrawer)
       return state.gartic.word;
 
     return state.gartic.word
@@ -315,6 +320,17 @@ export default function CanvasGameUI({
     if (!isDrawing || !canDraw) return;
 
     const point = getCanvasPoint(e);
+
+    // Throttling: only add point if it's far enough from the last point
+    if (currentStroke.length >= 2) {
+      const lastX = currentStroke[currentStroke.length - 2];
+      const lastY = currentStroke[currentStroke.length - 1];
+      const dist = Math.sqrt(
+        Math.pow(point.x - lastX, 2) + Math.pow(point.y - lastY, 2),
+      );
+      if (dist < 3) return; // Skip if less than 3 pixels moved
+    }
+
     setCurrentStroke((prev) => [...prev, point.x, point.y]);
 
     // Draw current stroke in real-time
@@ -382,6 +398,17 @@ export default function CanvasGameUI({
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !canDraw) return;
     const point = getTouchPoint(e);
+
+    // Throttling: only add point if it's far enough from the last point
+    if (currentStroke.length >= 2) {
+      const lastX = currentStroke[currentStroke.length - 2];
+      const lastY = currentStroke[currentStroke.length - 1];
+      const dist = Math.sqrt(
+        Math.pow(point.x - lastX, 2) + Math.pow(point.y - lastY, 2),
+      );
+      if (dist < 3) return; // Skip if less than 3 pixels moved
+    }
+
     setCurrentStroke((prev) => [...prev, point.x, point.y]);
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
@@ -572,7 +599,7 @@ export default function CanvasGameUI({
   };
 
   return (
-    <div className="flex flex-col @2xl:flex-row gap-4 @md:p-4 p-2 w-full h-full max-w-[1600px] mx-auto overflow-hidden pb-16!">
+    <div className="flex flex-col @md:flex-row gap-4 @md:p-4 p-2 w-full h-full max-w-[1600px] mx-auto overflow-hidden pb-16!">
       {/* Main Canvas Area */}
       <div className="flex flex-col flex-1 h-full min-h-0 gap-2">
         {/* Header / Top Bar */}
@@ -581,43 +608,31 @@ export default function CanvasGameUI({
             {isGarticMode ? (
               <>
                 <div
-                  className={`flex items-center gap-2 font-bold text-xl bg-slate-900 px-4 py-1 rounded ${timeLeft <= 10 && !isPaused ? "text-red-500 animate-pulse" : "text-yellow-400"}`}
+                  className={`flex items-center gap-2 font-bold text-xl bg-slate-900 px-4 py-1 rounded cursor-pointer hover:bg-slate-700 ${timeLeft <= 10 && !isPaused ? "text-red-500 animate-pulse" : "text-yellow-400"}`}
+                  onClick={() => isDrawer && game.pauseGame()}
                 >
                   {isPaused ? (
-                    <Pause className="w-5 h-5" />
+                    <Play className="w-5 h-5" />
                   ) : (
-                    <Clock className="w-5 h-5" />
+                    <Clock className="w-5 h-5 animate-spin" />
                   )}
                   {timeLeft}s
                 </div>
-                {isDrawer && (
-                  <button
-                    onClick={() => game.pauseGame()}
-                    className={`p-2 rounded-full transition-colors ${isPaused ? "bg-yellow-500 text-black hover:bg-yellow-400" : "bg-slate-700 text-white hover:bg-slate-600"}`}
-                    title={ts({
-                      en: isPaused ? "Resume" : "Pause",
-                      vi: isPaused ? "Tiếp tục" : "Tạm dừng",
-                    })}
-                  >
-                    {isPaused ? (
-                      <Play className="w-4 h-4 fill-current" />
-                    ) : (
-                      <Pause className="w-4 h-4 fill-current" />
-                    )}
-                  </button>
-                )}
+
                 <div
-                  className={`text-white ${displayWord ? "font-mono text-xl tracking-widest" : "font-sans"} pl-4`}
+                  className={`text-white ${displayWord ? "font-mono font-bold bg-green-600 px-4 py-1 rounded text-xl tracking-widest" : "font-sans"}`}
                 >
-                  {state.gartic?.status === "ROUND_END" ? (
+                  {state.gartic?.status === GARTIC_STATUS.ROUND_END ? (
                     <span className="text-green-400">{state.gartic.word}</span>
                   ) : (
                     displayWord || ti({ en: "Waiting...", vi: "Đang chờ..." })
                   )}
                 </div>
                 {/* Game Language Indicator */}
-                <div className="ml-4 px-2 py-0.5 rounded bg-slate-700 text-xs text-slate-300 border border-slate-600">
-                  {state.wordLanguage === "vi" ? "Tiếng Việt" : "English"}
+                <div className="px-2 py-0.5 rounded bg-slate-700 text-xs text-slate-300 border border-slate-600">
+                  {state.wordLanguage === WORD_LANGUAGE.VI
+                    ? "Tiếng Việt"
+                    : "English"}
                 </div>
               </>
             ) : (
@@ -684,7 +699,7 @@ export default function CanvasGameUI({
               <button
                 key={size.value}
                 onClick={() => setCurrentStrokeWidth(size.value)}
-                className={`w-8 h-8 rounded-lg border-2 transition-all flex items-center justify-center text-xs font-bold ${
+                className={`w-8 h-8 rounded-lg border-2 transition-all flex items-center justify-center text-xs font-bold cursor-pointer ${
                   currentStrokeWidth === size.value
                     ? "border-white bg-slate-600 text-white"
                     : "border-slate-600 bg-slate-700 text-slate-400 hover:border-slate-500"
@@ -697,13 +712,15 @@ export default function CanvasGameUI({
             <div className="w-px h-6 bg-slate-700 mx-1" />
             <button
               onClick={() => game.undo()}
-              className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-yellow-400"
+              disabled={!isGarticMode || isPaused}
+              className="p-2 hover:bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed text-slate-400 hover:text-yellow-400"
             >
               <Undo2 className="w-4 h-4" />
             </button>
             <button
               onClick={handleClear}
-              className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-red-400"
+              disabled={!isGarticMode || isPaused}
+              className="p-2 hover:bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed text-slate-400 hover:text-red-400"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -711,7 +728,7 @@ export default function CanvasGameUI({
         )}
 
         {/* Canvas Render */}
-        <div className="relative flex-1 min-h-0 bg-slate-900 rounded-lg border-2 border-slate-700 overflow-hidden shadow-xl">
+        <div className="relative flex-1 min-h-0 bg-slate-900 rounded-lg border-2 border-slate-700 overflow-hidden shadow-xl max-h-[70vh]">
           <canvas
             ref={canvasRef}
             width={800}
@@ -728,8 +745,7 @@ export default function CanvasGameUI({
           />
 
           {/* Drawer Overlay: Choosing Word */}
-          {/* Drawer Overlay: Choosing Word */}
-          {isDrawer && state.gartic?.status === "CHOOSING_WORD" && (
+          {isDrawer && state.gartic?.status === GARTIC_STATUS.CHOOSING_WORD && (
             <div className="absolute inset-0 bg-black/80 z-10 animate-in fade-in overflow-y-auto">
               <div className="min-h-full flex flex-col items-center justify-center p-2 gap-2">
                 <h2 className="text-xl font-bold text-white text-center">
@@ -772,7 +788,9 @@ export default function CanvasGameUI({
                   <button
                     onClick={() =>
                       game.rerollOptions(
-                        state.wordLanguage === "vi" ? "vi" : "en",
+                        state.wordLanguage === WORD_LANGUAGE.VI
+                          ? WORD_LANGUAGE.VI
+                          : WORD_LANGUAGE.EN,
                       )
                     }
                     className="bg-slate-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-600 transition-colors text-sm"
@@ -783,7 +801,9 @@ export default function CanvasGameUI({
                   <button
                     onClick={() =>
                       game.rerollOptions(
-                        state.wordLanguage === "vi" ? "en" : "vi",
+                        state.wordLanguage === WORD_LANGUAGE.VI
+                          ? WORD_LANGUAGE.EN
+                          : WORD_LANGUAGE.VI,
                       )
                     }
                     className="bg-slate-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-600 transition-colors text-sm"
@@ -793,7 +813,9 @@ export default function CanvasGameUI({
                     })}
                   >
                     <Languages className="w-4 h-4" />
-                    {state.wordLanguage === "vi" ? "English" : "Tiếng Việt"}
+                    {state.wordLanguage === WORD_LANGUAGE.VI
+                      ? "English"
+                      : "Tiếng Việt"}
                   </button>
                 </div>
 
@@ -802,7 +824,7 @@ export default function CanvasGameUI({
                     <button
                       key={word}
                       onClick={() => game.chooseWord(word)}
-                      className="bg-slate-700 hover:bg-indigo-600 text-white p-2 rounded-xl text-base font-medium transition-all transform hover:scale-105 active:scale-95"
+                      className="bg-slate-700 hover:bg-indigo-600 text-white p-2 rounded-xl text-base font-medium transition-all transform active:scale-95"
                     >
                       {word}
                     </button>
@@ -813,31 +835,40 @@ export default function CanvasGameUI({
           )}
 
           {/* Others Overlay: Waiting for Drawer */}
-          {!isDrawer && state.gartic?.status === "CHOOSING_WORD" && (
-            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10">
-              <div className="animate-bounce">
-                <Pencil className="w-12 h-12 text-white mb-2" />
+          {!isDrawer &&
+            state.gartic?.status === GARTIC_STATUS.CHOOSING_WORD && (
+              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10">
+                <div className="animate-bounce">
+                  <Pencil className="w-12 h-12 text-white mb-2" />
+                </div>
+                <div className="text-lg text-white font-medium animate-pulse">
+                  {ti({
+                    en: `${drawer?.username || "Drawer"} is choosing a word...`,
+                    vi: `${drawer?.username || "Người vẽ"} đang chọn từ...`,
+                  })}
+                </div>
               </div>
-              <div className="text-lg text-white font-medium animate-pulse">
-                {ti({
-                  en: `${drawer?.username || "Drawer"} is choosing a word...`,
-                  vi: `${drawer?.username || "Người vẽ"} đang chọn từ...`,
-                })}
-              </div>
-            </div>
-          )}
+            )}
 
           {/* Paused Overlay */}
           {isPaused && (
-            <div className="absolute inset-0 bg-black/10 flex flex-col items-center justify-center z-30">
-              <div className="bg-yellow-500 text-black px-6 py-2 rounded-xl font-black text-2xl tracking-widest shadow-xl transform rotate-[-5deg]">
+            <div className="absolute inset-0 bg-black/10 flex flex-col items-center justify-center z-5">
+              <div className="bg-yellow-500 text-black px-6 py-2 rounded-xl font-black text-2xl tracking-widest shadow-xl transform rotate-[-5deg] text-center">
                 {ti({ en: "Paused", vi: "Tạm dừng" })}
+
+                {/* Show who paused */}
+                <div className="text-xs text-slate-700 font-medium">
+                  {ti({
+                    en: `${drawer?.username || "Drawer"} paused the game`,
+                    vi: `${drawer?.username || "Người vẽ"} đã tạm dừng trò chơi`,
+                  })}
+                </div>
               </div>
             </div>
           )}
 
           {/* Result Overlay */}
-          {state.gartic?.status === "ROUND_END" && (
+          {state.gartic?.status === GARTIC_STATUS.ROUND_END && (
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 animate-in zoom-in-90 duration-300">
               <h2 className="text-sm text-slate-300 uppercase tracking-widest mb-2">
                 {ti({ en: "The word was", vi: "Đáp án là" })}
@@ -858,7 +889,7 @@ export default function CanvasGameUI({
 
       {/* Sidebar: Chat & Scores */}
       {isGarticMode && (
-        <div className="w-full @2xl:w-80 flex flex-col gap-4 shrink-0 h-[400px] @2xl:h-full">
+        <div className="w-full flex flex-col gap-4 shrink-0 h-[400px] @md:h-full @md:w-65">
           {/* Chat / Log */}
           <div className="bg-slate-800 rounded-lg flex-1 min-h-0 max-h-[300px] flex flex-col overflow-hidden">
             <div className="p-3 border-b border-slate-700 bg-slate-900/50">
@@ -876,14 +907,14 @@ export default function CanvasGameUI({
                   <div
                     key={msg.id}
                     className={`text-left text-sm wrap-break-word px-2 py-1 rounded mb-1 ${
-                      msg.type === "SYSTEM"
+                      msg.type === MESSAGE_TYPE.SYSTEM
                         ? `font-medium text-center text-xs ${getSystemMessageStyle(msg.subType)}`
-                        : msg.type === "GUESS" && msg.isCorrect
+                        : msg.type === MESSAGE_TYPE.GUESS && msg.isCorrect
                           ? "text-green-400 font-bold bg-green-900/20"
                           : "text-slate-300 hover:bg-slate-700/30"
                     }`}
                   >
-                    {msg.type !== "SYSTEM" && (
+                    {msg.type !== MESSAGE_TYPE.SYSTEM && (
                       <span className="font-bold text-slate-400 mr-2">
                         {game.players.find((p) => p.id === msg.senderId)
                           ?.username || "Unknown"}
@@ -906,7 +937,7 @@ export default function CanvasGameUI({
             <div className="p-2 border-t border-slate-700 bg-slate-900">
               {/* Hint Button */}
               {!isDrawer &&
-                state.gartic?.status === "DRAWING" &&
+                state.gartic?.status === GARTIC_STATUS.DRAWING &&
                 !state.guesses.includes(currentUserId ?? "") && (
                   <button
                     onClick={() => game.buyHint()}
@@ -1048,15 +1079,17 @@ export default function CanvasGameUI({
   );
 }
 
-const getSystemMessageStyle = (subType?: string) => {
+const getSystemMessageStyle = (
+  subType?: (typeof MESSAGE_SUBTYPE)[keyof typeof MESSAGE_SUBTYPE],
+) => {
   switch (subType) {
-    case "SUCCESS":
+    case MESSAGE_SUBTYPE.SUCCESS:
       return "text-green-400 bg-green-400/10 border border-green-400/20";
-    case "WARNING":
+    case MESSAGE_SUBTYPE.WARNING:
       return "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20";
-    case "ERROR":
+    case MESSAGE_SUBTYPE.ERROR:
       return "text-red-400 bg-red-400/10 border border-red-400/20";
-    case "INFO":
+    case MESSAGE_SUBTYPE.INFO:
     default:
       return "text-indigo-300 bg-indigo-400/10 border border-indigo-400/20";
   }
