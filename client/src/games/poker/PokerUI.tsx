@@ -7,6 +7,7 @@ import {
   Suit,
   HAND_NAMES,
   GAME_PHASES,
+  decodeCard,
 } from "./types";
 import type { GameUIProps } from "../types";
 import {
@@ -938,7 +939,8 @@ function CardDisplay({
   className?: string;
   compact?: boolean;
 }) {
-  const isRed = card.suit === Suit.HEART || card.suit === Suit.DIAMOND;
+  const { rank, suit } = decodeCard(card);
+  const isRed = suit === Suit.HEART || suit === Suit.DIAMOND;
   const sizeClasses = {
     sm: "w-8 h-12 @md:w-10 @md:h-14 text-[10px] @md:text-xs",
     md: "w-10 h-14 @md:w-14 @md:h-20 text-xs @md:text-sm",
@@ -952,17 +954,17 @@ function CardDisplay({
       <div
         className={`self-start font-bold ${isRed ? "text-red-600" : "text-slate-900"} leading-none`}
       >
-        {RANK_DISPLAY[card.rank]}
+        {RANK_DISPLAY[rank]}
       </div>
       <div
         className={`${isRed ? "text-red-500" : "text-slate-800"} text-xl @md:text-2xl`}
       >
-        {SUIT_SYMBOLS[card.suit]}
+        {SUIT_SYMBOLS[suit]}
       </div>
       <div
         className={`self-end font-bold ${isRed ? "text-red-600" : "text-slate-900"} leading-none rotate-180`}
       >
-        {compact ? "" : RANK_DISPLAY[card.rank]}
+        {compact ? "" : RANK_DISPLAY[rank]}
       </div>
     </div>
   );

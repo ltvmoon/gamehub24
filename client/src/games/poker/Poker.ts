@@ -8,6 +8,8 @@ import {
   Suit,
   Rank,
   HandRanking,
+  encodeCard,
+  decodeCard,
 } from "./types";
 import type { Player } from "../../stores/roomStore";
 
@@ -452,13 +454,14 @@ export default class Poker extends BaseGame<PokerState> {
   public evaluateHand(holeCards: Card[], community: Card[]): HandEvaluation {
     const allCards = [...holeCards, ...community];
     // Sort by rank descending
-    allCards.sort((a, b) => b.rank - a.rank);
+    allCards.sort((a, b) => decodeCard(b).rank - decodeCard(a).rank);
 
     // Check flushes
     const suitCounts: Record<number, Card[]> = {};
     allCards.forEach((c) => {
-      if (!suitCounts[c.suit]) suitCounts[c.suit] = [];
-      suitCounts[c.suit].push(c);
+      const { suit } = decodeCard(c);
+      if (!suitCounts[suit]) suitCounts[suit] = [];
+      suitCounts[suit].push(c);
     });
 
     let flushSuit = -1;
@@ -467,9 +470,9 @@ export default class Poker extends BaseGame<PokerState> {
     });
 
     // Check Straights
-    const uniqueRanks = Array.from(new Set(allCards.map((c) => c.rank))).sort(
-      (a, b) => b - a,
-    );
+    const uniqueRanks = Array.from(
+      new Set(allCards.map((c) => decodeCard(c).rank)),
+    ).sort((a, b) => b - a);
     let straightHighRank = -1;
 
     // Check for 5 consecutive
@@ -495,7 +498,7 @@ export default class Poker extends BaseGame<PokerState> {
     if (flushSuit !== -1) {
       const flushCards = suitCounts[flushSuit];
       const flushRanks = Array.from(
-        new Set(flushCards.map((c) => c.rank)),
+        new Set(flushCards.map((c) => decodeCard(c).rank)),
       ).sort((a, b) => b - a);
       // Check straight within flush cards
       for (let i = 0; i <= flushRanks.length - 5; i++) {
@@ -526,7 +529,7 @@ export default class Poker extends BaseGame<PokerState> {
       ) {
         // Get the specific cards
         const cards = flushCards
-          .filter((c) => [14, 2, 3, 4, 5].includes(c.rank))
+          .filter((c) => [14, 2, 3, 4, 5].includes(decodeCard(c).rank))
           .slice(0, 5); // Rough selection
         return {
           rank: HandRanking.STRAIGHT_FLUSH,
@@ -540,8 +543,9 @@ export default class Poker extends BaseGame<PokerState> {
     // Check Quads, Full House, Triples, Two Pair, Pair
     const rankCounts: Record<number, Card[]> = {};
     allCards.forEach((c) => {
-      if (!rankCounts[c.rank]) rankCounts[c.rank] = [];
-      rankCounts[c.rank].push(c);
+      const { rank } = decodeCard(c);
+      if (!rankCounts[rank]) rankCounts[rank] = [];
+      rankCounts[rank].push(c);
     });
 
     const keys = Object.keys(rankCounts)
@@ -554,7 +558,7 @@ export default class Poker extends BaseGame<PokerState> {
     if (quads.length > 0) {
       const qRank = quads[0];
       const main = rankCounts[qRank];
-      const kicker = allCards.find((c) => c.rank !== qRank)!;
+      const kicker = allCards.find((c) => decodeCard(c).rank !== qRank)!;
       return {
         rank: HandRanking.FOUR_OF_A_KIND,
         cards: [...main, kicker],
@@ -590,12 +594,14 @@ export default class Poker extends BaseGame<PokerState> {
       if (straightHighRank === 5) {
         // Ace low straight (5, 4, 3, 2, A)
         const ranks = [5, 4, 3, 2, Rank.ACE];
-        straightCards = ranks.map((r) => allCards.find((c) => c.rank === r)!);
+        straightCards = ranks.map(
+          (r) => allCards.find((c) => decodeCard(c).rank === r)!,
+        );
       } else {
         // Normal straight
         for (let i = 0; i < 5; i++) {
           straightCards.push(
-            allCards.find((c) => c.rank === straightHighRank - i)!,
+            allCards.find((c) => decodeCard(c).rank === straightHighRank - i)!,
           );
         }
       }
@@ -610,7 +616,9 @@ export default class Poker extends BaseGame<PokerState> {
 
     if (triples.length > 0) {
       const tRank = triples[0];
-      const kickers = allCards.filter((c) => c.rank !== tRank).slice(0, 2);
+      const kickers = allCards
+        .filter((c) => decodeCard(c).rank !== tRank)
+        .slice(0, 2);
       return {
         rank: HandRanking.THREE_OF_A_KIND,
         cards: [...rankCounts[tRank], ...kickers],
@@ -623,7 +631,9 @@ export default class Poker extends BaseGame<PokerState> {
       if (pairs.length >= 2) {
         const p1 = pairs[0];
         const p2 = pairs[1];
-        const kicker = allCards.find((c) => c.rank !== p1 && c.rank !== p2)!;
+        const kicker = allCards.find(
+          (c) => decodeCard(c).rank !== p1 && decodeCard(c).rank !== p2,
+        )!;
         return {
           rank: HandRanking.TWO_PAIR,
           cards: [...rankCounts[p1], ...rankCounts[p2], kicker],
@@ -632,7 +642,9 @@ export default class Poker extends BaseGame<PokerState> {
         };
       } else {
         const p1 = pairs[0];
-        const kickers = allCards.filter((c) => c.rank !== p1).slice(0, 3);
+        const kickers = allCards
+          .filter((c) => decodeCard(c).rank !== p1)
+          .slice(0, 3);
         return {
           rank: HandRanking.PAIR,
           cards: [...rankCounts[p1], ...kickers],
@@ -665,7 +677,7 @@ export default class Poker extends BaseGame<PokerState> {
     // Full House: KKK 22 -> Rank * .. + K*.. + 2
 
     evaluation.cards.forEach((c, i) => {
-      val += c.rank * Math.pow(15, 4 - i);
+      val += decodeCard(c).rank * Math.pow(15, 4 - i);
     });
 
     return val;
@@ -676,7 +688,7 @@ export default class Poker extends BaseGame<PokerState> {
     const deck: Card[] = [];
     for (const suit of [Suit.SPADE, Suit.CLUB, Suit.DIAMOND, Suit.HEART]) {
       for (let rank = Rank.TWO; rank <= Rank.ACE; rank++) {
-        deck.push({ suit, rank });
+        deck.push(encodeCard(rank as any, suit as any));
       }
     }
     return deck;
@@ -1099,7 +1111,7 @@ export default class Poker extends BaseGame<PokerState> {
     if (
       evalHand.rank >= HandRanking.PAIR ||
       (this.state.gamePhase === "pre_flop" &&
-        bot.hand[0].rank + bot.hand[1].rank > 20)
+        decodeCard(bot.hand[0]).rank + decodeCard(bot.hand[1]).rank > 20)
     ) {
       this.handleCall(bot.id!);
       return;

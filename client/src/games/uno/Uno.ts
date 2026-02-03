@@ -7,6 +7,8 @@ import {
   type PlayerSlot,
   CardColor,
   CardType,
+  encodeUnoCard,
+  decodeUnoCard,
 } from "./types";
 
 export default class Uno extends BaseGame<UnoState> {
@@ -96,7 +98,6 @@ export default class Uno extends BaseGame<UnoState> {
 
   private createDeck(): UnoCard[] {
     const deck: UnoCard[] = [];
-    let cardId = 0;
 
     // For each color (Red, Blue, Green, Yellow)
     for (const color of [
@@ -106,58 +107,35 @@ export default class Uno extends BaseGame<UnoState> {
       CardColor.YELLOW,
     ]) {
       // One 0 card per color
-      deck.push({
-        id: `card_${cardId++}`,
-        color,
-        type: CardType.NUMBER,
-        value: 0,
-      });
+      deck.push(encodeUnoCard(color, CardType.NUMBER, 0));
 
       // Two of each 1-9 per color
       for (let num = 1; num <= 9; num++) {
-        deck.push({
-          id: `card_${cardId++}`,
-          color,
-          type: CardType.NUMBER,
-          value: num,
-        });
-        deck.push({
-          id: `card_${cardId++}`,
-          color,
-          type: CardType.NUMBER,
-          value: num,
-        });
+        deck.push(encodeUnoCard(color, CardType.NUMBER, num));
+        deck.push(encodeUnoCard(color, CardType.NUMBER, num));
       }
 
       // Two Skip cards per color
-      deck.push({ id: `card_${cardId++}`, color, type: CardType.SKIP });
-      deck.push({ id: `card_${cardId++}`, color, type: CardType.SKIP });
+      deck.push(encodeUnoCard(color, CardType.SKIP));
+      deck.push(encodeUnoCard(color, CardType.SKIP));
 
       // Two Reverse cards per color
-      deck.push({ id: `card_${cardId++}`, color, type: CardType.REVERSE });
-      deck.push({ id: `card_${cardId++}`, color, type: CardType.REVERSE });
+      deck.push(encodeUnoCard(color, CardType.REVERSE));
+      deck.push(encodeUnoCard(color, CardType.REVERSE));
 
       // Two Draw Two cards per color
-      deck.push({ id: `card_${cardId++}`, color, type: CardType.DRAW_TWO });
-      deck.push({ id: `card_${cardId++}`, color, type: CardType.DRAW_TWO });
+      deck.push(encodeUnoCard(color, CardType.DRAW_TWO));
+      deck.push(encodeUnoCard(color, CardType.DRAW_TWO));
     }
 
     // Four Wild cards
     for (let i = 0; i < 4; i++) {
-      deck.push({
-        id: `card_${cardId++}`,
-        color: CardColor.WILD,
-        type: CardType.WILD,
-      });
+      deck.push(encodeUnoCard(CardColor.WILD, CardType.WILD));
     }
 
     // Four Wild Draw Four cards
     for (let i = 0; i < 4; i++) {
-      deck.push({
-        id: `card_${cardId++}`,
-        color: CardColor.WILD,
-        type: CardType.WILD_DRAW_FOUR,
-      });
+      deck.push(encodeUnoCard(CardColor.WILD, CardType.WILD_DRAW_FOUR));
     }
 
     return deck;
@@ -186,18 +164,21 @@ export default class Uno extends BaseGame<UnoState> {
 
     // Find first non-wild card for discard pile
     let startCardIndex = cardIndex;
-    while (
-      startCardIndex < deck.length &&
-      (deck[startCardIndex].type === CardType.WILD ||
-        deck[startCardIndex].type === CardType.WILD_DRAW_FOUR)
-    ) {
+    while (startCardIndex < deck.length) {
+      const decoded = decodeUnoCard(deck[startCardIndex]);
+      if (
+        decoded.type !== CardType.WILD &&
+        decoded.type !== CardType.WILD_DRAW_FOUR
+      ) {
+        break;
+      }
       startCardIndex++;
     }
 
     // Put the starting card on discard pile
     const startCard = deck[startCardIndex];
     this.state.discardPile = [startCard];
-    this.state.currentColor = startCard.color;
+    this.state.currentColor = decodeUnoCard(startCard).color;
 
     // Remove the start card and put remaining cards in draw pile
     const remainingCards = [
@@ -211,6 +192,8 @@ export default class Uno extends BaseGame<UnoState> {
 
   private canPlayCard(card: UnoCard): boolean {
     const topCard = this.state.discardPile[this.state.discardPile.length - 1];
+    const decodedVal = decodeUnoCard(card);
+    const decodedTop = decodeUnoCard(topCard);
 
     // If there's pending draw, must play Draw Two to stack (optional rule - disabled)
     // For simplicity, player must draw if there's pending draw
@@ -219,21 +202,27 @@ export default class Uno extends BaseGame<UnoState> {
     }
 
     // Wild cards can always be played
-    if (card.type === CardType.WILD || card.type === CardType.WILD_DRAW_FOUR) {
+    if (
+      decodedVal.type === CardType.WILD ||
+      decodedVal.type === CardType.WILD_DRAW_FOUR
+    ) {
       return true;
     }
 
     // Match by color
-    if (card.color === this.state.currentColor) {
+    if (decodedVal.color === this.state.currentColor) {
       return true;
     }
 
     // Match by number/type
-    if (card.type === CardType.NUMBER && topCard.type === CardType.NUMBER) {
-      return card.value === topCard.value;
+    if (
+      decodedVal.type === CardType.NUMBER &&
+      decodedTop.type === CardType.NUMBER
+    ) {
+      return decodedVal.value === decodedTop.value;
     }
 
-    if (card.type === topCard.type) {
+    if (decodedVal.type === decodedTop.type) {
       return true;
     }
 
@@ -259,8 +248,8 @@ export default class Uno extends BaseGame<UnoState> {
 
     const player = this.state.players[playerIndex];
 
-    // Find card in hand
-    const cardIndex = player.hand.findIndex((c) => c.id === card.id);
+    // Find card in hand by value (numeric comparison)
+    const cardIndex = player.hand.findIndex((c) => c === card);
     if (cardIndex === -1) return;
 
     // Validate play
@@ -294,7 +283,8 @@ export default class Uno extends BaseGame<UnoState> {
     this.state.mustDraw = false;
 
     // Advance turn (unless Skip happened)
-    if (card.type !== CardType.SKIP) {
+    const decodedCard = decodeUnoCard(card);
+    if (decodedCard.type !== CardType.SKIP) {
       this.advanceTurn();
     } else {
       // Skip next player
@@ -306,15 +296,19 @@ export default class Uno extends BaseGame<UnoState> {
   }
 
   private applyCardEffect(card: UnoCard, chosenColor?: CardColor): void {
+    const decoded = decodeUnoCard(card);
     // Set current color
-    if (card.type === CardType.WILD || card.type === CardType.WILD_DRAW_FOUR) {
+    if (
+      decoded.type === CardType.WILD ||
+      decoded.type === CardType.WILD_DRAW_FOUR
+    ) {
       this.state.currentColor = chosenColor ?? CardColor.RED;
     } else {
-      this.state.currentColor = card.color;
+      this.state.currentColor = decoded.color;
     }
 
     // Apply special effects
-    switch (card.type) {
+    switch (decoded.type) {
       case CardType.REVERSE:
         const activePlayers = this.state.players.filter(
           (p) => p.id !== null && p.hand.length > 0,
@@ -523,11 +517,12 @@ export default class Uno extends BaseGame<UnoState> {
 
     // Handle if starting card is an action card
     const startCard = this.state.discardPile[this.state.discardPile.length - 1];
-    if (startCard.type === CardType.SKIP) {
+    const decodedStart = decodeUnoCard(startCard);
+    if (decodedStart.type === CardType.SKIP) {
       this.advanceTurn();
-    } else if (startCard.type === CardType.REVERSE) {
+    } else if (decodedStart.type === CardType.REVERSE) {
       this.state.turnDirection = -1;
-    } else if (startCard.type === CardType.DRAW_TWO) {
+    } else if (decodedStart.type === CardType.DRAW_TWO) {
       this.state.pendingDraw = 2;
     }
 
@@ -628,9 +623,10 @@ export default class Uno extends BaseGame<UnoState> {
 
       // Choose color for wild cards
       let chosenColor: CardColor | undefined;
+      const decodedCard = decodeUnoCard(card);
       if (
-        card.type === CardType.WILD ||
-        card.type === CardType.WILD_DRAW_FOUR
+        decodedCard.type === CardType.WILD ||
+        decodedCard.type === CardType.WILD_DRAW_FOUR
       ) {
         chosenColor = this.chooseBotColor(bot.hand);
       }
@@ -654,11 +650,13 @@ export default class Uno extends BaseGame<UnoState> {
     ];
 
     for (const type of priority) {
-      const cards = playableCards.filter((c) => c.type === type);
+      const cards = playableCards.filter((c) => decodeUnoCard(c).type === type);
       if (cards.length > 0) {
         if (type === CardType.NUMBER) {
           // Play highest number
-          return cards.sort((a, b) => (b.value || 0) - (a.value || 0))[0];
+          return cards.sort(
+            (a, b) => decodeUnoCard(b).value - decodeUnoCard(a).value,
+          )[0];
         }
         return cards[0];
       }
@@ -677,8 +675,9 @@ export default class Uno extends BaseGame<UnoState> {
     };
 
     for (const card of hand) {
-      if (card.color !== CardColor.WILD) {
-        colorCounts[card.color]++;
+      const decoded = decodeUnoCard(card);
+      if (decoded.color !== CardColor.WILD) {
+        colorCounts[decoded.color]++;
       }
     }
 

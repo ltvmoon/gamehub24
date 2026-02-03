@@ -25,9 +25,23 @@ export const Rank = {
 } as const;
 export type Rank = (typeof Rank)[keyof typeof Rank];
 
-export interface Card {
-  suit: Suit;
-  rank: Rank;
+/**
+ * Card Encoding:
+ * Each card is represented by a single number: rank * 10 + suit
+ * Ranks: 3-15 (Two is 15)
+ * Suits: 0-3 (Spade, Club, Diamond, Heart)
+ * Example: 3 of Hearts = 3 * 10 + 3 = 33
+ */
+export type Card = number;
+
+export function encodeCard(rank: Rank, suit: Suit): Card {
+  return rank * 10 + suit;
+}
+
+export function decodeCard(card: Card): { rank: Rank; suit: Suit } {
+  const rank = Math.floor(card / 10) as Rank;
+  const suit = (card % 10) as Suit;
+  return { rank, suit };
 }
 
 // Combination types for playing cards
@@ -71,7 +85,7 @@ export const CombinationName = {
 
 export interface Combination {
   type: CombinationType;
-  cards: Card[];
+  cardCount: number;
   // For comparison - higher value beats lower
   value: number;
 }

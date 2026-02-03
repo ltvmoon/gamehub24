@@ -6,6 +6,7 @@ import {
   CardType,
   COLOR_BG_CLASSES,
   TYPE_DISPLAY,
+  decodeUnoCard,
 } from "./types";
 import {
   Play,
@@ -165,16 +166,19 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
     if (!isMyTurn || state.gamePhase !== "playing") return;
     if (state.pendingDraw > 0) return; // Must draw first
 
+    const decoded = decodeUnoCard(card);
     if (!game.canPlayCardCheck(card)) return;
 
     // Check if wild card
-    if (card.type === CardType.WILD || card.type === CardType.WILD_DRAW_FOUR) {
+    if (
+      decoded.type === CardType.WILD ||
+      decoded.type === CardType.WILD_DRAW_FOUR
+    ) {
       setSelectedCard(card);
       setShowColorPicker(true);
     } else {
       game.requestPlayCard(card);
     }
-    debugger;
   };
 
   const handleColorSelect = (color: CardColor) => {
@@ -334,7 +338,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                       (index - Math.floor(arr.length / 2)) * (isMobile ? 4 : 5);
                     return (
                       <div
-                        key={card.id}
+                        key={`${card}-${state.discardPile.length - arr.length + index}`}
                         className="absolute inset-0"
                         style={{
                           transform: `translateX(${offset}px) translateY(${-offset}px) rotate(${rotation}deg)`,
@@ -603,7 +607,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 if (index >= mySlot.hand.length - hideDrawnCards) return null;
                 return (
                   <button
-                    key={card.id}
+                    key={`${card}-${index}`}
                     onClick={() => handleCardClick(card)}
                     disabled={!isMyTurn || !canPlay}
                     className={`transition-transform duration-150 ${
@@ -779,7 +783,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
             </div>
             <div className="overflow-y-auto max-h-[60vh] grid grid-cols-4 @md:grid-cols-5 gap-2">
               {[...state.discardPile].reverse().map((card, index) => (
-                <div key={`${card.id}-${index}`} className="relative">
+                <div key={`${card}-${index}`} className="relative">
                   <UnoCardDisplay card={card} size="small" />
                 </div>
               ))}
@@ -865,17 +869,20 @@ function UnoCardDisplay({
   }
 
   const getCardContent = () => {
-    if (card.type === CardType.NUMBER) {
-      return card.value?.toString() || "0";
+    const decoded = decodeUnoCard(card);
+    if (decoded.type === CardType.NUMBER) {
+      return decoded.value.toString();
     }
-    return TYPE_DISPLAY[card.type];
+    return TYPE_DISPLAY[decoded.type];
   };
+
+  const { color } = decodeUnoCard(card);
 
   return (
     <div
       className={`
         ${sizeClasses[size]}
-        ${COLOR_BG_CLASSES[card.color]}
+        ${COLOR_BG_CLASSES[color]}
         rounded-lg @md:rounded-xl shadow-lg
         border-2 border-white/30
         font-bold text-white

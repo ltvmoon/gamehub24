@@ -23,9 +23,23 @@ export const Rank = {
 } as const;
 export type Rank = (typeof Rank)[keyof typeof Rank];
 
-export interface Card {
-  suit: Suit;
-  rank: Rank;
+/**
+ * Card Encoding:
+ * Each card is represented by a single number: rank * 10 + suit
+ * Ranks: 2-14 (Ace is 14)
+ * Suits: 0-3 (Spade, Club, Diamond, Heart)
+ * Example: 2 of Hearts = 2 * 10 + 3 = 23
+ */
+export type Card = number;
+
+export function encodeCard(rank: Rank, suit: Suit): Card {
+  return rank * 10 + suit;
+}
+
+export function decodeCard(card: Card): { rank: Rank; suit: Suit } {
+  const rank = Math.floor(card / 10) as Rank;
+  const suit = (card % 10) as Suit;
+  return { rank, suit };
 }
 
 export const HandRanking = {

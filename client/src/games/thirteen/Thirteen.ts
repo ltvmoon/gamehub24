@@ -9,6 +9,8 @@ import {
   Rank,
   CombinationType,
   CombinationName,
+  encodeCard,
+  decodeCard,
 } from "./types";
 import type { Player } from "../../stores/roomStore";
 
@@ -92,7 +94,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     const deck: Card[] = [];
     for (const suit of [Suit.SPADE, Suit.CLUB, Suit.DIAMOND, Suit.HEART]) {
       for (let rank = Rank.THREE; rank <= Rank.TWO; rank++) {
-        deck.push({ suit, rank });
+        deck.push(encodeCard(rank as any, suit as any));
       }
     }
     return deck;
@@ -123,57 +125,49 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   }
 
   private sortHand(hand: Card[]): void {
-    hand.sort((a, b) => {
-      if (a.rank !== b.rank) return a.rank - b.rank;
-      return a.suit - b.suit;
-    });
-  }
-
-  // Compare cards: higher value wins
-  private getCardValue(card: Card): number {
-    return card.rank * 10 + card.suit;
+    hand.sort((a, b) => a - b);
   }
 
   // Validate combination of cards
   private getCombination(cards: Card[]): Combination | null {
     if (cards.length === 0) return null;
 
-    const sorted = [...cards].sort(
-      (a, b) => this.getCardValue(a) - this.getCardValue(b),
-    );
+    const sorted = [...cards].sort((a, b) => a - b);
 
     // Single
     if (cards.length === 1) {
       return {
         type: CombinationType.SINGLE,
-        cards: sorted,
-        value: this.getCardValue(sorted[0]),
+        cardCount: 1,
+        value: sorted[0],
       };
     }
 
     // Check if all same rank (pair, triple, four of a kind)
-    const allSameRank = cards.every((c) => c.rank === cards[0].rank);
+    const allSameRank = cards.every(
+      (c) => decodeCard(c).rank === decodeCard(cards[0]).rank,
+    );
 
     if (allSameRank) {
       if (cards.length === 2) {
         return {
           type: CombinationType.PAIR,
-          cards: sorted,
-          value: this.getCardValue(sorted[sorted.length - 1]),
+          cardCount: 2,
+          value: sorted[sorted.length - 1],
         };
       }
       if (cards.length === 3) {
         return {
           type: CombinationType.TRIPLE,
-          cards: sorted,
-          value: this.getCardValue(sorted[sorted.length - 1]),
+          cardCount: 3,
+          value: sorted[sorted.length - 1],
         };
       }
       if (cards.length === 4) {
         return {
           type: CombinationType.FOUR_OF_KIND,
-          cards: sorted,
-          value: this.getCardValue(sorted[sorted.length - 1]),
+          cardCount: 4,
+          value: sorted[sorted.length - 1],
         };
       }
     }
@@ -184,9 +178,8 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       if (isStraight) {
         return {
           type: CombinationType.STRAIGHT,
-          cards: sorted,
-          value:
-            this.getCardValue(sorted[sorted.length - 1]) * 100 + cards.length,
+          cardCount: cards.length,
+          value: sorted[sorted.length - 1] * 100 + cards.length,
         };
       }
     }
@@ -197,8 +190,8 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       if (isThreeConsecutivePairs) {
         return {
           type: CombinationType.THREE_CONSECUTIVE_PAIRS,
-          cards: sorted,
-          value: this.getCardValue(sorted[sorted.length - 1]),
+          cardCount: 6,
+          value: sorted[sorted.length - 1],
         };
       }
     }
@@ -210,12 +203,13 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   private isThreeConsecutivePairs(sorted: Card[]): boolean {
     if (sorted.length !== 6) return false;
     // Cannot have 2 in consecutive pairs
-    if (sorted.some((c) => c.rank === Rank.TWO)) return false;
+    if (sorted.some((c) => decodeCard(c).rank === Rank.TWO)) return false;
 
     // Group by rank
     const rankCounts = new Map<Rank, number>();
     for (const card of sorted) {
-      rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1);
+      const { rank } = decodeCard(card);
+      rankCounts.set(rank, (rankCounts.get(rank) || 0) + 1);
     }
 
     // Must have exactly 3 different ranks, each appearing exactly twice
@@ -232,10 +226,11 @@ export default class Thirteen extends BaseGame<ThirteenState> {
 
   private isStraight(sorted: Card[]): boolean {
     // Cannot have 2 in a straight (2 is the highest)
-    if (sorted.some((c) => c.rank === Rank.TWO)) return false;
+    if (sorted.some((c) => decodeCard(c).rank === Rank.TWO)) return false;
 
     for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i].rank !== sorted[i - 1].rank + 1) return false;
+      if (decodeCard(sorted[i]).rank !== decodeCard(sorted[i - 1]).rank + 1)
+        return false;
     }
     return true;
   }
@@ -251,7 +246,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     if (
       newCombo.type === CombinationType.FOUR_OF_KIND &&
       lastCombo.type === CombinationType.SINGLE &&
-      lastCombo.cards[0].rank === Rank.TWO
+      decodeCard(
+        this.state.currentTrick[this.state.currentTrick.length - 1].cards[0],
+      ).rank === Rank.TWO
     ) {
       return true;
     }
@@ -260,7 +257,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     if (
       newCombo.type === CombinationType.THREE_CONSECUTIVE_PAIRS &&
       lastCombo.type === CombinationType.SINGLE &&
-      lastCombo.cards[0].rank === Rank.TWO
+      decodeCard(
+        this.state.currentTrick[this.state.currentTrick.length - 1].cards[0],
+      ).rank === Rank.TWO
     ) {
       return true;
     }
@@ -271,7 +270,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     // Must be same length for straights
     if (
       newCombo.type === CombinationType.STRAIGHT &&
-      newCombo.cards.length !== lastCombo.cards.length
+      newCombo.cardCount !== lastCombo.cardCount
     ) {
       return false;
     }
@@ -384,16 +383,12 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   }
 
   private playerHasCards(player: PlayerSlot, cards: Card[]): boolean {
-    return cards.every((card) =>
-      player.hand.some((c) => c.rank === card.rank && c.suit === card.suit),
-    );
+    return cards.every((card) => player.hand.some((c) => c === card));
   }
 
   private removeCardsFromHand(player: PlayerSlot, cards: Card[]): void {
     for (const card of cards) {
-      const index = player.hand.findIndex(
-        (c) => c.rank === card.rank && c.suit === card.suit,
-      );
+      const index = player.hand.findIndex((c) => c === card);
       if (index !== -1) {
         player.hand.splice(index, 1);
       }
@@ -485,7 +480,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       const player = this.state.players[i];
       if (
         player.id &&
-        player.hand.some((c) => c.rank === Rank.THREE && c.suit === Suit.SPADE)
+        player.hand.some((c) => c === encodeCard(Rank.THREE, Suit.SPADE))
       ) {
         return i;
       }
@@ -591,7 +586,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     switch (lastCombo.type) {
       case CombinationType.SINGLE: {
         // Special case: Chopping a 2
-        if (lastCombo.cards[0].rank === Rank.TWO) {
+        const lastCards =
+          this.state.currentTrick[this.state.currentTrick.length - 1].cards;
+        if (decodeCard(lastCards[0]).rank === Rank.TWO) {
           // Check for 3 consecutive pairs
           const threePairs = this.findThreeConsecutivePairs(hand);
           if (threePairs.length > 0) return threePairs[0];
@@ -615,11 +612,13 @@ export default class Thirteen extends BaseGame<ThirteenState> {
 
   private findBeatingSingle(
     hand: Card[],
-    lastCombo: Combination,
+    _lastCombo: Combination,
   ): Card[] | null {
-    const lastValue = this.getCardValue(lastCombo.cards[0]);
+    const lastCards =
+      this.state.currentTrick[this.state.currentTrick.length - 1].cards;
+    const lastValue = lastCards[0];
     for (const card of hand) {
-      if (this.getCardValue(card) > lastValue) {
+      if (card > lastValue) {
         return [card];
       }
     }
@@ -665,7 +664,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     hand: Card[],
     lastCombo: Combination,
   ): Card[] | null {
-    const requiredLength = lastCombo.cards.length;
+    const requiredLength = lastCombo.cardCount;
     const lastValue = lastCombo.value;
 
     // Simple: try all consecutive combinations
@@ -686,8 +685,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   private groupByRank(hand: Card[]): Record<number, Card[]> {
     const groups: Record<number, Card[]> = {};
     for (const card of hand) {
-      if (!groups[card.rank]) groups[card.rank] = [];
-      groups[card.rank].push(card);
+      const { rank } = decodeCard(card);
+      if (!groups[rank]) groups[rank] = [];
+      groups[rank].push(card);
     }
     return groups;
   }
@@ -743,7 +743,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     const consecutivePairs: Card[][] = [];
 
     // Sort pairs by rank
-    pairs.sort((a, b) => a[0].rank - b[0].rank);
+    pairs.sort((a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank);
 
     for (let i = 0; i <= pairs.length - 3; i++) {
       // Check if p1, p2, p3 are consecutive
@@ -751,11 +751,14 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       const p2 = pairs[i + 1];
       const p3 = pairs[i + 2];
 
-      if (p2[0].rank === p1[0].rank + 1 && p3[0].rank === p2[0].rank + 1) {
+      if (
+        decodeCard(p2[0]).rank === decodeCard(p1[0]).rank + 1 &&
+        decodeCard(p3[0]).rank === decodeCard(p2[0]).rank + 1
+      ) {
         // Found 3 consecutive pairs
         // Don't include 2s in 3 consecutive pairs usually (rule variation?)
         // Standard rule: 3 consecutive pairs cannot contain 2.
-        if (p3[0].rank !== Rank.TWO) {
+        if (decodeCard(p3[0]).rank !== Rank.TWO) {
           consecutivePairs.push([...p1, ...p2, ...p3]);
         }
       }
@@ -773,15 +776,15 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       }
     }
     // Sort by rank
-    return quads.sort((a, b) => a[0].rank - b[0].rank);
+    return quads.sort((a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank);
   }
 
   private findStraights(hand: Card[]): Card[][] {
     const straights: Card[][] = [];
     // Filter out 2s (cannot be in straight)
-    const validCards = hand.filter((c) => c.rank !== Rank.TWO);
+    const validCards = hand.filter((c) => decodeCard(c).rank !== Rank.TWO);
     // Sort by rank
-    validCards.sort((a, b) => a.rank - b.rank);
+    validCards.sort((a, b) => decodeCard(a).rank - decodeCard(b).rank);
 
     let currentSequence: Card[] = [];
 
@@ -794,9 +797,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       }
 
       const last = currentSequence[currentSequence.length - 1];
-      if (card.rank === last.rank + 1) {
+      if (decodeCard(card).rank === decodeCard(last).rank + 1) {
         currentSequence.push(card);
-      } else if (card.rank === last.rank) {
+      } else if (decodeCard(card).rank === decodeCard(last).rank) {
         // Same rank, ignore for current straight build
         continue;
       } else {
@@ -824,7 +827,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       }
     }
     // Sort by rank (lowest first)
-    return triples.sort((a, b) => a[0].rank - b[0].rank);
+    return triples.sort(
+      (a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank,
+    );
   }
 
   private findPairs(hand: Card[]): Card[][] {
@@ -836,7 +841,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       }
     }
     // Sort by rank (lowest first)
-    return pairs.sort((a, b) => a[0].rank - b[0].rank);
+    return pairs.sort((a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank);
   }
 
   // ============== Public API ==============
@@ -980,7 +985,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       if (
         combination.type === CombinationType.FOUR_OF_KIND &&
         lastCombo.type === CombinationType.SINGLE &&
-        lastCombo.cards[0].rank === Rank.TWO
+        decodeCard(
+          this.state.currentTrick[this.state.currentTrick.length - 1].cards[0],
+        ).rank === Rank.TWO
       ) {
         return { valid: true };
       }
@@ -988,7 +995,9 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       if (
         combination.type === CombinationType.THREE_CONSECUTIVE_PAIRS &&
         lastCombo.type === CombinationType.SINGLE &&
-        lastCombo.cards[0].rank === Rank.TWO
+        decodeCard(
+          this.state.currentTrick[this.state.currentTrick.length - 1].cards[0],
+        ).rank === Rank.TWO
       ) {
         return { valid: true };
       }
@@ -1004,13 +1013,13 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     // Check length mismatch for straights
     if (
       combination.type === CombinationType.STRAIGHT &&
-      combination.cards.length !== lastCombo.cards.length
+      combination.cardCount !== lastCombo.cardCount
     ) {
       return {
         valid: false,
         error: {
-          vi: `Sảnh phải có ${lastCombo.cards.length} lá bài`,
-          en: `Straight must have ${lastCombo.cards.length} cards`,
+          vi: `Sảnh phải có ${lastCombo.cardCount} lá bài`,
+          en: `Straight must have ${lastCombo.cardCount} cards`,
         },
       };
     }

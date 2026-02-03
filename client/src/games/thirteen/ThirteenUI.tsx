@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Thirteen from "./Thirteen";
 import type { Card, PlayerSlot } from "./types";
-import { SUIT_SYMBOLS, RANK_DISPLAY, Suit } from "./types";
+import { SUIT_SYMBOLS, RANK_DISPLAY, Suit, decodeCard } from "./types";
 import { useRoomStore } from "../../stores/roomStore";
 import {
   Play,
@@ -70,7 +70,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
     if (selectedCards.length === 0 || !mySlot) return;
     const cards = selectedCards
       .map((i) => mySlot.hand[i])
-      .sort((a, b) => a.rank - b.rank);
+      .sort((a, b) => a - b);
     game.requestPlayCards(cards);
     setSelectedCards([]);
   };
@@ -445,7 +445,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
           <div className="flex justify-center max-w-full overflow-x-auto overflow-y-visible pt-4 p-0 @md:p-4 pb-1">
             {mySlot.hand.map((card, index) => (
               <CardDisplay
-                key={`${card.rank}-${card.suit}`}
+                key={card}
                 card={card}
                 selected={selectedCards.includes(index)}
                 onClick={() => handleCardClick(index)}
@@ -598,8 +598,9 @@ function CardDisplay({
   disabled?: boolean;
   index?: number;
 }) {
+  const { rank, suit } = decodeCard(card);
   const suitColor =
-    card.suit === Suit.HEART || card.suit === Suit.DIAMOND
+    suit === Suit.HEART || suit === Suit.DIAMOND
       ? "text-red-500"
       : "text-slate-800";
 
@@ -633,9 +634,9 @@ function CardDisplay({
         className={`absolute top-0.5 left-1 flex flex-col items-center leading-none ${suitColor}`}
       >
         <span className="text-sm @md:text-lg font-bold">
-          {RANK_DISPLAY[card.rank]}
+          {RANK_DISPLAY[rank]}
         </span>
-        <span className="text-sm @md:text-sm">{SUIT_SYMBOLS[card.suit]}</span>
+        <span className="text-sm @md:text-sm">{SUIT_SYMBOLS[suit]}</span>
       </div>
     </button>
   );
@@ -651,8 +652,9 @@ function TableCard({
   delay?: number;
   index?: number;
 }) {
+  const { rank, suit } = decodeCard(card);
   const suitColor =
-    card.suit === Suit.HEART || card.suit === Suit.DIAMOND
+    suit === Suit.HEART || suit === Suit.DIAMOND
       ? "text-red-500"
       : "text-slate-800";
 
@@ -673,11 +675,9 @@ function TableCard({
         className={`absolute top-0.5 left-1 flex flex-col items-center leading-none ${suitColor}`}
       >
         <span className="text-xs @md:text-lg font-bold">
-          {RANK_DISPLAY[card.rank]}
+          {RANK_DISPLAY[rank]}
         </span>
-        <span className="text-[10px] @md:text-sm">
-          {SUIT_SYMBOLS[card.suit]}
-        </span>
+        <span className="text-[10px] @md:text-sm">{SUIT_SYMBOLS[suit]}</span>
       </div>
     </div>
   );

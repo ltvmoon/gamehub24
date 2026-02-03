@@ -19,11 +19,81 @@ export const CardType = {
 } as const;
 export type CardType = (typeof CardType)[keyof typeof CardType];
 
-export interface UnoCard {
-  id: string; // Unique identifier for each card
+/**
+ * Uno Card Encoding: color * 100 + typeCode
+ * Colors: 0:RED, 1:BLUE, 2:GREEN, 3:YELLOW, 4:WILD
+ * TypeCodes: 0-9 (Numbered), 10:SKIP, 11:REVERSE, 12:DRAW_TWO, 13:WILD, 14:WILD_DRAW_FOUR
+ * Example: Red 7 = 0 * 100 + 7 = 7
+ * Example: Yellow Skip = 3 * 100 + 10 = 310
+ * Example: Wild Draw Four = 4 * 100 + 14 = 414
+ */
+export type UnoCard = number;
+
+export const CardTypeCode = {
+  NUMBER: 0, // 0-9
+  SKIP: 10,
+  REVERSE: 11,
+  DRAW_TWO: 12,
+  WILD: 13,
+  WILD_DRAW_FOUR: 14,
+} as const;
+
+export function encodeUnoCard(
+  color: CardColor,
+  type: CardType,
+  value: number = 0,
+): UnoCard {
+  let typeCode = 0;
+  switch (type) {
+    case CardType.NUMBER:
+      typeCode = value;
+      break;
+    case CardType.SKIP:
+      typeCode = CardTypeCode.SKIP;
+      break;
+    case CardType.REVERSE:
+      typeCode = CardTypeCode.REVERSE;
+      break;
+    case CardType.DRAW_TWO:
+      typeCode = CardTypeCode.DRAW_TWO;
+      break;
+    case CardType.WILD:
+      typeCode = CardTypeCode.WILD;
+      break;
+    case CardType.WILD_DRAW_FOUR:
+      typeCode = CardTypeCode.WILD_DRAW_FOUR;
+      break;
+  }
+  return color * 100 + typeCode;
+}
+
+export function decodeUnoCard(card: UnoCard): {
   color: CardColor;
   type: CardType;
-  value?: number; // 0-9 for number cards
+  value: number;
+} {
+  const color = Math.floor(card / 100) as CardColor;
+  const typeCode = card % 100;
+
+  let type: CardType = CardType.NUMBER;
+  let value = 0;
+
+  if (typeCode <= 9) {
+    type = CardType.NUMBER;
+    value = typeCode;
+  } else if (typeCode === CardTypeCode.SKIP) {
+    type = CardType.SKIP;
+  } else if (typeCode === CardTypeCode.REVERSE) {
+    type = CardType.REVERSE;
+  } else if (typeCode === CardTypeCode.DRAW_TWO) {
+    type = CardType.DRAW_TWO;
+  } else if (typeCode === CardTypeCode.WILD) {
+    type = CardType.WILD;
+  } else if (typeCode === CardTypeCode.WILD_DRAW_FOUR) {
+    type = CardType.WILD_DRAW_FOUR;
+  }
+
+  return { color, type, value };
 }
 
 // Player slot in the game
