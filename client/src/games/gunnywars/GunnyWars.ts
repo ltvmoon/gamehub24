@@ -24,6 +24,7 @@ import {
   TANK_COLORS,
   type ParticleType,
   FIRE_COOLDOWN,
+  MAX_PLAYERS,
 } from "./constants";
 import { TerrainMap, TerrainRenderer } from "./TerrainMap";
 import { TerrainShaderRenderer } from "./TerrainShaderRenderer";
@@ -515,39 +516,14 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     if (this.state.phase === GamePhase.AIMING) {
       this.state.tanks.forEach((tank) => {
         if (this.state.selectedMode === GameMode.CHAOS) {
-          let simState = this._tankSimulations.get(tank.id);
-          if (!simState) {
-            simState = {
-              x: tank.x,
-              y: tank.y,
-              fuel: tank.fuel,
-              angle: tank.angle,
-              health: tank.health,
-              falling: false,
-              lastAuthX: tank.x,
-              lastAuthY: tank.y,
-            };
-            this._tankSimulations.set(tank.id, simState);
-          }
+          // always init sim tank for chaos mode?
+          this.getSimTank(tank);
         }
 
         // If tank is moving (flag from server/local action), simulate it
         if (tank.isMoving && tank.moveDir) {
           // Get current sim state or init from tank
-          let simState = this._tankSimulations.get(tank.id);
-          if (!simState) {
-            simState = {
-              x: tank.x,
-              y: tank.y,
-              fuel: tank.fuel,
-              angle: tank.angle,
-              health: tank.health,
-              falling: false,
-              lastAuthX: tank.x,
-              lastAuthY: tank.y,
-            };
-            this._tankSimulations.set(tank.id, simState);
-          }
+          const simState = this.getSimTank(tank);
 
           // Create a temp tank with sim properties for calculation
           const simTank = { ...tank, ...simState };
@@ -695,6 +671,24 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     return { x, y, fuel: Math.max(0, fuel), angle };
   }
 
+  private getSimTank(tank: Tank) {
+    let sim = this._tankSimulations.get(tank.id);
+    if (!sim) {
+      sim = {
+        x: tank.x,
+        y: tank.y,
+        fuel: tank.fuel,
+        angle: tank.angle,
+        health: tank.health,
+        falling: false,
+        lastAuthX: tank.x,
+        lastAuthY: tank.y,
+      };
+      this._tankSimulations.set(tank.id, sim);
+    }
+    return sim;
+  }
+
   private fireTank(shot: FireShotData): void {
     if (this.state.selectedMode !== GameMode.CHAOS) {
       this.state.phase = GamePhase.FIRING;
@@ -758,20 +752,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
       }
 
       // Get or create simulation for this tank
-      let sim = this._tankSimulations.get(tank.id);
-      if (!sim) {
-        sim = {
-          x: tank.x,
-          y: tank.y,
-          fuel: tank.fuel,
-          angle: tank.angle,
-          health: tank.health,
-          falling: false,
-          lastAuthX: tank.x,
-          lastAuthY: tank.y,
-        };
-        this._tankSimulations.set(tank.id, sim);
-      }
+      const sim = this.getSimTank(tank);
 
       // Auth-Change Detection:
       // Only snap if the authoritative position has Actually changed since we last checked.
@@ -804,6 +785,16 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
         sim.health = health;
         sim.falling = true;
         tanksMoving = true;
+        if (sim.health <= 0) {
+          if (this.state.selectedMode === GameMode.CHAOS) {
+            // bring back tank
+            tank.health = 100;
+            tank.y = -1000;
+          } else {
+            // instant die
+            tank.health = 0;
+          }
+        }
       } else if (sim.falling) {
         // Tank just stopped falling - sync to state ONCE
         sim.falling = false;
@@ -1973,7 +1964,7 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     // Add bots back
     newPlayers.push(...bots);
 
-    this.state.players = newPlayers;
+    this.state.players = newPlayers.slice(0, MAX_PLAYERS);
   }
 
   destroy(): void {

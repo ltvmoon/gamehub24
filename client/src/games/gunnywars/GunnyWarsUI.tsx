@@ -13,6 +13,7 @@ import {
   PARTICLE_STRIDE,
   DAY_NIGHT_CYCLE_DURATION,
   FIRE_COOLDOWN,
+  MAX_PLAYERS,
 } from "./constants";
 import {
   ArrowLeft,
@@ -24,8 +25,6 @@ import {
   User,
   Play,
   RotateCw,
-  UserPlus,
-  UserMinus,
   Maximize,
   Minimize,
   LogOut,
@@ -277,6 +276,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
     : undefined;
   const isMyTurn =
     state.selectedMode === GameMode.CHAOS ? !!myTankInState : game.isMyTurn();
+  const canStartGame = game.canStartGame();
 
   // Local angle/power/position for live UI updates (sync on release/stop move)
   const [showWeaponModal, setShowWeaponModal] = useState(false);
@@ -1532,6 +1532,10 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 w-full max-w-md">
           <h2 className="text-lg font-bold mb-4">
             {ts({ en: "Players", vi: "Người chơi" })}
+            <span className="text-xs text-gray-500 ml-2">
+              ({ts({ en: "Max: ", vi: "Tối đa: " })}
+              {MAX_PLAYERS})
+            </span>
           </h2>
 
           <div className="space-y-3">
@@ -1563,18 +1567,18 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                     onClick={() => game.requestRemoveBot()}
                     className="ml-auto text-red-400 hover:text-red-300 transition-colors p-2 bg-red-400/20 rounded-lg"
                   >
-                    <UserMinus size={16} />
+                    <X size={16} />
                   </button>
                 )}
               </div>
             ))}
 
-            {game.isHost && state.players.length < 3 && (
+            {game.isHost && state.players.length < MAX_PLAYERS && (
               <button
                 onClick={() => game.requestAddBot()}
-                className="w-full p-3 border border-dashed border-white/10 rounded-xl text-gray-400 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all flex items-center justify-center gap-2"
+                className="w-full p-3 border border-dashed border-green-500/50 rounded-xl text-green-500 hover:border-green-500/80 hover:bg-green-500/10 transition-all flex items-center justify-center gap-2"
               >
-                <UserPlus size={18} />
+                <Bot size={18} />
                 {ts({ en: "Add Bot", vi: "Thêm Bot" })}
               </button>
             )}
@@ -1643,7 +1647,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
             <div className="mt-8">
               <button
                 onClick={() => game.startGame()}
-                disabled={!game.canStartGame()}
+                disabled={!canStartGame}
                 className={`w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg ${
                   state.selectedMode === GameMode.CHAOS
                     ? "bg-linear-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 shadow-orange-500/20"
@@ -1652,11 +1656,13 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
               >
                 <Play size={24} fill="currentColor" />
                 <span className="uppercase tracking-widest">
-                  {ts({ en: "Start Game", vi: "Bắt đầu" })}
+                  {state.selectedMode === GameMode.TURN_BASED && !canStartGame
+                    ? ts({ en: "Need 2+ players", vi: "Cần 2+ người chơi" })
+                    : ts({ en: "Start Game", vi: "Bắt đầu" })}
                 </span>
               </button>
 
-              {!game.canStartGame() && (
+              {!canStartGame && (
                 <p className="text-center text-[10px] text-gray-500 mt-3 font-medium uppercase tracking-tighter">
                   {state.selectedMode === GameMode.CHAOS
                     ? ts({

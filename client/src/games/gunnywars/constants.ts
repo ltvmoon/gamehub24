@@ -1,5 +1,7 @@
 import { type Weapon, WeaponType } from "./types";
 
+export const MAX_PLAYERS = 4;
+
 // World Dimensions (Large Map)
 export const WORLD_WIDTH = 50000;
 export const WORLD_HEIGHT = 1000;
