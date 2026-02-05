@@ -29,6 +29,7 @@ import useLanguage from "../../stores/languageStore";
 import { createPortal } from "react-dom";
 import { useAlertStore } from "../../stores/alertStore";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
 
 export default function PokerUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Poker;
@@ -43,6 +44,11 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
   const myIndex = game.getMyPlayerIndex();
   const mySlot = myIndex >= 0 ? state.players[myIndex] : null;
   const isMyTurn = state.currentTurnIndex === myIndex;
+
+  usePrevious(state.currentTurnIndex, (prev, _current) => {
+    if (state.gamePhase === "waiting" || state.gamePhase === "ended") return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   // Update local raise amount when minRaise changes or it becomes my turn
   useEffect(() => {
@@ -727,6 +733,7 @@ const getPositionClass = (index: number) => {
 };
 
 import { HandRanking } from "./types";
+import usePrevious from "../../hooks/usePrevious";
 
 // Helper for hand styles
 const getHandStyle = (rank?: HandRanking) => {

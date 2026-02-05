@@ -50,6 +50,8 @@ import useLanguage from "../../stores/languageStore";
 import { useRoomStore } from "../../stores/roomStore";
 import { useUserStore } from "../../stores/userStore";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 const getPhaseIcon = (phase: GamePhase) => {
   switch (phase) {
@@ -1601,10 +1603,10 @@ const GameEnd: React.FC<{
 
 // Main Component
 const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
+  const werewolf = game as Werewolf;
   const { confirm: showConfirm } = useAlertStore();
   const { ti, ts } = useLanguage();
 
-  const werewolf = game as Werewolf;
   const [state] = useGameState(werewolf);
   const [showRules, setShowRules] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -1636,6 +1638,22 @@ const WerewolfUI: React.FC<GameUIProps> = ({ game, currentUserId = "" }) => {
 
   const myPlayer = state.players.find((p) => p.id === currentUserId);
   const myRole = myPlayer?.role ? ROLE_INFO[myPlayer.role] : null;
+  const isMyTurn =
+    state.phase === "night"
+      ? !!myPlayer?.isAlive && myPlayer?.role === (state.nightSubPhase as any)
+      : state.phase === "hunterRevenge" &&
+        state.pendingElimination === currentUserId;
+  const currentTurnIdentifier =
+    state.phase === "night"
+      ? `night-${state.nightSubPhase}`
+      : state.phase === "hunterRevenge"
+        ? `hunter-${state.pendingElimination}`
+        : state.phase;
+
+  usePrevious(currentTurnIdentifier, (prev, _current) => {
+    if (state.isGameOver) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   // Reset selection when phase changes
   useEffect(() => {

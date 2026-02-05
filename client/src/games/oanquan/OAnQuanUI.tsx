@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useAlertStore } from "../../stores/alertStore";
 import { createPortal, flushSync } from "react-dom";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 const FLY_DURATION = 300; // ms
 
@@ -120,6 +122,14 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
   );
 
   const [state] = useGameState(game, handleUpdate);
+
+  const isMyTurn =
+    state.currentTurn === currentUserId && state.gamePhase === "playing";
+
+  usePrevious(state.currentTurn, (prev, _current) => {
+    if (state.gamePhase !== "playing") return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   const runAnimation = async (move: NonNullable<OAnQuanState["lastMove"]>) => {
     const startBoard = [...boardRef.current];
@@ -411,7 +421,6 @@ const OAnQuanUI: React.FC<GameUIProps> = ({
     );
   };
 
-  const isMyTurn = state.currentTurn === currentUserId;
   const myPlayerIndex = game.getMyPlayerIndex();
   const player1 = state.players[0];
   const player2 = state.players[1];

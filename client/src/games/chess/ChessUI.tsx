@@ -13,6 +13,8 @@ import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 export default function ChessUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as ChessGame;
@@ -22,10 +24,14 @@ export default function ChessUI({ game: baseGame }: GameUIProps) {
   const [showRules, setShowRules] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const chessgroundRef = useRef<Api | null>(null);
-
   const myColorCode = game.getPlayerColor();
   const isMyTurn = myColorCode ? state.turn === myColorCode : false;
   const inCheck = state.check;
+
+  usePrevious(state.turn, (prev, _current) => {
+    if (state.gameOver) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   // Initialize/Update Chessground
   useEffect(() => {

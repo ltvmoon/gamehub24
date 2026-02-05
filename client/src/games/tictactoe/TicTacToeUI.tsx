@@ -4,6 +4,8 @@ import { RefreshCcw, X, Circle, Bot, Play } from "lucide-react";
 import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as TicTacToe;
@@ -12,6 +14,12 @@ export default function TicTacToeUI({ game: baseGame }: GameUIProps) {
 
   const mySymbol = game.getPlayerSymbol();
   const isMyTurn = state.currentTurn === mySymbol;
+
+  usePrevious(state.currentTurn, (prev, _current) => {
+    if (state.gamePhase !== "playing" || state.gameOver) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
+
   const board = state.board;
   const winningLine = state.winningLine;
   const lastMoveIndex = state.lastMoveIndex;

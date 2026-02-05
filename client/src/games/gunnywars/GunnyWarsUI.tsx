@@ -44,6 +44,8 @@ import { formatNumber } from "../../utils";
 import useGameState from "../../hooks/useGameState";
 import { useAlertStore } from "../../stores/alertStore";
 import Portal from "../../components/Portal";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 const FireButton = ({
   game,
@@ -277,6 +279,11 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
   const isMyTurn =
     state.selectedMode === GameMode.CHAOS ? !!myTankInState : game.isMyTurn();
   const canStartGame = game.canStartGame();
+
+  usePrevious(state.currentTurnIndex, (prev, _current) => {
+    if (state.phase !== GamePhase.AIMING) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   // Local angle/power/position for live UI updates (sync on release/stop move)
   const [showWeaponModal, setShowWeaponModal] = useState(false);

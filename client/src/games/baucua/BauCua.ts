@@ -25,6 +25,10 @@ import type { Player } from "../../stores/roomStore";
 import { randInRange, uuidShort } from "../../utils";
 
 export default class BauCua extends BaseGame<BauCuaState> {
+  protected isGameOver(state: BauCuaState): boolean {
+    return state.gamePhase === GAME_PHASE.ENDED;
+  }
+
   private botMoveTimeout: ReturnType<typeof setTimeout> | null = null;
 
   getInitState(): BauCuaState {

@@ -37,6 +37,10 @@ export const getFinishLanePos = (pos: TokenPosition) =>
   pos - TOKEN_POS.FINISH_LANE;
 
 export default class Ludo extends BaseGame<LudoState> {
+  protected isGameOver(state: LudoState): boolean {
+    return state.gamePhase === LudoGamePhase.ENDED;
+  }
+
   getInitState(): LudoState {
     return {
       players: PLAYER_COLORS.map((color, index) => ({

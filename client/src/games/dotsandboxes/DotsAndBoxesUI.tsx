@@ -6,6 +6,8 @@ import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 const PLAYER_BG_COLORS: Record<PlayerColor, string> = {
   red: "bg-red-500/60",
@@ -29,6 +31,10 @@ export default function DotsAndBoxesUI({
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === currentUserId;
   const isGameEnded = state.isGameEnded;
+  usePrevious(state.currentPlayerIndex, (prev, _current) => {
+    if (state.gamePhase !== "playing" || isGameEnded) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   const handleLineClick = (
     type: "horizontal" | "vertical",

@@ -111,6 +111,10 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
     };
   }
 
+  protected isGameOver(state: GunnyWarsState): boolean {
+    return state.phase === GamePhase.GAME_OVER;
+  }
+
   // Initialize terrain (use chunk-based rendering)
   initTerrain(): void {
     if (

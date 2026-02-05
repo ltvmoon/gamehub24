@@ -47,6 +47,10 @@ export default class Maze extends BaseGame<MazeState> {
     };
   }
 
+  protected isGameOver(state: MazeState): boolean {
+    return state.status === "FINISHED";
+  }
+
   public onStateUpdate(state: MazeState): void {
     super.onStateUpdate(state);
 

@@ -25,6 +25,10 @@ import { trans } from "../../stores/languageStore";
 import type { Player } from "../../stores/roomStore";
 
 export default class Monopoly extends BaseGame<MonopolyState> {
+  protected isGameOver(state: MonopolyState): boolean {
+    return state.gamePhase === GamePhase.ENDED;
+  }
+
   private chanceCards: Card[] = [...CHANCE_CARDS].sort(
     () => Math.random() - 0.5,
   );
@@ -70,20 +74,24 @@ export default class Monopoly extends BaseGame<MonopolyState> {
     // Sync money history before broadcasting
     this.state.players.forEach((p) => {
       // Ensure history exists
-      if (!p.moneyHistory) p.moneyHistory = [p.money];
+      if (!p.moneyHistory) p.moneyHistory = [];
 
-      const lastValue = p.moneyHistory[p.moneyHistory.length - 1];
-
-      if (lastValue !== p.money) {
-        // Add new entry
+      // Only add to history if it changed or history is empty
+      if (
+        p.moneyHistory.length === 0 ||
+        p.moneyHistory[p.moneyHistory.length - 1] !== p.money
+      ) {
         p.moneyHistory.push(p.money);
 
-        // Prune if > 50
-        if (p.moneyHistory.length > 50) {
+        // Keep last 20 entries
+        if (p.moneyHistory.length > 20) {
           p.moneyHistory.shift();
         }
       }
     });
+
+    this.setState(this.state);
+    this.broadcastState();
   }
 
   // === Trading ===

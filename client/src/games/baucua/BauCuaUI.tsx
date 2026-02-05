@@ -41,6 +41,8 @@ import { createPortal } from "react-dom";
 import { formatPrice } from "../../utils";
 import BettingModal from "./BettingModal";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 // Get power-up icon
 const getPowerUpIcon = (type: PowerUpType) => {
@@ -59,6 +61,16 @@ export default function BauCuaUI({
 }: GameUIProps) {
   const game = baseGame as BauCua;
   const [state] = useGameState(game);
+
+  const currentTurnIdentifier = `${state.gamePhase}-${state.currentRound}`;
+  const isMyTurn =
+    state.gamePhase === GAME_PHASE.BETTING && !state.playersReady[userId];
+
+  usePrevious(currentTurnIdentifier, (prev, _current) => {
+    if (state.gamePhase === GAME_PHASE.WAITING) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
+
   // Removed global betAmount state as it's now handled in the modal
   const { confirm: showConfirm, show: showAlert } = useAlertStore();
   const { ti, ts } = useLanguage();

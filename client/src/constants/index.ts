@@ -73,7 +73,7 @@ export const updates: {
   {
     type: "new",
     en: "New game: Gunny Wars",
-    vi: "Game mới: Gunny Wars",
+    vi: "Game mới: Bắn Gunny",
     gameId: "gunny",
     timestamp: 1770070617562,
   },
@@ -86,8 +86,8 @@ export const updates: {
   },
   {
     type: "new",
-    en: "New game: Maze Race",
-    vi: "Game mới: Đua Mê Cung",
+    en: "New game: Maze",
+    vi: "Game mới: Mê Cung",
     gameId: "maze",
     timestamp: 1769669794704,
   },

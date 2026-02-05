@@ -15,6 +15,8 @@ import {
 import { useAlertStore } from "../../stores/alertStore";
 import useLanguage from "../../stores/languageStore";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 const APP_PADDING = 32; // Total horizontal padding of the app container
 const HUD_HEIGHT = 180; // Approximate height of HUD
@@ -38,9 +40,16 @@ const MazeUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
   const dynamicCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
   const { ts } = useLanguage();
   const { confirm: showConfirm } = useAlertStore();
+
+  const isMyTurn =
+    state.status === "PLAYING" && !state.winners.includes(game.userId);
+
+  usePrevious(`${state.status}-${state.level}`, (prev, _current) => {
+    if (state.status === "WAITING") return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   // Dynamic Cell Size State
   const [cellSize, setCellSize] = useState(30);

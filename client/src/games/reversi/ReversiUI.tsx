@@ -16,6 +16,8 @@ import { useAlertStore } from "../../stores/alertStore";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
 import { hasFlag } from "../../utils";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 // CSS for flip animation
 const flipStyle = `
@@ -44,7 +46,11 @@ export default function ReversiUI({
       ? game.getValidMoves(myColor)
       : [];
   const pieceCount = game.getPieceCount();
-  const isHost = game.isHost;
+
+  usePrevious(state.turn, (prev, _current) => {
+    if (state.gamePhase !== ReversiGamePhase.PLAYING) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   const isValidMove = (row: number, col: number) =>
     validMoves.some(([r, c]) => r === row && c === col);
@@ -237,7 +243,7 @@ export default function ReversiUI({
               </div>
               {player &&
                 hasFlag(player.flags, ReversiPlayerFlag.BOT) &&
-                isHost && (
+                game.isHost && (
                   <button
                     onClick={() => game.requestRemoveBot()}
                     className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
@@ -245,7 +251,7 @@ export default function ReversiUI({
                     {ti({ en: "Remove", vi: "Xóa" })}
                   </button>
                 )}
-              {isHost && !player && (
+              {game.isHost && !player && (
                 <button
                   onClick={() => game.requestAddBot()}
                   className="flex items-center gap-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
@@ -352,7 +358,7 @@ export default function ReversiUI({
         {/* Waiting phase buttons */}
         {state.gamePhase === ReversiGamePhase.WAITING && (
           <>
-            {isHost && game.canStartGame() && (
+            {game.isHost && game.canStartGame() && (
               <button
                 onClick={() => game.requestStartGame()}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
@@ -361,7 +367,7 @@ export default function ReversiUI({
                 {ti({ en: "Start Game", vi: "Bắt đầu" })}
               </button>
             )}
-            {!isHost && (
+            {!game.isHost && (
               <div className="text-gray-400">
                 {ti({
                   en: "Waiting for host to start game...",
@@ -393,7 +399,7 @@ export default function ReversiUI({
               </button>
             )}
             {/* reset game */}
-            {isHost && (
+            {game.isHost && (
               <button
                 onClick={async () => {
                   if (

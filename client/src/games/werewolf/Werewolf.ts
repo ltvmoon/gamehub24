@@ -17,6 +17,10 @@ import {
 } from "./types";
 
 export default class Werewolf extends BaseGame<WerewolfState> {
+  protected isGameOver(state: WerewolfState): boolean {
+    return state.isGameOver;
+  }
+
   private timerInterval: ReturnType<typeof setInterval> | null = null;
 
   getInitState(): WerewolfState {
@@ -1888,7 +1892,7 @@ export default class Werewolf extends BaseGame<WerewolfState> {
       }
     });
 
-    this.state.players = newState.players;
+    this.state = newState;
   }
 
   // === Public API ===

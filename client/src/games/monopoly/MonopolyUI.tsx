@@ -35,6 +35,8 @@ import type { GameUIProps } from "../types";
 import { useAlertStore } from "../../stores/alertStore";
 import { createPortal } from "react-dom";
 import { hasFlag } from "../../utils";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 // Property color display
 const getPropertyColorStyle = (color?: PropertyColor): string => {
@@ -187,6 +189,15 @@ export default function MonopolyUI({
 
   const [state] = useGameState(game, handleGameStateUpdate);
 
+  const isMyTurn =
+    state.currentPlayerIndex === game.getMyPlayerIndex() &&
+    state.gamePhase === GamePhase.PLAYING;
+
+  usePrevious(state.currentPlayerIndex, (prev, _current) => {
+    if (state.gamePhase !== GamePhase.PLAYING) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
+
   // View Mode for Mobile
   const [viewMode, setViewMode] = useState<"fit" | "zoom">("fit");
 
@@ -257,7 +268,6 @@ export default function MonopolyUI({
 
   const myIndex = game.getMyPlayerIndex();
   const currentPlayer = state.players[state.currentPlayerIndex];
-  const isMyTurn = currentPlayer?.id === currentUserId;
   const isHost = game.isHost;
 
   const canRoll =

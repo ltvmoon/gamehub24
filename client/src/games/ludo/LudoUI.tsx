@@ -20,6 +20,8 @@ import useLanguage from "../../stores/languageStore";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
 import { hasFlag } from "../../utils";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 // Color mappings for CSS
 const COLOR_CLASSES: Record<
@@ -103,7 +105,6 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
   const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
-
   useEffect(() => {
     const unsub = game.onUpdate((newState) => {
       // Detect when a new dice value comes in (someone rolled)
@@ -139,7 +140,7 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
             setShowingResult(true);
 
             // Hide result after 2 seconds
-            setTimeout(() => setShowingResult(false), 1000);
+            setTimeout(() => setShowingResult(false), 100);
           }
         }, 80);
 
@@ -167,6 +168,11 @@ export default function LudoUI({ game: baseGame, currentUserId }: GameUIProps) {
     (!state.hasRolled || state.canRollAgain) &&
     !rolling &&
     !showingResult;
+
+  usePrevious(state.currentPlayerIndex, (prev, _current) => {
+    if (state.gamePhase !== LudoGamePhase.PLAYING) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   // Compute movable tokens from React state so it updates reactively
   const hasMovableTokens =

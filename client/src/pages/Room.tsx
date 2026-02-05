@@ -8,17 +8,17 @@ import {
   Share2,
   X,
   Lock,
-  Languages,
   Star,
   MessageSquare,
   Play,
   AlertCircle,
+  Settings,
 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useChatStore } from "../stores/chatStore";
 import { useUserStore } from "../stores/userStore";
 import { useAlertStore } from "../stores/alertStore";
-import useLanguage, { Language } from "../stores/languageStore";
+import useLanguage from "../stores/languageStore";
 import { getSocket } from "../services/socket";
 import { getAllGames } from "../games/registry";
 import { useGameFavorites } from "../hooks/useGameFavorites";
@@ -32,6 +32,9 @@ import GameContainer from "../games/GameContainer";
 import ShareModal from "../components/ShareModal";
 import Portal from "../components/Portal";
 import type { GameCategory } from "../constants";
+import SearchInput from "../components/SearchInput";
+import { useGamesFilter } from "../hooks/useGamesFilter";
+import { useSettingsStore } from "../stores/settingsStore";
 
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -40,7 +43,8 @@ export default function RoomPage() {
   const { clearMessages, messages } = useChatStore();
   const { userId, username } = useUserStore();
   const { show: showAlert, confirm: showConfirm } = useAlertStore();
-  const { ti, ts, language, setLanguage } = useLanguage();
+  const { ti, ts } = useLanguage();
+  const { setShowSettingsModal } = useSettingsStore();
   const socket = getSocket();
 
   // Resize state
@@ -64,7 +68,6 @@ export default function RoomPage() {
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showChangeGameModal, setShowChangeGameModal] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [showUserTooltip, setShowUserTooltip] = useState(false);
@@ -474,7 +477,7 @@ export default function RoomPage() {
 
               {/* Right side: User info */}
               <div className="flex items-center gap-2 md:gap-3">
-                <div className="relative">
+                <div className="relative hidden md:block">
                   <button
                     onClick={handleUserTouch}
                     onMouseEnter={handleUserTouch}
@@ -485,7 +488,6 @@ export default function RoomPage() {
                       {username}
                     </span>
                   </button>
-                  {/* Tooltip */}
                   {showUserTooltip && (
                     <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-slate-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-50 animate-fadeIn">
                       {ti({ en: "Your ID:", vi: "ID của bạn:" })}{" "}
@@ -493,45 +495,12 @@ export default function RoomPage() {
                     </div>
                   )}
                 </div>
-              </div>
-              <div className="relative">
                 <button
-                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  onClick={() => setShowSettingsModal(true)}
                   className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-text-secondary hover:text-primary"
-                  // title={ti({ en: "Change Language", vi: "Đổi ngôn ngữ" })}
                 >
-                  <Languages className="w-4 h-4 md:w-5 md:h-5" />
+                  <Settings className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
-
-                {/* Language Dropdown */}
-                {showLanguageDropdown && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowLanguageDropdown(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-2 w-40 bg-slate-800 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-fadeIn">
-                      {[
-                        { value: Language.en, label: "🇺🇸 English" },
-                        { value: Language.vi, label: "🇻🇳 Tiếng Việt" },
-                      ].map((lang) => (
-                        <button
-                          onClick={() => {
-                            setLanguage(lang.value);
-                            setShowLanguageDropdown(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-white/5 transition-colors flex items-center gap-2 ${
-                            language === lang.value
-                              ? "text-primary font-medium"
-                              : "text-text-secondary"
-                          }`}
-                        >
-                          <span className="text-lg">{lang.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -805,19 +774,10 @@ function ChangeGameModal({
   const [selectedCategory, setSelectedCategory] = useState<
     GameCategory | "favorites" | null
   >(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const { favorites, toggleFavorite, favoritesCount } = useGameFavorites();
 
-  const gamesToShow = useMemo(
-    () =>
-      getAllGames().filter((game) =>
-        selectedCategory === "favorites"
-          ? favorites.includes(game.id)
-          : selectedCategory
-            ? game.categories.includes(selectedCategory)
-            : true,
-      ),
-    [selectedCategory, favorites],
-  );
+  const gamesToShow = useGamesFilter(searchQuery, selectedCategory);
 
   return (
     <Portal>
@@ -842,7 +802,10 @@ function ChangeGameModal({
             </h3>
           </div>
 
-          <div className="flex-1 max-h-[80vh] overflow-y-auto">
+          <div className="flex-1 max-h-[80vh] overflow-y-auto pr-1">
+            <div className="sticky top-0 z-20 bg-background-secondary pb-4 mb-2">
+              <SearchInput value={searchQuery} onChange={setSearchQuery} />
+            </div>
             <div className="mb-6">
               <GameCategoryFilter
                 selectedCategory={selectedCategory}
@@ -856,7 +819,7 @@ function ChangeGameModal({
                 {ti({ en: "No games found", vi: "Không tìm thấy game" })}
               </p>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {gamesToShow.map((game) => {
                 const Icon = game.icon;
                 const isSelected = currentRoom.gameType === game.id;

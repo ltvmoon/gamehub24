@@ -1,4 +1,5 @@
 import { transString } from "../../stores/languageStore";
+import SoundManager, { SOUND_PRESETS } from "../../utils/SoundManager";
 import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
 import {
   type BilliardState,
@@ -20,6 +21,10 @@ import {
 } from "./types";
 
 export default class Billiard extends BaseGame<BilliardState> {
+  protected isGameOver(state: BilliardState): boolean {
+    return state.gamePhase === GAME_PHASE.FINISHED;
+  }
+
   private onFrameUpdate?: (balls: Ball[]) => void; // For 60fps canvas updates
   private animationFrameId: number | null = null;
   private syncIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -158,6 +163,8 @@ export default class Billiard extends BaseGame<BilliardState> {
     const velocity = power * MAX_POWER;
     cueBall.vx = Math.cos(angle) * velocity;
     cueBall.vy = Math.sin(angle) * velocity;
+
+    SoundManager.play(SOUND_PRESETS.SOFT_SHOT);
   }
 
   private lastPhysicsTime: number = 0;
@@ -366,6 +373,8 @@ export default class Billiard extends BaseGame<BilliardState> {
           ball.vx = 0;
           ball.vy = 0;
 
+          SoundManager.play(SOUND_PRESETS.EAT);
+
           // Track for continue turn logic
           this.pocketedThisShot.push(ball);
 
@@ -400,6 +409,8 @@ export default class Billiard extends BaseGame<BilliardState> {
   private onSimulationEnd(): void {
     this.state.isSimulating = false;
     this.onStateUpdate(this.state);
+
+    SoundManager.play(SOUND_PRESETS.NOTIFY);
 
     // Only the HOST determines game end and turn changes
     // Guests will receive the authoritative state via broadcast

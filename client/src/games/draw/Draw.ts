@@ -15,6 +15,13 @@ import {
 import { getWordsByDifficulty, type Difficulty } from "./words";
 
 export default class CanvasGame extends BaseGame<CanvasState> {
+  protected isGameOver(state: CanvasState): boolean {
+    return (
+      state.gartic?.status === GARTIC_STATUS.ROUND_END &&
+      state.mode === GAME_MODE.GARTIC
+    );
+  }
+
   private roundTimeout: ReturnType<typeof setTimeout> | null = null;
   private currentRoundDuration = 60000;
 

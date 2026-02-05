@@ -19,6 +19,10 @@ import type { Player } from "../../stores/roomStore";
 import { hasFlag } from "../../utils";
 
 export default class Reversi extends BaseGame<ReversiState> {
+  protected isGameOver(state: ReversiState): boolean {
+    return state.gamePhase === ReversiGamePhase.ENDED;
+  }
+
   getInitState(): ReversiState {
     const { bb, wb } = this.getInitialBitboards();
     return {

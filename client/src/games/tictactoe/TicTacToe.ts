@@ -3,6 +3,10 @@ import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
 import type { TicTacToeState, TicTacToeAction, MakeMoveAction } from "./types";
 
 export default class TicTacToe extends BaseGame<TicTacToeState> {
+  protected isGameOver(state: TicTacToeState): boolean {
+    return state.gameOver;
+  }
+
   getInitState(): TicTacToeState {
     return {
       board: Array(9).fill(null),

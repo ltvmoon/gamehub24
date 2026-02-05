@@ -30,6 +30,8 @@ import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 import type CanvasGame from "./Draw";
 
 const COLORS = [
@@ -58,6 +60,23 @@ export default function CanvasGameUI({
 }: GameUIProps) {
   const game = baseGame as CanvasGame;
   const [state] = useGameState(game);
+
+  const isMyTurn = !!(
+    state.mode === GAME_MODE.GARTIC &&
+    !!state.gartic &&
+    state.gartic.drawerId === currentUserId &&
+    (state.gartic.status === GARTIC_STATUS.CHOOSING_WORD ||
+      state.gartic.status === GARTIC_STATUS.DRAWING)
+  );
+  const turnId = state.gartic
+    ? `${state.gartic.drawerId}-${state.gartic.status}`
+    : null;
+
+  usePrevious(turnId, (prev, _current) => {
+    if (state.mode !== GAME_MODE.GARTIC || !state.gartic) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentColor, setCurrentColor] = useState(COLORS[6]); // Start with black

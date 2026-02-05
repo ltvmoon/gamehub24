@@ -52,3 +52,16 @@ export function calculateSimilarity(s1: string, s2: string): number {
   const similarity = ((maxLength - distance) / maxLength) * 100;
   return Math.round(similarity * 10) / 10; // Round to 1 decimal place
 }
+
+/**
+ * Normalizes a string by converting it to lowercase, trimming whitespace,
+ * and removing diacritics (accents).
+ */
+export function normalizeString(str: string): string {
+  if (!str) return "";
+  return str
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}

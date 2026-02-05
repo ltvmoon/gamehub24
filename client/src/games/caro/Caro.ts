@@ -5,6 +5,10 @@ import { type CaroState, type CaroAction } from "./types";
 const BOARD_SIZE = 50;
 
 export default class Caro extends BaseGame<CaroState> {
+  protected isGameOver(state: CaroState): boolean {
+    return state.gameOver;
+  }
+
   getInitState(): CaroState {
     return {
       board: {},

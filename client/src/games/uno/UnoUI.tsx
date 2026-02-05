@@ -27,8 +27,9 @@ import { useAlertStore } from "../../stores/alertStore";
 import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import { createPortal } from "react-dom";
-
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 export default function UnoUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Uno;
@@ -75,8 +76,13 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const isHost = game.isHost;
   const myIndex = game.getMyPlayerIndex();
   const mySlot = myIndex >= 0 ? state.players[myIndex] : null;
-
   const isMyTurn = state.currentTurnIndex === myIndex;
+
+  usePrevious(state.currentTurnIndex, (prev, _current) => {
+    if (state.gamePhase !== "playing") return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
+
   const canStart = game.canStartGame();
   const currentRoom = useRoomStore((state) => state.currentRoom);
   const isRoomPlayer = useMemo(() => {

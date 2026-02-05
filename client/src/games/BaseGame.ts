@@ -2,6 +2,7 @@ import { Socket } from "socket.io-client";
 import { produce, setAutoFreeze } from "immer";
 import { useRoomStore, type Player, type Room } from "../stores/roomStore";
 import { createGameProxy } from "./stateProxy";
+import SoundManager from "../utils/SoundManager";
 
 // Disable auto-freezing to allow mutable state in games
 setAutoFreeze(false);
@@ -53,6 +54,12 @@ export abstract class BaseGame<T> {
   protected gameName: string = "unknown";
   public setGameName(name: string): void {
     this.gameName = name;
+  }
+
+  // use for gameover sounds
+  protected _wasGameOver = false;
+  protected isGameOver(_state: T): boolean {
+    return false;
   }
 
   private getState(): T {
@@ -174,6 +181,12 @@ export abstract class BaseGame<T> {
         ) as T;
       }
     }
+
+    const gameOver = this.isGameOver(state);
+    if (!this._wasGameOver && gameOver) {
+      SoundManager.playGameOver();
+    }
+    this._wasGameOver = gameOver;
 
     this.stateListeners.forEach((listener) => listener(this.lastSnapshot!));
   }

@@ -21,6 +21,8 @@ import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Thirteen;
@@ -33,11 +35,16 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const { confirm: showConfirm } = useAlertStore();
   const { currentRoom } = useRoomStore();
 
+  const canStart = game.canStartGame();
   const isHost = game.isHost;
   const myIndex = game.getMyPlayerIndex();
   const mySlot = myIndex >= 0 ? state.players[myIndex] : null;
   const isMyTurn = state.currentTurnIndex === myIndex;
-  const canStart = game.canStartGame();
+
+  usePrevious(state.currentTurnIndex, (prev, _current) => {
+    if (state.gamePhase !== "playing") return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   const isRoomPlayer = useMemo(() => {
     return currentRoom?.players.some((p) => p.id === game.getUserId()) ?? false;

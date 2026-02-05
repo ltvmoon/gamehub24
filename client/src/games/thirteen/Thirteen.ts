@@ -15,6 +15,10 @@ import {
 import type { Player } from "../../stores/roomStore";
 
 export default class Thirteen extends BaseGame<ThirteenState> {
+  protected isGameOver(state: ThirteenState): boolean {
+    return state.gamePhase === "ended";
+  }
+
   getInitState(): ThirteenState {
     // Initialize 4 player slots
     const slots: PlayerSlot[] = Array(4)

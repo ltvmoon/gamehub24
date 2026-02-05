@@ -15,19 +15,21 @@ import {
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { useSocketStore } from "../stores/socketStore";
+import { useSettingsStore } from "../stores/settingsStore";
 import { useAlertStore } from "../stores/alertStore";
 import useLanguage from "../stores/languageStore";
 import { getSocket } from "../services/socket";
 import { getAllGames } from "../games/registry";
 import type { Room } from "../stores/roomStore";
 import type { GameModule } from "../games/registry";
-import SettingsModal from "../components/SettingsModal";
 import { useGameFavorites } from "../hooks/useGameFavorites";
 import GameCategoryFilter from "../components/GameCategoryFilter";
 import RecentUpdates from "../components/RecentUpdates";
 import { CATEGORY_CONFIG, type GameCategory } from "../constants";
 import { useChatStore } from "../stores/chatStore";
 import Portal from "../components/Portal";
+import SearchInput from "../components/SearchInput";
+import { useGamesFilter } from "../hooks/useGamesFilter";
 
 export default function Lobby() {
   const { ti } = useLanguage();
@@ -39,23 +41,14 @@ export default function Lobby() {
 
   const [showCreateModal, setShowCreateModal] = useState<string | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { setShowSettingsModal } = useSettingsStore();
   const [selectedCategory, setSelectedCategory] = useState<
     GameCategory | "favorites" | null
   >(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const gamesToShow = useMemo(
-    () =>
-      getAllGames().filter((game) =>
-        selectedCategory === "favorites"
-          ? favorites.includes(game.id)
-          : selectedCategory
-            ? game.categories.includes(selectedCategory)
-            : true,
-      ),
-    [selectedCategory, favorites],
-  );
+  const gamesToShow = useGamesFilter(searchQuery, selectedCategory);
 
   useEffect(() => {
     const socket = getSocket();
@@ -220,20 +213,30 @@ export default function Lobby() {
 
           {/* Games Gallery */}
           <section className="mb-16">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <Gamepad className="w-6 h-6 text-primary" />
-                <h3 className="text-2xl font-display text-text-primary">
-                  {ti({ en: "Available Games", vi: "Trò Chơi" })}
-                </h3>
+            <div className="flex flex-col gap-6 mb-8">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <Gamepad className="w-6 h-6 text-primary" />
+                  <h3 className="text-2xl font-display text-text-primary">
+                    {ti({ en: "Available Games", vi: "Trò Chơi" })}
+                  </h3>
+                </div>
+
+                {/* Category Filter */}
+                <GameCategoryFilter
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={handleCategoryChange}
+                  favoritesCount={favoritesCount}
+                />
               </div>
 
-              {/* Category Filter */}
-              <GameCategoryFilter
-                selectedCategory={selectedCategory}
-                onSelectCategory={handleCategoryChange}
-                favoritesCount={favoritesCount}
-              />
+              <div className="flex justify-center">
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  className="w-full max-w-md"
+                />
+              </div>
             </div>
 
             <div
@@ -310,9 +313,9 @@ export default function Lobby() {
         <JoinRoomModal onClose={() => setShowJoinModal(false)} />
       )}
 
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <SettingsModal onClose={() => setShowSettingsModal(false)} />
+      {/* Join Room Modal */}
+      {showJoinModal && (
+        <JoinRoomModal onClose={() => setShowJoinModal(false)} />
       )}
 
       <footer className="p-4 pt-16">

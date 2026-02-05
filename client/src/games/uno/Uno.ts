@@ -12,6 +12,10 @@ import {
 } from "./types";
 
 export default class Uno extends BaseGame<UnoState> {
+  protected isGameOver(state: UnoState): boolean {
+    return state.gamePhase === "ended";
+  }
+
   getInitState(): UnoState {
     // Initialize 4 player slots
     const slots: PlayerSlot[] = Array(4)

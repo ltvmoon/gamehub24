@@ -7,6 +7,10 @@ import { Chess } from "chess.js";
 const chess = new Chess();
 
 export default class ChessGame extends BaseGame<ChessState> {
+  protected isGameOver(state: ChessState): boolean {
+    return state.gameOver;
+  }
+
   getInitState(): ChessState {
     return {
       fen: chess.fen(),

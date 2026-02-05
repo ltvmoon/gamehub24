@@ -29,6 +29,8 @@ import useLanguage from "../../stores/languageStore";
 import type { GameUIProps } from "../types";
 import { useAlertStore } from "../../stores/alertStore";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 export default function BilliardUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Billiard;
@@ -73,7 +75,14 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
   const [controlMode, setControlMode] = useState<"drag" | "slider">("drag");
   const [isDraggingAngle, setIsDraggingAngle] = useState(false);
 
-  const isMyTurn = game.isMyTurn();
+  const mySlot = game.getMySlot();
+  const isMyTurn =
+    mySlot === state.currentTurn && state.gamePhase === GAME_PHASE.PLAYING;
+
+  usePrevious(state.currentTurn, (prev, _current) => {
+    if (state.gamePhase !== GAME_PHASE.PLAYING) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   // Ref to store drawCanvas function for use in callbacks
   const drawCanvasRef = useRef<() => void>(() => {});
@@ -1024,7 +1033,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
     const onTouchStart = (e: TouchEvent) => {
       // Check turn and state
-      if (!game.isMyTurn() || game.state.isSimulating) return;
+      if (!isMyTurn || game.state.isSimulating) return;
 
       const cueBallNow = ballsRef.current.find(
         (b) => b.id === 0 && !b.pocketed,

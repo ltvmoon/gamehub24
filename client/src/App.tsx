@@ -9,6 +9,7 @@ import UsernameModal from "./components/UsernameModal";
 import Lobby from "./pages/Lobby";
 import Room from "./pages/Room";
 import GlobalChat from "./components/GlobalChat";
+import SettingsModal from "./components/SettingsModal";
 import { useSettingsStore } from "./stores/settingsStore";
 
 export default function App() {
@@ -120,6 +121,7 @@ export default function App() {
       </Routes>
 
       <GlobalChat />
+      {useSettingsStore.getState().showSettingsModal && <SettingsModal />}
     </HashRouter>
   );
 }

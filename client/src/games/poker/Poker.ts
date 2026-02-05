@@ -14,6 +14,10 @@ import {
 import type { Player } from "../../stores/roomStore";
 
 export default class Poker extends BaseGame<PokerState> {
+  protected isGameOver(state: PokerState): boolean {
+    return state.gamePhase === "ended";
+  }
+
   private deck: Card[] = [];
 
   getMyPlayerIndex(): number {

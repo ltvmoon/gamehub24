@@ -265,7 +265,11 @@ export class RoomManager {
   }
 
   getPublicRooms(): Room[] {
-    return Array.from(this.rooms.values()).filter((room) => room.isPublic);
+    return this.getAllRooms().filter((room) => room.isPublic);
+  }
+
+  getAllRooms(): Room[] {
+    return Array.from(this.rooms.values());
   }
 
   getRoomByUserId(userId: string): Room | undefined {

@@ -16,6 +16,8 @@ import type { GameUIProps } from "../types";
 import { useAlertStore } from "../../stores/alertStore";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 const BOARD_SIZE = 50;
 const CELL_SIZE = 40;
@@ -27,10 +29,15 @@ export default function CaroUI({ game: baseGame }: GameUIProps) {
   const { confirm: showConfirm } = useAlertStore();
   const { ti, ts } = useLanguage();
   const [showRules, setShowRules] = useState(false);
-
   const { board, winningLine, pendingUndoRequest } = state;
   const mySymbol = game.getPlayerSymbol();
   const isMyTurn = state.currentTurn === mySymbol;
+
+  usePrevious(state.currentTurn, (prev, _current) => {
+    if (state.gamePhase !== "playing" || state.gameOver) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
+
   // Game logic handles turn validation, UI just needs to reflect it.
 
   const canvasRef = useRef<HTMLCanvasElement>(null);

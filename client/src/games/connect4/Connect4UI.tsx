@@ -16,6 +16,8 @@ import { useAlertStore } from "../../stores/alertStore";
 import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
 import { hasFlag } from "../../utils";
+import SoundManager from "../../utils/SoundManager";
+import usePrevious from "../../hooks/usePrevious";
 
 export default function Connect4UI({
   game: baseGame,
@@ -26,13 +28,16 @@ export default function Connect4UI({
   const [showRules, setShowRules] = useState(false);
   const { ti, ts } = useLanguage();
   const { confirm: showConfirm } = useAlertStore();
-
   const myPlayerIndex = game.getMyPlayerIndex();
   const isHost = game.isHost;
+  const isMyTurn = state?.currentPlayerIndex === myPlayerIndex;
+
+  usePrevious(state?.currentPlayerIndex, (prev, _current) => {
+    if (!state || state.gamePhase !== Connect4GamePhase.PLAYING) return;
+    if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
+  });
 
   if (!state) return null;
-
-  const isMyTurn = state.currentPlayerIndex === myPlayerIndex;
 
   const handleColumnClick = (col: number) => {
     if (state.gamePhase !== Connect4GamePhase.PLAYING) return;

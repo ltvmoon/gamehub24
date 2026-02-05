@@ -5,6 +5,10 @@ import type { Player } from "../../stores/roomStore";
 const GRID_SIZE = 6; // 6x6 dots = 5x5 boxes
 
 export default class DotsAndBoxes extends BaseGame<DotsAndBoxesState> {
+  protected isGameOver(state: DotsAndBoxesState): boolean {
+    return state.isGameEnded;
+  }
+
   getInitState(): DotsAndBoxesState {
     return {
       gridSize: GRID_SIZE,
