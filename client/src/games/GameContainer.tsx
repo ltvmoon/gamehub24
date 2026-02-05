@@ -103,7 +103,7 @@ export default function GameContainer({
         game.setGameName(gameType);
 
         // Check for saved state (Host only)
-        if (isHost) {
+        if (isHost && gameModule.allowSavedState) {
           try {
             const key = `saved_game_${gameType}`;
             const savedItem = localStorage.getItem(key);

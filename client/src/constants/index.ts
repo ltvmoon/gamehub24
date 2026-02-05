@@ -66,6 +66,13 @@ export const updates: {
 }[] = [
   {
     type: "new",
+    en: "New game: Exploding Kittens",
+    vi: "Game mới: Mèo Nổ",
+    gameId: "explodingkittens",
+    timestamp: 1770333143079,
+  },
+  {
+    type: "new",
     en: "Add sounds",
     vi: "Thêm âm thanh",
     timestamp: 1770268040360,

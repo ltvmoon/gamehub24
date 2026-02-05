@@ -30,6 +30,7 @@ import { createPortal } from "react-dom";
 import useGameState from "../../hooks/useGameState";
 import SoundManager from "../../utils/SoundManager";
 import usePrevious from "../../hooks/usePrevious";
+import CommonFlyingCard, { isVisible } from "../../components/FlyingCard";
 
 export default function UnoUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Uno;
@@ -95,6 +96,60 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const prevHandLengthsRef = useRef(state.players.map((p) => p.hand.length));
   // Track previous turn index to know who played the card
   const prevTurnIndexRef = useRef(state.currentTurnIndex);
+
+  const animationElements = useMemo(() => {
+    if (!flyingCard || !containerRef.current) return null;
+
+    const { fromPlayerIndex, direction } = flyingCard;
+
+    // Convert actual player index to screen position
+    // Screen positions: 0=me (bottom), 1=left, 2=top, 3=right
+    const baseIndex = myIndex >= 0 ? myIndex : 0;
+    const screenPosition = (fromPlayerIndex - baseIndex + 4) % 4;
+
+    let playerEl: HTMLElement | null = null;
+    if (screenPosition === 0 && isVisible(myHandRef.current)) {
+      playerEl = myHandRef.current;
+    } else if (isVisible(desktopSlotRefs.current?.[screenPosition])) {
+      playerEl = desktopSlotRefs.current?.[screenPosition];
+    } else if (isVisible(mobileSlotRefs.current?.[screenPosition])) {
+      playerEl = mobileSlotRefs.current?.[screenPosition];
+    }
+
+    // Fallback
+    if (!playerEl) {
+      playerEl =
+        myHandRef.current ||
+        desktopSlotRefs.current?.[screenPosition] ||
+        mobileSlotRefs.current?.[screenPosition];
+    }
+
+    const discardPileEl = isVisible(desktopDiscardPileRef.current)
+      ? desktopDiscardPileRef.current
+      : mobileDiscardPileRef.current ||
+        desktopDiscardPileRef.current ||
+        mobileDiscardPileRef.current;
+
+    const drawPileEl = isVisible(desktopDrawPileRef?.current)
+      ? desktopDrawPileRef?.current
+      : mobileDrawPileRef?.current ||
+        desktopDrawPileRef?.current ||
+        mobileDrawPileRef?.current;
+
+    if (!playerEl || !discardPileEl || !drawPileEl) return null;
+
+    if (direction === "toDiscard") {
+      return {
+        sourceRect: playerEl.getBoundingClientRect(),
+        targetRect: discardPileEl.getBoundingClientRect(),
+      };
+    } else {
+      return {
+        sourceRect: drawPileEl.getBoundingClientRect(),
+        targetRect: playerEl.getBoundingClientRect(),
+      };
+    }
+  }, [flyingCard, myIndex]);
 
   useEffect(() => {
     return game.onUpdate((newState) => {
@@ -441,12 +496,10 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   };
 
   const renderGameRules = () => {
-    if (!showRules) return null;
-
     return (
       <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
-        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
-          <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full shadow-2xl relative">
+          <div className="flex justify-between p-4 pr-2">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-yellow-500" />
               {ti({ en: "Game Rules: Uno", vi: "Luật Chơi: Uno" })}
@@ -459,7 +512,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
             </button>
           </div>
 
-          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed">
+          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed max-h-[80vh] overflow-y-auto">
             <div className="space-y-4">
               <p>
                 {ti({
@@ -799,23 +852,18 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
       )}
 
       {/* Flying Card Animation */}
-      {flyingCard && (
-        <FlyingCard
-          card={flyingCard.card}
-          hidden={flyingCard.hidden}
-          fromPlayerIndex={flyingCard.fromPlayerIndex}
-          myIndex={myIndex}
-          desktopSlotRefs={desktopSlotRefs}
-          mobileSlotRefs={mobileSlotRefs}
-          myHandRef={myHandRef}
-          desktopDiscardPileRef={desktopDiscardPileRef}
-          mobileDiscardPileRef={mobileDiscardPileRef}
-          desktopDrawPileRef={desktopDrawPileRef}
-          mobileDrawPileRef={mobileDrawPileRef}
-          containerRef={containerRef}
-          direction={flyingCard.direction}
+      <CommonFlyingCard
+        containerRef={containerRef}
+        sourceRect={animationElements?.sourceRect}
+        targetRect={animationElements?.targetRect}
+        isOpen={!!flyingCard}
+      >
+        <UnoCardDisplay
+          card={flyingCard?.card}
+          size="large"
+          hidden={flyingCard?.hidden}
         />
-      )}
+      </CommonFlyingCard>
 
       {/* Rules Button */}
       <button
@@ -901,153 +949,6 @@ function UnoCardDisplay({
       }}
     >
       <span className="absolute top-0.5 left-1.5">{getCardContent()}</span>
-    </div>
-  );
-}
-
-// Flying Card Animation Component
-function FlyingCard({
-  card,
-  hidden = false,
-  fromPlayerIndex,
-  myIndex,
-  myHandRef,
-  desktopSlotRefs,
-  mobileSlotRefs,
-  desktopDiscardPileRef,
-  mobileDiscardPileRef,
-  desktopDrawPileRef,
-  mobileDrawPileRef,
-  containerRef,
-  direction = "toDiscard",
-}: {
-  card?: UnoCard;
-  hidden?: boolean;
-  fromPlayerIndex: number;
-  myIndex: number;
-  desktopSlotRefs: React.RefObject<(HTMLDivElement | null)[]>;
-  mobileSlotRefs: React.RefObject<(HTMLDivElement | null)[]>;
-  myHandRef: React.RefObject<HTMLDivElement | null>;
-  desktopDiscardPileRef: React.RefObject<HTMLDivElement | null>;
-  mobileDiscardPileRef: React.RefObject<HTMLDivElement | null>;
-  desktopDrawPileRef?: React.RefObject<HTMLButtonElement | null>;
-  mobileDrawPileRef?: React.RefObject<HTMLButtonElement | null>;
-  containerRef: React.RefObject<HTMLDivElement | null>;
-  direction?: "toDiscard" | "toHand";
-}) {
-  const [animationState, setAnimationState] = useState<{
-    startPos: { x: number; y: number };
-    endPos: { x: number; y: number };
-  } | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  useEffect(() => {
-    // Convert actual player index to screen position
-    // Screen positions: 0=me (bottom), 1=left, 2=top, 3=right
-    const baseIndex = myIndex >= 0 ? myIndex : 0;
-    const screenPosition = (fromPlayerIndex - baseIndex + 4) % 4;
-
-    let playerEl: HTMLElement | null | undefined;
-
-    // Helper to check visibility
-    const isVisible = (el: HTMLElement | null | undefined) =>
-      el && el.offsetParent !== null;
-
-    if (screenPosition === 0 && isVisible(myHandRef.current)) {
-      playerEl = myHandRef.current;
-    } else if (isVisible(desktopSlotRefs.current?.[screenPosition])) {
-      playerEl = desktopSlotRefs.current?.[screenPosition];
-    } else if (isVisible(mobileSlotRefs.current?.[screenPosition])) {
-      playerEl = mobileSlotRefs.current?.[screenPosition];
-    } else {
-      // Fallback
-      playerEl =
-        myHandRef.current ||
-        desktopSlotRefs.current?.[screenPosition] ||
-        mobileSlotRefs.current?.[screenPosition];
-    }
-
-    const discardPileEl = isVisible(desktopDiscardPileRef.current)
-      ? desktopDiscardPileRef.current
-      : mobileDiscardPileRef.current ||
-        desktopDiscardPileRef.current ||
-        mobileDiscardPileRef.current;
-
-    const drawPileEl = isVisible(desktopDrawPileRef?.current)
-      ? desktopDrawPileRef?.current
-      : mobileDrawPileRef?.current ||
-        desktopDrawPileRef?.current ||
-        mobileDrawPileRef?.current;
-    const containerEl = containerRef.current;
-
-    if (!playerEl || !discardPileEl || !containerEl) return;
-
-    // Determine source and target based on direction
-    let sourceEl, targetEl;
-
-    if (direction === "toDiscard") {
-      sourceEl = playerEl;
-      targetEl = discardPileEl;
-    } else {
-      // toHand (Draw)
-      if (!drawPileEl) return;
-      sourceEl = drawPileEl;
-      targetEl = playerEl;
-    }
-
-    const containerRect = containerEl.getBoundingClientRect();
-    const sourceRect = sourceEl.getBoundingClientRect();
-    const targetRect = targetEl.getBoundingClientRect();
-
-    // Calculate positions relative to container
-    const startPos = {
-      x: sourceRect.left + sourceRect.width / 2 - containerRect.left - 40,
-      y: sourceRect.top + sourceRect.height / 2 - containerRect.top - 56,
-    };
-    const endPos = {
-      x: targetRect.left + targetRect.width / 2 - containerRect.left - 40,
-      y: targetRect.top + targetRect.height / 2 - containerRect.top - 56,
-    };
-
-    setAnimationState({ startPos, endPos });
-
-    // Trigger animation after a small delay to ensure initial position is set
-    const animationTimer = setTimeout(() => {
-      setIsAnimating(true);
-    }, 10);
-
-    return () => clearTimeout(animationTimer);
-  }, [
-    fromPlayerIndex,
-    myIndex,
-    desktopSlotRefs,
-    mobileSlotRefs,
-    myHandRef,
-    desktopDiscardPileRef,
-    mobileDiscardPileRef,
-    desktopDrawPileRef,
-    mobileDrawPileRef,
-    containerRef,
-    direction,
-  ]);
-
-  if (!animationState) return null;
-
-  const { startPos, endPos } = animationState;
-  const currentPos = isAnimating ? endPos : startPos;
-
-  return (
-    <div
-      className="absolute pointer-events-none z-50"
-      style={{
-        left: currentPos.x,
-        top: currentPos.y,
-        transition: isAnimating ? "all 300ms ease-out" : "none",
-        transform: isAnimating ? "scale(1.1) rotate(5deg)" : "scale(0.8)",
-        opacity: isAnimating ? 1 : 0.8,
-      }}
-    >
-      <UnoCardDisplay card={card} size="large" hidden={hidden} />
     </div>
   );
 }

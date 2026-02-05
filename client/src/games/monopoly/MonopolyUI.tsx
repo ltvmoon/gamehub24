@@ -1535,7 +1535,7 @@ export default function MonopolyUI({
         <h3 className="text-lg font-bold text-orange-400 mb-4 border-b border-orange-400/30 pb-2">
           {ti({ en: "Chance Cards", vi: "Thẻ Cơ Hội" })} (?)
         </h3>
-        <div className="grid grid-cols-1 @md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 @md:grid-cols-3 gap-1">
           {CHANCE_CARDS.map((card) => (
             <div
               key={card.id}
@@ -1558,7 +1558,7 @@ export default function MonopolyUI({
         <h3 className="text-lg font-bold text-yellow-400 mb-4 border-b border-yellow-400/30 pb-2">
           {ti({ en: "Community Chest Cards", vi: "Thẻ Khí Vận" })} (chest)
         </h3>
-        <div className="grid grid-cols-1 @md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 @md:grid-cols-3 gap-1">
           {CHEST_CARDS.map((card) => (
             <div
               key={card.id}
@@ -1577,9 +1577,9 @@ export default function MonopolyUI({
 
   const renderGameRules = () => {
     return (
-      <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
-        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
-          <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
+      <div className="@container fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full shadow-2xl relative">
+          <div className="flex justify-between p-4 pr-2">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-yellow-500" />
               {ti({ en: "Game Rules: Monopoly", vi: "Luật Chơi: Cờ Tỷ Phú" })}
@@ -1592,7 +1592,7 @@ export default function MonopolyUI({
             </button>
           </div>
 
-          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed">
+          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed max-h-[80vh] overflow-y-auto">
             {/* 1. Basic Rules */}
             <div className="mb-8">
               <h3 className="text-lg font-bold text-green-400 mb-4 border-b border-green-400/30 pb-2">

@@ -1128,8 +1128,8 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
 
   const renderGameRules = () => (
     <div className="fixed inset-0 bg-black/80 glass-blur z-100 flex items-center justify-center p-4 text-left">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
-        <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900 border-b border-slate-800">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full shadow-2xl relative">
+        <div className="flex justify-between p-4 pr-2">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-yellow-500" />
             {ti({
@@ -1145,7 +1145,7 @@ export default function BilliardUI({ game: baseGame }: GameUIProps) {
           </button>
         </div>
 
-        <div className="p-4 space-y-6 text-slate-300 leading-relaxed font-sans text-sm md:text-base">
+        <div className="p-4 space-y-6 text-slate-300 leading-relaxed font-sans text-sm md:text-base max-h-[80vh] overflow-y-auto">
           <section>
             <h3 className="text-lg font-bold text-yellow-400 mb-2">
               {ti({ en: "Objective", vi: "Mục tiêu" })}

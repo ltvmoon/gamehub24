@@ -19,6 +19,7 @@ import {
   Crosshair,
   Accessibility,
   SquareDashedBottom,
+  Cat,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
@@ -40,6 +41,7 @@ export interface GameModule {
   maxPlayers: number;
   isAvailable: boolean;
   lastUpdatedTime?: number;
+  allowSavedState?: boolean;
   createGame?: (
     room: Room,
     socket: Socket,
@@ -85,6 +87,7 @@ games.set("caro", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Caro } = await import("./caro/Caro");
     return new Caro(room, socket, isHost, userId);
@@ -125,6 +128,7 @@ games.set("ludo", {
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Ludo } = await import("./ludo/Ludo");
     return new Ludo(room, socket, isHost, userId);
@@ -145,6 +149,7 @@ games.set("reversi", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Reversi } = await import("./reversi/Reversi");
     return new Reversi(room, socket, isHost, userId);
@@ -165,6 +170,7 @@ games.set("chess", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: ChessGame } = await import("./chess/Chess");
     return new ChessGame(room, socket, isHost, userId);
@@ -184,6 +190,7 @@ games.set("youtube", {
   minPlayers: 1,
   maxPlayers: 100,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: YouTubeWatch } = await import("./youtube/YouTubeWatch");
     return new YouTubeWatch(room, socket, isHost, userId);
@@ -284,6 +291,7 @@ games.set("billiard", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Billiard } = await import("./billiard/Billiard");
     return new Billiard(room, socket, isHost, userId);
@@ -304,6 +312,7 @@ games.set("monopoly", {
   minPlayers: 2,
   maxPlayers: 4,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Monopoly } = await import("./monopoly/Monopoly");
     return new Monopoly(room, socket, isHost, userId);
@@ -344,6 +353,7 @@ games.set("werewolf", {
   minPlayers: 5,
   maxPlayers: 12,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Werewolf } = await import("./werewolf/Werewolf");
     return new Werewolf(room, socket, isHost, userId);
@@ -354,9 +364,9 @@ games.set("werewolf", {
 // Register Bầu Cua (Vietnamese Tet Dice Game)
 games.set("baucua", {
   id: "baucua",
-  name: { en: "Bầu Cua", vi: "Bầu Cua" },
+  name: { en: "Bau Cua", vi: "Bầu Cua" },
   description: {
-    en: "Choose symbols and roll the dice!",
+    en: "Vietnamese animal dice game",
     vi: "Chọn linh vật và lắc xúc xắc!",
   },
   icon: Shrimp,
@@ -364,6 +374,7 @@ games.set("baucua", {
   minPlayers: 1,
   maxPlayers: 20,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: BauCua } = await import("./baucua/BauCua");
     return new BauCua(room, socket, isHost, userId);
@@ -384,6 +395,7 @@ games.set("poker", {
   minPlayers: 2,
   maxPlayers: 6,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Poker } = await import("./poker/Poker");
     return new Poker(room, socket, isHost, userId);
@@ -404,6 +416,7 @@ games.set("maze", {
   minPlayers: 1,
   maxPlayers: 10,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Maze } = await import("./maze/Maze");
     return new Maze(room, socket, isHost, userId);
@@ -424,11 +437,35 @@ games.set("gunnywars", {
   minPlayers: 1,
   maxPlayers: 4,
   isAvailable: true,
+  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: GunnyWars } = await import("./gunnywars/GunnyWars");
     return new GunnyWars(room, socket, isHost, userId);
   },
   loadUI: () => import("./gunnywars/GunnyWarsUI").then((m) => m.default),
+});
+
+// Register Exploding Kittens
+games.set("explodingkittens", {
+  id: "explodingkittens",
+  name: { en: "Exploding Kittens", vi: "Mèo Nổ" },
+  description: {
+    en: "A kitty-powered version of Russian Roulette!",
+    vi: "Phiên bản mèo của trò Cò quay Nga!",
+  },
+  icon: Cat,
+  categories: ["card", "party", "strategy"],
+  minPlayers: 2,
+  maxPlayers: 5,
+  isAvailable: true,
+  allowSavedState: true,
+  createGame: async (room, socket, isHost, userId) => {
+    const { default: ExplodingKittens } =
+      await import("./explodingkittens/ExplodingKittens");
+    return new ExplodingKittens(room, socket, isHost, userId);
+  },
+  loadUI: () =>
+    import("./explodingkittens/ExplodingKittensUI").then((m) => m.default),
 });
 
 // Registry functions

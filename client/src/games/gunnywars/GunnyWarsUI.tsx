@@ -1903,7 +1903,7 @@ export default function GunnyWarsUI({ game: baseGame }: GameUIProps) {
                         : ts({ en: "Guest", vi: "Khách" }))}
                   </span>
                 </div>
-                {state.selectedMode !== GameMode.CHAOS && (
+                {state.selectedMode === GameMode.TURN_BASED && isMyTurn && (
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-full animate-pulse bg-blue-500" />
                     <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest leading-none">

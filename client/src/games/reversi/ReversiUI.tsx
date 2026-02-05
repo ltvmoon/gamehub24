@@ -107,12 +107,10 @@ export default function ReversiUI({
   };
 
   const renderGameRules = () => {
-    if (!showRules) return null;
-
     return (
       <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
-        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
-          <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full shadow-2xl relative">
+          <div className="flex justify-between p-4 pr-2">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-yellow-500" />
               {ti({ en: "Game Rules: Reversi", vi: "Luật Chơi: Cờ Lật" })}
@@ -125,7 +123,7 @@ export default function ReversiUI({
             </button>
           </div>
 
-          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed">
+          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed max-h-[80vh] overflow-y-auto">
             <div className="space-y-4">
               <p>
                 {ti({

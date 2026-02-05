@@ -95,8 +95,8 @@ export default function Connect4UI({
   const renderGameRules = () => {
     return (
       <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4">
-        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl relative">
-          <div className="flex justify-between sticky top-0 p-4 pr-2 bg-slate-900">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full shadow-2xl relative">
+          <div className="flex justify-between p-4 pr-2">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-yellow-500" />
               {ti({ en: "Game Rules: Connect 4", vi: "Luật Chơi: Nối 4" })}
@@ -109,7 +109,7 @@ export default function Connect4UI({
             </button>
           </div>
 
-          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed">
+          <div className="p-4 pt-0 space-y-4 text-slate-300 leading-relaxed max-h-[80vh] overflow-y-auto">
             <div className="space-y-4">
               <p>
                 {ti({
@@ -210,7 +210,7 @@ export default function Connect4UI({
               className={`flex items-center justify-between p-3 rounded-lg transition-all ${
                 isTurn
                   ? "bg-slate-700 ring-2 ring-blue-500 shadow-lg"
-                  : "bg-slate-900 border border-slate-800"
+                  : "bg-slate-900"
               }`}
             >
               <div className="flex items-center gap-3">
