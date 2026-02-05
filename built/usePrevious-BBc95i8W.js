@@ -1,0 +1,1 @@
+import{b as e}from"./react-vendor-DWJY-O-l.js";function r(r,t){const u=e.useRef(r),c=e.useRef(t);return e.useEffect(()=>{c.current=t},[t]),e.useEffect(()=>{c.current&&u.current!==r&&c.current(u.current,r),console.log("usePrev",r),u.current=r},[r]),u.current}export{r as u};

@@ -1,7 +1,6 @@
 import type { Player } from "../../stores/roomStore";
 import { BaseGame, type GameAction, type GameResult } from "../BaseGame";
 import type { OAnQuanState, OAnQuanAction } from "./types";
-import SoundManager from "../../utils/SoundManager";
 
 export default class OAnQuan extends BaseGame<OAnQuanState> {
   protected isGameOver(state: OAnQuanState): boolean {

@@ -65,6 +65,12 @@ export const updates: {
   link?: string;
 }[] = [
   {
+    type: "new",
+    en: "Add sounds",
+    vi: "Thêm âm thanh",
+    timestamp: 1770268040360,
+  },
+  {
     type: "fix",
     en: "Fix UI and optimize games",
     vi: "Fix giao diện và tối ưu games",
