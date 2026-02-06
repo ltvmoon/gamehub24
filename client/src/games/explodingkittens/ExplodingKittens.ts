@@ -558,6 +558,7 @@ export default class ExplodingKittens extends BaseGame<EKState> {
       responses: {},
       nopeChain: [{ playerId, cardType: topCard[0] }],
       entryTimestamp,
+      originalCard: topCard, // Store the original card for execution after nope chain
     };
 
     // Auto-allow for players who can't Nope
@@ -686,8 +687,14 @@ export default class ExplodingKittens extends BaseGame<EKState> {
   private executePendingAction(): void {
     if (!this.state.pendingAction) return;
 
-    const { action, nopeCount, playerId, nopeChain, entryTimestamp } =
-      this.state.pendingAction;
+    const {
+      action,
+      nopeCount,
+      playerId,
+      nopeChain,
+      entryTimestamp,
+      originalCard,
+    } = this.state.pendingAction;
     const isNoped = nopeCount % 2 === 1;
 
     this.state.gamePhase = EKGamePhase.PLAYING;
@@ -720,9 +727,16 @@ export default class ExplodingKittens extends BaseGame<EKState> {
 
     if (!isNoped) {
       if (action.type === "PLAY_CARD") {
-        const topCard =
+        // Use the stored originalCard instead of topCard from discardPile
+        // because the discardPile now contains NOPE cards on top
+        const cardToExecute =
+          originalCard ??
           this.state.discardPile[this.state.discardPile.length - 1];
-        this.executeCardAction(topCard, action.playerId, action.targetPlayerId);
+        this.executeCardAction(
+          cardToExecute,
+          action.playerId,
+          action.targetPlayerId,
+        );
       } else if (action.type === "PLAY_COMBO") {
         this.executeComboAction(
           action.playerId,
@@ -1064,12 +1078,8 @@ export default class ExplodingKittens extends BaseGame<EKState> {
 
     this.state.alterCards = null;
     this.state.alterCount = 0;
-    this.state.lastAction = {
-      action: { type: "REORDER_FUTURE", playerId, newOrder },
-      playerId,
-      timestamp: Date.now(),
-      isNoped: false,
-    };
+    // Note: Don't set lastAction here - it was already set when the ALTER_THE_FUTURE card was played.
+    // Setting it again caused duplicate game logs.
     this.state.gamePhase = EKGamePhase.PLAYING;
     this.checkBotTurn();
   }

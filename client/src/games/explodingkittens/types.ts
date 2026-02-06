@@ -106,6 +106,7 @@ export interface EKState {
     responses: Record<string, "NOPE" | "ALLOW">;
     nopeChain: { playerId: string; cardType: EKCardType }[];
     entryTimestamp?: number; // Timestamp of the original discard history entry
+    originalCard?: EKCard; // The original card played (before any NOPEs)
   } | null;
 }
 

@@ -28,7 +28,6 @@ import {
   Ban,
   Check,
   Crosshair,
-  ArrowUpDown,
   ChevronUp,
   ChevronDown,
   Settings,
@@ -64,6 +63,13 @@ const NopeWindowOverlay: React.FC<NopeWindowOverlayProps> = ({
     }, 100);
     return () => clearInterval(interval);
   }, []);
+
+  const actionChainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (actionChainRef.current) {
+      actionChainRef.current.scrollTop = actionChainRef.current.scrollHeight;
+    }
+  }, [state.pendingAction?.nopeChain?.length]);
 
   if (state.gamePhase !== EKGamePhase.NOPE_WINDOW || !state.pendingAction)
     return null;
@@ -138,7 +144,7 @@ const NopeWindowOverlay: React.FC<NopeWindowOverlayProps> = ({
             <span
               className={`text-4xl font-black tabular-nums ${timeLeft < 3000 ? "text-red-500 animate-pulse" : "text-white"}`}
             >
-              {(timeLeft / 1000).toFixed(1)}
+              {(timeLeft / 1000).toFixed(0)}
             </span>
           </div>
         </div>
@@ -165,7 +171,10 @@ const NopeWindowOverlay: React.FC<NopeWindowOverlayProps> = ({
         </div>
 
         {/* Action Chain */}
-        <div className="w-full flex flex-col gap-2 max-h-60 overflow-y-auto overflow-x-hidden custom-scrollbar pr-1 p-2">
+        <div
+          className="w-full flex flex-col gap-2 max-h-60 overflow-y-auto overflow-x-hidden custom-scrollbar pr-1 p-2"
+          ref={actionChainRef}
+        >
           {nopeChain.map((item, i) => {
             const p = state.players.find((sp) => sp.id === item.playerId);
             const cardType = item.cardType;
@@ -468,30 +477,32 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       const player = state.players.find((p) => p.id === playerId);
       const initiatorName = player?.username || "Unknown";
 
-      let actionName = "";
-      let Icon: any = Sparkle;
+      // Get config from CARD_CONFIG when possible
+      const config = cardType ? CARD_CONFIG[cardType] : null;
+      let actionName = config ? ts(config.name) : "";
+      let Icon: any = config?.icon || Sparkle;
 
-      if (action.type === "PLAY_CARD") {
-        const config = CARD_CONFIG[cardType || EKCardType.EXPLODING_KITTEN];
-        actionName = ts(config.name);
-        Icon = config.icon;
-      } else if (action.type === "PLAY_COMBO") {
+      if (action.type === "PLAY_COMBO") {
         actionName =
           (action as any).cardIndices.length === 2
             ? ts({ en: "Pair Combo", vi: "Combo Đôi" })
             : ts({ en: "Triplet Combo", vi: "Combo Ba" });
         Icon = Layers;
       } else if (action.type === "DRAW_CARD") {
-        actionName = ts({ en: "Draw a card", vi: "Rút một lá bài" });
+        actionName = ts({ en: "Draw", vi: "Rút bài" });
         Icon = Hand;
       } else if (action.type === "DEFUSE") {
-        actionName = ts({ en: "Defuse the bomb", vi: "Gỡ bom" });
-        Icon = Sparkle;
+        const defuseConfig = CARD_CONFIG[EKCardType.DEFUSE];
+        actionName = ts(defuseConfig.name);
+        Icon = defuseConfig.icon;
       } else if (action.type === "REORDER_FUTURE") {
-        actionName = ts({ en: "Alter the Future", vi: "Đổi Tương Lai" });
-        Icon = ArrowUpDown;
+        // Use ALTER_THE_FUTURE_3 config as default for reorder action
+        const alterConfig = CARD_CONFIG[EKCardType.ALTER_THE_FUTURE_3];
+        actionName = ts(alterConfig.name);
+        Icon = alterConfig.icon;
       } else if ((action as any).type === "EXPLODE") {
-        // Player exploded - special log
+        // Player exploded - use EXPLODING_KITTEN config
+        const explodeConfig = CARD_CONFIG[EKCardType.EXPLODING_KITTEN];
         const id = ++logIdRef.current;
         const message = ts({
           en: `💥 ${initiatorName} EXPLODED!`,
@@ -499,7 +510,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
         });
         setGameLogs((prev) => [
           ...prev,
-          { id, message, type: "error", icon: Bomb },
+          { id, message, type: "error", icon: explodeConfig.icon },
         ]);
         return; // Don't continue with normal log flow
       }
@@ -1405,8 +1416,8 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl max-w-lg w-full">
           <h3 className="text-xl font-bold text-indigo-400 mb-4 flex items-center gap-2">
-            <ArrowUpDown className="w-6 h-6" />
-            {ti({ en: "Alter the Future", vi: "Đổi Tương Lai" })}
+            <Sparkle className="w-6 h-6" />
+            {ti({ en: "Alter the Future", vi: "Sửa Tương Lai" })}
           </h3>
           <p className="text-slate-400 mb-4 text-sm">
             {ti({
@@ -1993,23 +2004,19 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
         ref={logContainerRef}
         className="max-h-20 @md:max-h-24 overflow-y-auto overflow-x-hidden custom-scrollbar w-full flex items-center flex-col"
       >
-        {gameLogs.map((log) => (
+        {gameLogs.map((log, i) => (
           <div
-            className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-lg text-center animate-in fade-in duration-200 ${
+            key={log.id}
+            className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-lg text-center ${
               log.type === "success" ? "text-slate-300" : "text-red-400"
-            }`}
+            }
+            ${i === gameLogs.length - 1 ? "animate-bounce" : ""}`}
           >
             <log.icon
               className={`w-4 h-4 shrink-0 ${log.type === "success" ? "text-green-500" : "text-red-500"}`}
             />
-            <span className="text-xs leading-tight">{log.message}</span>
+            <span className="text-xs font-medium">{log.message}</span>
           </div>
-          // <LogItem
-          //   key={log.id}
-          //   message={log.message}
-          //   type={log.type}
-          //   icon={log.icon}
-          // />
         ))}
       </div>
     );

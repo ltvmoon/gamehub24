@@ -149,7 +149,6 @@ games.set("reversi", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Reversi } = await import("./reversi/Reversi");
     return new Reversi(room, socket, isHost, userId);
@@ -170,7 +169,6 @@ games.set("chess", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: ChessGame } = await import("./chess/Chess");
     return new ChessGame(room, socket, isHost, userId);
@@ -291,7 +289,6 @@ games.set("billiard", {
   minPlayers: 2,
   maxPlayers: 2,
   isAvailable: true,
-  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Billiard } = await import("./billiard/Billiard");
     return new Billiard(room, socket, isHost, userId);
@@ -416,7 +413,6 @@ games.set("maze", {
   minPlayers: 1,
   maxPlayers: 10,
   isAvailable: true,
-  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Maze } = await import("./maze/Maze");
     return new Maze(room, socket, isHost, userId);
@@ -458,7 +454,6 @@ games.set("explodingkittens", {
   minPlayers: 2,
   maxPlayers: 5,
   isAvailable: true,
-  allowSavedState: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: ExplodingKittens } =
       await import("./explodingkittens/ExplodingKittens");
