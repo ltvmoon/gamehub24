@@ -2310,60 +2310,66 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                     })}
                   </h4>
                 </div>
-                <div className="space-y-4 pl-2 border-l-2 border-slate-700">
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                <div className="grid grid-cols-1 gap-3 pl-2">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Keep Defuse until the end:",
-                        vi: "Giữ lá Gỡ bom đến cuối:",
+                        en: "Keep Defuse until the end",
+                        vi: "Giữ lá Gỡ bom đến cuối",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "Don't rush to use your",
-                      vi: "Đừng vội dùng lá",
-                    })}
-                    {renderInlineCard(EKCardType.DEFUSE)}
-                    {ti({
-                      en: "in early turns. It's the most valuable insurance when the deck gets thin.",
-                      vi: "ở những lượt đầu nếu không cần thiết, đây là bảo hiểm quý giá nhất về sau khi xấp bài đã mỏng.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Don't rush to use your",
+                        vi: "Đừng vội dùng lá",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.DEFUSE)}{" "}
+                      {ti({
+                        en: "in early turns. It's the most valuable insurance when the deck gets thin.",
+                        vi: "ở những lượt đầu nếu không cần thiết, đây là bảo hiểm quý giá nhất về sau khi xấp bài đã mỏng.",
+                      })}
+                    </p>
+                  </div>
 
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Use Combos effectively:",
-                        vi: "Sử dụng Combo:",
+                        en: "Use Combos effectively",
+                        vi: "Sử dụng Combo",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "Collect matching cat cards to steal a",
-                      vi: "Gom các lá mèo thường (cùng màu) để cướp lá bài",
-                    })}
-                    {renderInlineCard(EKCardType.DEFUSE)}
-                    {ti({
-                      en: "or other important function cards from other players.",
-                      vi: "hoặc các lá bài chức năng quan trọng khác từ tay người khác.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Collect matching cat cards to steal a",
+                        vi: "Gom các lá mèo thường (cùng màu) để cướp lá bài",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.DEFUSE)}{" "}
+                      {ti({
+                        en: "or other important function cards from other players.",
+                        vi: "hoặc các lá bài chức năng quan trọng khác từ tay người khác.",
+                      })}
+                    </p>
+                  </div>
 
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Master the Nope card:",
-                        vi: "Tận dụng lá Không (Nope):",
+                        en: "Master the Nope card",
+                        vi: "Tận dụng lá Chặn (Nope)",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "Keep your",
-                      vi: "Hãy giữ lá",
-                    })}
-                    {renderInlineCard(EKCardType.NOPE)}
-                    {ti({
-                      en: "to block incoming attacks or when someone tries to steal from you.",
-                      vi: "để chặn các hành động tấn công hoặc khi người khác định cướp bài của bạn.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Keep your",
+                        vi: "Hãy giữ lá",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.NOPE)}{" "}
+                      {ti({
+                        en: "to block incoming attacks or when someone tries to steal from you.",
+                        vi: "để chặn các hành động tấn công hoặc khi người khác định cướp bài của bạn.",
+                      })}
+                    </p>
+                  </div>
                 </div>
               </section>
 
@@ -2376,70 +2382,76 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                     })}
                   </h4>
                 </div>
-                <div className="space-y-4 pl-2 border-l-2 border-slate-700">
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                <div className="grid grid-cols-1 gap-3 pl-2">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Combine See the Future + Shuffle/Skip:",
-                        vi: "Kết hợp Xem trước + Xáo bài/Bỏ lượt:",
+                        en: "See the Future + Shuffle/Skip",
+                        vi: "Kết hợp Xem trước + Xáo bài/Bỏ lượt",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "If you use",
-                      vi: "Nếu bạn sử dụng",
-                    })}
-                    {renderInlineCard(EKCardType.SEE_THE_FUTURE)}
-                    {ti({
-                      en: "and see a Kitten on top, use",
-                      vi: "và thấy Mèo nổ ở trên cùng, hãy dùng",
-                    })}
-                    {renderInlineCard(EKCardType.SHUFFLE)}
-                    {ti({
-                      en: "to change its position, or",
-                      vi: "để đổi vị trí, hoặc",
-                    })}
-                    {renderInlineCard(EKCardType.SKIP)}
-                    {ti({
-                      en: "to end your turn safely without drawing.",
-                      vi: "để kết thúc lượt an toàn mà không cần rút bài.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "If you use",
+                        vi: "Nếu bạn sử dụng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.SEE_THE_FUTURE)}{" "}
+                      {ti({
+                        en: "and see a Kitten on top, use",
+                        vi: "và thấy Mèo nổ ở trên cùng, hãy dùng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.SHUFFLE)}{" "}
+                      {ti({
+                        en: "to change its position, or",
+                        vi: "để đổi vị trí, hoặc",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.SKIP)}{" "}
+                      {ti({
+                        en: "to end your turn safely without drawing.",
+                        vi: "để kết thúc lượt an toàn mà không cần rút bài.",
+                      })}
+                    </p>
+                  </div>
 
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Mind Games with Defuse:",
-                        vi: "Chơi khăm bằng Gỡ bom:",
+                        en: "Mind Games with Defuse",
+                        vi: "Chơi khăm bằng Gỡ bom",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "When you use a",
-                      vi: "Khi bạn sử dụng",
-                    })}
-                    {renderInlineCard(EKCardType.DEFUSE)}
-                    {ti({
-                      en: "to put back an Exploding Kitten, do it secretly. Place it on top or in a position where you want your opponent to draw it.",
-                      vi: "để đặt lại lá Mèo nổ, hãy thực hiện bí mật, đặt ngay lên đầu hoặc vị trí mà bạn muốn đối thủ rút phải.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "When you use a",
+                        vi: "Khi bạn sử dụng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.DEFUSE)}{" "}
+                      {ti({
+                        en: "to put back an Exploding Kitten, do it secretly. Place it on top or where you want your opponent to draw it.",
+                        vi: "để đặt lại lá Mèo nổ, hãy thực hiện bí mật, đặt ngay lên đầu hoặc vị trí mà bạn muốn đối thủ rút phải.",
+                      })}
+                    </p>
+                  </div>
 
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Track Defuses:",
-                        vi: "Theo dõi Gỡ bom:",
+                        en: "Track Defuses",
+                        vi: "Theo dõi Gỡ bom",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "Keep track of how many",
-                      vi: "Hãy theo dõi số lượng lá",
-                    })}
-                    {renderInlineCard(EKCardType.DEFUSE)}
-                    {ti({
-                      en: "cards have been used to predict when the bomb will reappear in the deck.",
-                      vi: "đã được sử dụng để dự đoán khi nào bom sẽ xuất hiện trở lại trong xấp bài.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Keep track of how many",
+                        vi: "Hãy theo dõi số lượng lá",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.DEFUSE)}{" "}
+                      {ti({
+                        en: "cards have been used to predict when the bomb will reappear.",
+                        vi: "đã được sử dụng để dự đoán khi nào bom sẽ xuất hiện trở lại.",
+                      })}
+                    </p>
+                  </div>
                 </div>
               </section>
 
@@ -2452,42 +2464,46 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                     })}
                   </h4>
                 </div>
-                <div className="space-y-4 pl-2 border-l-2 border-slate-700">
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                <div className="grid grid-cols-1 gap-3 pl-2">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Use Attack wisely:",
-                        vi: "Sử dụng Tấn công hợp lý:",
+                        en: "Use Attack wisely",
+                        vi: "Sử dụng Tấn công hợp lý",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "Use an",
-                      vi: "Sử dụng lá",
-                    })}
-                    {renderInlineCard(EKCardType.ATTACK)}
-                    {ti({
-                      en: "to put pressure on the next player, especially when you suspect or know the top card is an Exploding Kitten.",
-                      vi: "để đẩy áp lực cho người tiếp theo, đặc biệt khi bạn biết chắc hoặc nghi ngờ lá trên cùng là Mèo nổ.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Use an",
+                        vi: "Sử dụng lá",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.ATTACK)}{" "}
+                      {ti({
+                        en: "to put pressure on the next player, especially when you suspect the top card is an Exploding Kitten.",
+                        vi: "để đẩy áp lực cho người tiếp theo, đặc biệt khi bạn nghi ngờ lá trên cùng là Mèo nổ.",
+                      })}
+                    </p>
+                  </div>
 
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Shuffle when in doubt:",
-                        vi: "Tận dụng Xáo bài khi hoang mang:",
+                        en: "Shuffle when in doubt",
+                        vi: "Tận dụng Xáo bài khi hoang mang",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "If you feel endangered and don't have a way to see the deck, use",
-                      vi: "Nếu bạn cảm thấy nguy hiểm mà không có cách nào xem trước bài, hãy dùng",
-                    })}
-                    {renderInlineCard(EKCardType.SHUFFLE)}
-                    {ti({
-                      en: "to try your luck and escape from a potential Kitten.",
-                      vi: "để thử vận may và thoát khỏi nguy cơ bốc phải Mèo nổ.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "If you feel endangered and don't have a way to see the deck, use",
+                        vi: "Nếu bạn cảm thấy nguy hiểm mà không có cách nào xem trước bài, hãy dùng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.SHUFFLE)}{" "}
+                      {ti({
+                        en: "to try your luck and escape from a potential Kitten.",
+                        vi: "để thử vận may và thoát khỏi nguy cơ bốc phải Mèo nổ.",
+                      })}
+                    </p>
+                  </div>
                 </div>
               </section>
 
@@ -2500,60 +2516,138 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                     })}
                   </h4>
                 </div>
-                <div className="space-y-4 pl-2 border-l-2 border-slate-700">
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                <div className="grid grid-cols-1 gap-3 pl-2">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Reversing Attacks:",
-                        vi: "Phản đòn bằng Đảo chiều:",
+                        en: "Personal Attack Aggression",
+                        vi: "Tấn công cá nhân dồn dập",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "Use",
-                      vi: "Dùng",
-                    })}
-                    {renderInlineCard(EKCardType.REVERSE)}
-                    {ti({
-                      en: "to send an Attack back to the person who attacked you, or just to skip your turn.",
-                      vi: "để đẩy Tấn công ngược lại người vừa hại bạn, hoặc chỉ đơn giản là bỏ lượt.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Use",
+                        vi: "Sử dụng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.PERSONAL_ATTACK)}{" "}
+                      {ti({
+                        en: "when safe to take 3 turns and farm cards.",
+                        vi: "khi an toàn để đi 3 lượt và 'cày' bài.",
+                      })}
+                    </p>
+                  </div>
 
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Precision Striking:",
-                        vi: "Tấn công chính xác:",
+                        en: "Catomic Bomb Chaos",
+                        vi: "Hỗn loạn Bom Nguyên Tử",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "With",
-                      vi: "Với",
-                    })}
-                    {renderInlineCard(EKCardType.TARGETED_ATTACK)}
-                    {ti({
-                      en: ", target players with few cards—they likely ran out of Defuses.",
-                      vi: ", hãy nhắm vào người còn ít bài—khả năng cao họ đã hết Gỡ bom.",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Play",
+                        vi: "Đánh",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.CATOMIC_BOMB)}{" "}
+                      {ti({
+                        en: "to force all Kittens to the top. Instant danger!",
+                        vi: "để kéo hết Mèo nổ lên đầu. Nguy hiểm tức thì!",
+                      })}
+                    </p>
+                  </div>
 
-                  <p className="leading-relaxed">
-                    <strong className="text-yellow-400">
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
                       {ti({
-                        en: "Reality Hacking:",
-                        vi: "Hack thực tại:",
+                        en: "Safe Draw from Bottom",
+                        vi: "Rút đáy an toàn",
                       })}
-                    </strong>{" "}
-                    {ti({
-                      en: "Unlike See the Future,",
-                      vi: "Khác với Xem trước,",
-                    })}
-                    {renderInlineCard(EKCardType.ALTER_THE_FUTURE_3)}
-                    {ti({
-                      en: "lets you rearrange cards. Use it to set up a trap for the next player!",
-                      vi: "cho phép sắp xếp lại bài. Dùng nó để đặt bẫy người đi sau!",
-                    })}
-                  </p>
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Suspect a trap? Use",
+                        vi: "Nghi ngờ có bẫy? Dùng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.DRAW_BOTTOM)}{" "}
+                      {ti({
+                        en: "to draw safely from below.",
+                        vi: "để rút an toàn từ dưới đáy.",
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
+                      {ti({
+                        en: "Burying Secrets",
+                        vi: "Chôn cất bí mật",
+                      })}
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Use",
+                        vi: "Dùng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.BURY)}{" "}
+                      {ti({
+                        en: "to steal a card secretly and hide it back.",
+                        vi: "để rút trộm 1 lá và giấu lại vào bộ bài.",
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
+                      {ti({
+                        en: "Reversing Attacks",
+                        vi: "Phản đòn bằng Đảo chiều",
+                      })}
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Use",
+                        vi: "Dùng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.REVERSE)}{" "}
+                      {ti({
+                        en: "to return an Attack to sender.",
+                        vi: "để trả Tấn công lại cho người gửi.",
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
+                      {ti({
+                        en: "Precision Striking",
+                        vi: "Tấn công chính xác",
+                      })}
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {ti({
+                        en: "Target low-card players with",
+                        vi: "Nhắm vào người ít bài bằng",
+                      })}{" "}
+                      {renderInlineCard(EKCardType.TARGETED_ATTACK)}.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <h5 className="font-bold text-yellow-400 mb-1">
+                      {ti({
+                        en: "Reality Hacking",
+                        vi: "Hack thực tại",
+                      })}
+                    </h5>
+                    <p className="text-sm text-slate-300">
+                      {renderInlineCard(EKCardType.ALTER_THE_FUTURE_3)}{" "}
+                      {ti({
+                        en: "rearranges cards to set traps.",
+                        vi: "sắp xếp lại bài để đặt bẫy.",
+                      })}
+                    </p>
+                  </div>
                 </div>
               </section>
             </div>
