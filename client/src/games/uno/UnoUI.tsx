@@ -50,10 +50,6 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
     direction: "toDiscard" | "toHand";
     hidden?: boolean;
   } | null>(null);
-  // Hide the newest card in discard pile while animation is playing
-  const [hideTopDiscard, setHideTopDiscard] = useState(false);
-  // Hide drawn cards in hand while animation is playing
-  const [hideDrawnCards, setHideDrawnCards] = useState(0);
 
   const desktopSlotRefs = useRef<(HTMLDivElement | null)[]>([
     null,
@@ -87,7 +83,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const canStart = game.canStartGame();
   const currentRoom = useRoomStore((state) => state.currentRoom);
   const isRoomPlayer = useMemo(() => {
-    return currentRoom?.players.some((p) => p.id === game.getUserId()) ?? false;
+    return currentRoom?.players.some((p) => p.id === game.userId) ?? false;
   }, [currentRoom, game]);
 
   // Track previous discard pile length to detect new cards
@@ -163,21 +159,12 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         // Use the previous turn index to know who played the card
         const fromPlayerIndex = prevTurnIndexRef.current;
 
-        // Hide the top card while animating
-        setHideTopDiscard(true);
-
         // Trigger flying animation
         setFlyingCard({
           card: newCard,
           fromPlayerIndex: fromPlayerIndex,
           direction: "toDiscard",
         });
-
-        // Show the card in pile and clear animation after it completes
-        setTimeout(() => {
-          setHideTopDiscard(false);
-          setFlyingCard(null);
-        }, 350);
       }
 
       // Detect if cards were drawn (hand grew) - for ALL players
@@ -187,16 +174,11 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 
         if (newLength > prevLength && newState.gamePhase === "playing") {
           const isMe = index === myIndex;
-          const drawnCount = newLength - prevLength;
+          // const drawnCount = newLength - prevLength;
           // If it's me, we know the card. If it's opponent, use hidden card.
           const drawnCard = isMe
             ? player.hand[player.hand.length - 1]
             : undefined;
-
-          // Only hide drawn cards if it's me (since I can't see others' hands anyway)
-          if (isMe) {
-            setHideDrawnCards(drawnCount);
-          }
 
           // Trigger flying animation for drawn card
           setFlyingCard({
@@ -205,12 +187,6 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
             direction: "toHand",
             hidden: !isMe, // Should be hidden for opponents
           });
-
-          // Show drawn cards and clear animation after it completes
-          setTimeout(() => {
-            if (isMe) setHideDrawnCards(0);
-            setFlyingCard(null);
-          }, 350);
         }
       });
 
@@ -391,8 +367,6 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 >
                   {state.discardPile.slice(-4).map((card, index, arr) => {
                     const isTop = index === arr.length - 1;
-                    // Hide top card during flying animation
-                    if (isTop && hideTopDiscard) return null;
                     const offset =
                       (arr.length - 1 - index) * (isMobile ? 2 : 3);
                     const rotation =
@@ -663,7 +637,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
               {mySlot.hand.map((card, index) => {
                 const canPlay = isMyTurn && game.canPlayCardCheck(card);
                 // Hide drawn cards during animation
-                if (index >= mySlot.hand.length - hideDrawnCards) return null;
+                // if (index >= mySlot.hand.length - hideDrawnCards) return null;
                 return (
                   <button
                     key={`${card}-${index}`}
@@ -857,6 +831,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
         sourceRect={animationElements?.sourceRect}
         targetRect={animationElements?.targetRect}
         isOpen={!!flyingCard}
+        onComplete={() => setFlyingCard(null)}
       >
         <UnoCardDisplay
           card={flyingCard?.card}

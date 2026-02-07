@@ -5,6 +5,7 @@ import {
   EKCardType,
   EKGamePhase,
   type EKState,
+  type EKPrivateLog,
   PENDING_ACTION_TIMEOUT,
   type PlayerSlot,
 } from "./types";
@@ -31,6 +32,7 @@ import {
   ChevronUp,
   ChevronDown,
   Settings,
+  Lock,
 } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
 import useLanguage, { trans } from "../../stores/languageStore";
@@ -42,6 +44,7 @@ import usePrevious from "../../hooks/usePrevious";
 import { useAlertStore } from "../../stores/alertStore";
 import CommonFlyingCard, { isVisible } from "../../components/FlyingCard";
 import { CARD_CONFIG, COMBO_CONFIG } from "./cards";
+import { useRoomStore } from "../../stores/roomStore";
 
 interface NopeWindowOverlayProps {
   state: EKState;
@@ -384,6 +387,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as ExplodingKittens;
 
   const { confirm: showConfirm } = useAlertStore();
+  const { currentRoom } = useRoomStore();
 
   const [state] = useGameState(game);
   const [showRules, setShowRules] = useState(false);
@@ -416,12 +420,14 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
     {
       id: number;
       message: React.ReactNode;
-      type: "success" | "error";
+      type: "success" | "error" | "private";
       icon: any;
     }[]
   >([]);
   const logIdRef = useRef(0);
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const seenPrivateLogIds = useRef<Set<number>>(new Set());
+  const lastProcessedActionRef = useRef<number | null>(null);
 
   const players = state.players.filter((p) => p.id);
 
@@ -454,6 +460,10 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
   const isMyTurn = state.currentTurnIndex === myIndex;
   const isHost = game.isHost;
 
+  const isRoomPlayer = useMemo(() => {
+    return currentRoom?.players.some((p) => p.id === game.userId) ?? false;
+  }, [currentRoom, game]);
+
   usePrevious(state.currentTurnIndex, (prev, _current) => {
     if (state.gamePhase === EKGamePhase.WAITING) return;
     if (prev !== null) SoundManager.playTurnSwitch(isMyTurn);
@@ -473,20 +483,38 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
 
     // game logs logic for action results
     if (state.lastAction) {
+      // Skip if already processed this action (prevents duplicates on spectator join)
+      const actionTimestamp = (state.lastAction as any).timestamp || Date.now();
+      if (lastProcessedActionRef.current === actionTimestamp) return;
+      lastProcessedActionRef.current = actionTimestamp;
+
       const { action, playerId, isNoped, cardType } = state.lastAction;
       const player = state.players.find((p) => p.id === playerId);
       const initiatorName = player?.username || "Unknown";
+      const targetPlayer = (action as any).targetPlayerId
+        ? state.players.find((p) => p.id === (action as any).targetPlayerId)
+        : null;
+      const targetName = targetPlayer?.username;
 
       // Get config from CARD_CONFIG when possible
       const config = cardType ? CARD_CONFIG[cardType] : null;
       let actionName = config ? ts(config.name) : "";
+      let actionDesc = config ? ts(config.description) : "";
       let Icon: any = config?.icon || Sparkle;
 
       if (action.type === "PLAY_COMBO") {
+        const comboCount = (action as any).cardIndices.length;
         actionName =
-          (action as any).cardIndices.length === 2
+          comboCount === 2
             ? ts({ en: "Pair Combo", vi: "Combo Đôi" })
             : ts({ en: "Triplet Combo", vi: "Combo Ba" });
+        actionDesc =
+          comboCount === 2
+            ? ts({ en: "steal 1 random card", vi: "cướp 1 lá bài ngẫu nhiên" })
+            : ts({
+                en: "demand a specific card",
+                vi: "yêu cầu 1 lá bài cụ thể",
+              });
         Icon = Layers;
       } else if (action.type === "DRAW_CARD") {
         actionName = ts({ en: "Draw", vi: "Rút bài" });
@@ -516,20 +544,31 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       }
 
       const id = ++logIdRef.current;
-      const message = isNoped
-        ? ts({
-            en: `${initiatorName}'s ${actionName} was BLOCKED!`,
-            vi: `${actionName} của ${initiatorName} đã bị CHẶN!`,
-          })
-        : action.type === "DRAW_CARD"
-          ? ts({
-              en: `${initiatorName} drew a card`,
-              vi: `${initiatorName} đã rút một lá bài`,
-            })
-          : ts({
-              en: `${initiatorName} executed ${actionName}`,
-              vi: `${initiatorName} đã thực hiện ${actionName}`,
-            });
+      let message: string;
+
+      if (isNoped) {
+        message = ts({
+          en: `${initiatorName}'s ${actionName} was BLOCKED!`,
+          vi: `${actionName} của ${initiatorName} đã bị CHẶN!`,
+        });
+      } else if (action.type === "DRAW_CARD") {
+        message = ts({
+          en: `${initiatorName} drew a card`,
+          vi: `${initiatorName} đã rút một lá bài`,
+        });
+      } else if (targetName) {
+        // Has target - show detailed message with description
+        message = ts({
+          en: `${initiatorName} used ${actionName} on ${targetName} (${actionDesc})`,
+          vi: `${initiatorName} dùng ${actionName} lên ${targetName} (${actionDesc})`,
+        });
+      } else {
+        // No target - show action with description
+        message = ts({
+          en: `${initiatorName} used ${actionName} (${actionDesc})`,
+          vi: `${initiatorName} dùng ${actionName} (${actionDesc})`,
+        });
+      }
 
       setGameLogs((prev) => [
         ...prev,
@@ -542,6 +581,46 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       ]);
     }
   }, [state.lastAction, game.userId]);
+
+  // Watch for private logs (card steals) - only show to involved players
+  useEffect(() => {
+    if (!state.privateLogs || state.privateLogs.length === 0) return;
+
+    state.privateLogs.forEach((log: EKPrivateLog) => {
+      // Skip if already seen or not visible to current player
+      if (seenPrivateLogIds.current.has(log.id)) return;
+      if (!log.visibleTo.includes(game.userId)) return;
+
+      seenPrivateLogIds.current.add(log.id);
+
+      const fromPlayer = state.players.find((p) => p.id === log.fromPlayerId);
+      const toPlayer = state.players.find((p) => p.id === log.toPlayerId);
+      const cardConfig = CARD_CONFIG[log.stolenCard[0]];
+      const cardName = ts(cardConfig.name);
+
+      const isThief = log.toPlayerId === game.userId;
+      const message = isThief
+        ? ts({
+            en: `🔒 You stole ${cardName} from ${fromPlayer?.username}`,
+            vi: `🔒 Bạn đã cướp ${cardName} từ ${fromPlayer?.username}`,
+          })
+        : ts({
+            en: `🔒 ${toPlayer?.username} stole your ${cardName}`,
+            vi: `🔒 ${toPlayer?.username} đã cướp ${cardName} của bạn`,
+          });
+
+      const id = ++logIdRef.current;
+      setGameLogs((prev) => [
+        ...prev,
+        {
+          id,
+          message,
+          type: "private" as const,
+          icon: cardConfig.icon,
+        },
+      ]);
+    });
+  }, [state.privateLogs, game.userId, ts]);
 
   // Auto-scroll log container to bottom when new logs arrive
   useEffect(() => {
@@ -681,16 +760,6 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       prevTurnIndexRef.current = newState.currentTurnIndex;
     });
   }, [game, myIndex, arrangedPlayers]);
-
-  // Dedicated effect for animation cleanup
-  useEffect(() => {
-    if (flyingCard) {
-      const timer = setTimeout(() => {
-        setFlyingCard(null);
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [flyingCard]);
 
   const handleDraw = () => {
     if (isMyTurn && state.gamePhase === EKGamePhase.PLAYING) {
@@ -992,6 +1061,20 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
         return a.card[1] - b.card[1];
       });
 
+    // Calculate scale based on container width
+    const containerWidth = myHandRef.current?.offsetWidth || 400;
+    const cardWidth = 80; // Base card width in pixels
+    const minOverlap = 25; // Minimum space between cards
+    const totalCards = mySlot.hand.length;
+
+    // Calculate how much space we need vs how much we have
+    const neededWidth = totalCards * minOverlap + cardWidth;
+    const availableWidth = containerWidth * 0.9; // Use 90% of container
+
+    // Dynamic scale: only shrink if we don't fit
+    const scale = Math.min(1, availableWidth / neededWidth);
+    const baseShift = Math.max(15, Math.min(35, availableWidth / totalCards));
+
     return (
       <div className="w-full relative mt-4">
         {/* Hand container with overlapping cards */}
@@ -1014,14 +1097,9 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                 card[0] === EKCardType.DEFUSE);
 
             // Calculate overlap and rotation
-            const totalCards = mySlot.hand.length;
             const mid = (totalCards - 1) / 2;
             const offset = index - mid;
             const rotation = offset * 2; // Subtle fan effect
-
-            // Dynamic scaling and overlap based on hand size
-            const scale = totalCards > 12 ? 0.75 : totalCards > 8 ? 0.85 : 1;
-            const baseShift = totalCards > 12 ? 15 : totalCards > 8 ? 25 : 35;
             const xShift = offset * baseShift;
 
             return (
@@ -1100,6 +1178,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
               )}
               {!isHost &&
                 state.gamePhase === EKGamePhase.WAITING &&
+                isRoomPlayer &&
                 !mySlot && (
                   <button
                     onClick={() =>
@@ -1123,16 +1202,14 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
               >
                 {slot.username}
               </span>
-              {isHost &&
-                state.gamePhase === EKGamePhase.WAITING &&
-                slot.isBot && (
-                  <button
-                    onClick={() => game.requestRemovePlayer(player.actualIndex)}
-                    className="p-0.5 hover:bg-slate-700 rounded ml-1"
-                  >
-                    <X className="w-5 h-5 text-red-400" />
-                  </button>
-                )}
+              {isHost && state.gamePhase === EKGamePhase.WAITING && (
+                <button
+                  onClick={() => game.requestRemovePlayer(player.actualIndex)}
+                  className="p-0.5 hover:bg-slate-700 rounded ml-1"
+                >
+                  <X className="w-5 h-5 text-red-400" />
+                </button>
+              )}
             </div>
 
             {state.gamePhase !== EKGamePhase.WAITING && (
@@ -1239,6 +1316,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                   vi: "Chọn vị trí để đặt lại mèo nổ vào xấp bài:",
                 })}
           </p>
+          {renderPlayerHint()}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button
               onClick={() => game.requestInsertKitten(0)}
@@ -1425,6 +1503,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
               vi: `Kéo để sắp xếp. Lá trên cùng sẽ được rút trước.`,
             })}
           </p>
+          {renderPlayerHint()}
           <div className="flex flex-col gap-3 mb-6">
             {alterFutureOrder.map((cardIndex, displayIdx) => {
               const card = state.alterCards![cardIndex];
@@ -1762,6 +1841,53 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                         })}
                       </div>
                     )}
+
+                    {/* Show stolen card for combo/favor - only visible to involved players */}
+                    {(() => {
+                      // Find matching private log by exact discard entry timestamp
+                      const matchingLog = state.privateLogs.find(
+                        (log) =>
+                          log.discardEntryTimestamp === entry.timestamp &&
+                          log.visibleTo.includes(game.userId),
+                      );
+                      if (!matchingLog || entry.isNoped) return null;
+
+                      const stolenCardConfig =
+                        CARD_CONFIG[matchingLog.stolenCard[0]];
+                      const StolenIcon = stolenCardConfig.icon;
+                      const isThief = matchingLog.toPlayerId === game.userId;
+
+                      return (
+                        <div className="mt-2 pt-2 border-t border-purple-500/30">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-purple-900/30 rounded-lg border border-purple-500/30">
+                            <Lock className="w-4 h-4 text-purple-400 shrink-0" />
+                            <span className="text-xs text-purple-300 font-medium">
+                              {isThief
+                                ? ts({
+                                    en: "You stole:",
+                                    vi: "Bạn đã cướp:",
+                                  })
+                                : ts({
+                                    en: "Your card was stolen:",
+                                    vi: "Bài bị cướp:",
+                                  })}
+                            </span>
+                            <div
+                              className={`flex items-center gap-1 px-2 py-1 rounded ${stolenCardConfig.bgColor} ${stolenCardConfig.borderColor} border`}
+                            >
+                              <StolenIcon
+                                className={`w-3 h-3 ${stolenCardConfig.iconColor}`}
+                              />
+                              <span
+                                className={`text-xs font-bold ${stolenCardConfig.textColor}`}
+                              >
+                                {ts(stolenCardConfig.name)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -1978,21 +2104,30 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
     return [prevPlayer, nextPlayer];
   }, [state.players, state.direction, game.userId]);
 
-  const renderPrevNextPlayerInfo = () => {
+  // Compact hint for modals showing prev/next players
+  const renderPlayerHint = () => {
     if (
       state.gamePhase === EKGamePhase.WAITING ||
-      state.gamePhase === EKGamePhase.ENDED
+      state.gamePhase === EKGamePhase.ENDED ||
+      !isRoomPlayer
     )
       return null;
-
     return (
-      <div className="flex items-center gap-4 text-xs text-slate-500 w-full justify-center">
-        <span>
-          ← {ti({ en: "Prev", vi: "Trước" })}: {prevPlayer?.username}
+      <div className="flex items-center justify-center gap-3 text-xs text-slate-500 mt-2 mb-2 py-1 px-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
+        <span className="flex items-center gap-1">
+          <span className="text-orange-400">←</span>
+          {ti({ en: "Prev", vi: "Trước" })}
+          <span className="text-slate-400">{prevPlayer?.username}</span>
         </span>
-        <span className="text-slate-600">|</span>
-        <span>
-          {ti({ en: "Next", vi: "Sau" })}: {nextPlayer?.username} →
+        <span className="text-slate-600">•</span>
+        <span className="text-slate-400 font-medium uppercase tracking-wider">
+          {ti({ en: "You", vi: "Bạn" })}
+        </span>
+        <span className="text-slate-600">•</span>
+        <span className="flex items-center gap-1">
+          <span className="text-slate-400">{nextPlayer?.username}</span>
+          {ti({ en: "Next", vi: "Sau" })}
+          <span className="text-green-400">→</span>
         </span>
       </div>
     );
@@ -2008,12 +2143,22 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
           <div
             key={log.id}
             className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-lg text-center ${
-              log.type === "success" ? "text-slate-300" : "text-red-400"
+              log.type === "private"
+                ? "text-purple-300 bg-purple-900/30"
+                : log.type === "success"
+                  ? "text-slate-300"
+                  : "text-red-400"
             }
             ${i === gameLogs.length - 1 ? "animate-bounce" : ""}`}
           >
             <log.icon
-              className={`w-4 h-4 shrink-0 ${log.type === "success" ? "text-green-500" : "text-red-500"}`}
+              className={`w-4 h-4 shrink-0 ${
+                log.type === "private"
+                  ? "text-purple-400"
+                  : log.type === "success"
+                    ? "text-green-500"
+                    : "text-red-500"
+              }`}
             />
             <span className="text-xs font-medium">{log.message}</span>
           </div>
@@ -2895,12 +3040,13 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
 
       {/* Bottom area: My Slot and Hand */}
       <div className="flex flex-col items-center gap-2 @md:gap-4 bg-slate-900/80 backdrop-blur-md rounded-3xl p-3 @md:p-4 border-t border-slate-800 shadow-2xl z-10">
-        <div className="text-xs text-center font-bold text-slate-400 bg-slate-800/50 px-4 py-1.5 rounded-full border border-slate-700/50">
-          {/* Hint Area */}
-          {getTurnHint()}
-
+        <div className="flex flex-col items-center">
+          <div className="text-xs text-center font-bold text-slate-400 bg-slate-800/50 px-4 py-1.5 rounded-full border border-slate-700/50">
+            {/* Hint Area */}
+            {getTurnHint()}
+          </div>
           {/* Previous/Next Player Info */}
-          {renderPrevNextPlayerInfo()}
+          {renderPlayerHint()}
         </div>
 
         <div className="flex items-center gap-4">
@@ -3039,6 +3185,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
         sourceRect={animationElements?.sourceRect}
         targetRect={animationElements?.targetRect}
         isOpen={!!flyingCard}
+        onComplete={() => setFlyingCard(null)}
       >
         <div className="w-20 h-28 relative">
           {flyingCard?.card &&

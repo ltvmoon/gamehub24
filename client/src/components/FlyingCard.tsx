@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export interface FlyingCardProps {
   children: React.ReactNode;
@@ -11,69 +11,140 @@ export interface FlyingCardProps {
   isOpen?: boolean;
 }
 
+type AnimationPhase = "idle" | "appearing" | "moving" | "disappearing";
+
 export default function FlyingCard({
   children,
   containerRef,
   sourceRect,
   targetRect,
-  duration = 400,
+  duration = 500,
   onComplete,
   className = "",
   isOpen = true,
 }: FlyingCardProps) {
-  const [animationState, setAnimationState] = useState<{
-    startPos: { x: number; y: number };
-    endPos: { x: number; y: number };
+  const [phase, setPhase] = useState<AnimationPhase>("idle");
+  const [positions, setPositions] = useState<{
+    start: { x: number; y: number };
+    end: { x: number; y: number };
   } | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Clear all timers on unmount
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
-    if (!containerRef.current || !sourceRect || !targetRect || !isOpen) return;
+    // Clear previous timers
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
 
-    const containerRect = containerRef.current.getBoundingClientRect();
+    if (!containerRef.current || !sourceRect || !targetRect || !isOpen) {
+      setPhase("idle");
+      return;
+    }
 
     if (sourceRect.width === 0 && sourceRect.height === 0) return;
 
-    const startPos = {
+    const containerRect = containerRef.current.getBoundingClientRect();
+
+    const start = {
       x: sourceRect.left + sourceRect.width / 2 - containerRect.left,
       y: sourceRect.top + sourceRect.height / 2 - containerRect.top,
     };
-    const endPos = {
+    const end = {
       x: targetRect.left + targetRect.width / 2 - containerRect.left,
       y: targetRect.top + targetRect.height / 2 - containerRect.top,
     };
 
-    setAnimationState({ startPos, endPos });
-    setIsAnimating(false);
+    setPositions({ start, end });
 
-    const timer = setTimeout(() => {
-      setIsAnimating(true);
-    }, 10);
+    // Phase 1: Appear (fade in at source)
+    setPhase("appearing");
 
-    const completeTimer = setTimeout(() => {
-      onComplete?.();
-    }, duration + 50);
+    // Phase 2: Move (after fade in completes)
+    const moveTimer = setTimeout(() => {
+      setPhase("moving");
+    }, 100);
+    timersRef.current.push(moveTimer);
 
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(completeTimer);
-    };
+    // Phase 3: Disappear (fade out at target)
+    const disappearTimer = setTimeout(() => {
+      setPhase("disappearing");
+    }, 100 + duration);
+    timersRef.current.push(disappearTimer);
+
+    // Complete callback
+    const completeTimer = setTimeout(
+      () => {
+        setPhase("idle");
+        onComplete?.();
+      },
+      100 + duration + 200,
+    );
+    timersRef.current.push(completeTimer);
   }, [sourceRect, targetRect, containerRef, isOpen, duration, onComplete]);
 
-  if (!animationState || !isOpen) return null;
+  if (!positions || phase === "idle") return null;
 
-  const { startPos, endPos } = animationState;
-  const currentPos = isAnimating ? endPos : startPos;
+  const { start, end } = positions;
+
+  // Determine current position and styles based on phase
+  const getStyles = () => {
+    switch (phase) {
+      case "appearing":
+        return {
+          x: start.x,
+          y: start.y,
+          opacity: 0,
+          scale: 0.6,
+          rotate: -5,
+          transition: "none",
+        };
+      case "moving":
+        return {
+          x: end.x,
+          y: end.y,
+          opacity: 1,
+          scale: 1.05,
+          rotate: 3,
+          transition: `all ${duration}ms ease-in-out`,
+        };
+      case "disappearing":
+        return {
+          x: end.x,
+          y: end.y,
+          opacity: 0,
+          scale: 0.9,
+          rotate: 0,
+          transition: "all 200ms ease-out",
+        };
+      default:
+        return {
+          x: start.x,
+          y: start.y,
+          opacity: 0,
+          scale: 0.8,
+          rotate: 0,
+          transition: "none",
+        };
+    }
+  };
+
+  const styles = getStyles();
 
   return (
     <div
-      className={`absolute pointer-events-none z-50 transition-all ease-out ${className}`}
+      className={`absolute pointer-events-none z-50 ${className}`}
       style={{
-        left: currentPos.x,
-        top: currentPos.y,
-        transitionDuration: isAnimating ? `${duration}ms` : "0ms",
-        transform: `translate(-50%, -50%) ${isAnimating ? "scale(1.1) rotate(5deg)" : "scale(0.8)"}`,
-        opacity: isAnimating ? 1 : 0.8,
+        left: styles.x,
+        top: styles.y,
+        opacity: styles.opacity,
+        transform: `translate(-50%, -50%) scale(${styles.scale}) rotate(${styles.rotate}deg)`,
+        transition: styles.transition,
       }}
     >
       {children}

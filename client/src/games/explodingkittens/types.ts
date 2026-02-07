@@ -23,6 +23,7 @@ export const EKCardType = {
   CATOMIC_BOMB: 18,
   DRAW_BOTTOM: 19,
   BURY: 20,
+  SUPER_SKIP: 21,
 } as const;
 export type EKCardType = (typeof EKCardType)[keyof typeof EKCardType];
 
@@ -61,11 +62,23 @@ export interface PlayerSlot {
   isHost: boolean;
 }
 
+// Private log entry - only visible to specific players
+export interface EKPrivateLog {
+  id: number;
+  timestamp: number;
+  discardEntryTimestamp: number; // Links to the exact discard history entry
+  visibleTo: string[]; // player IDs who can see this
+  stolenCard: EKCard;
+  fromPlayerId: string;
+  toPlayerId: string;
+}
+
 export interface EKState {
   players: PlayerSlot[];
   drawPile: EKCard[];
   discardPile: EKCard[];
   discardHistory: EKDiscardEntry[];
+  privateLogs: EKPrivateLog[]; // Secret logs for card steals
   currentTurnIndex: number;
   attackStack: number; // number of turns remaining
   direction: 1 | -1; // 1 = clockwise, -1 = counter-clockwise

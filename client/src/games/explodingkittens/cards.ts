@@ -16,6 +16,7 @@ import {
   Sword,
   Heart,
   Shovel,
+  FastForward,
 } from "lucide-react";
 import { EKCardType } from "./types";
 
@@ -242,7 +243,7 @@ export const CARD_CONFIG: Record<EKCardType, EKCardConfig> = {
     textColor: "text-white",
   },
   [EKCardType.PERSONAL_ATTACK]: {
-    name: { en: "PERSONAL ATTACK", vi: "TẤN CÔNG CÁ NHÂN" },
+    name: { en: "PERSONAL ATTACK", vi: "TỰ TẤN CÔNG" },
     description: {
       en: "You take 3 turns immediately.",
       vi: "Bạn phải thực hiện ngay 3 lượt.",
@@ -286,6 +287,18 @@ export const CARD_CONFIG: Record<EKCardType, EKCardConfig> = {
     icon: Shovel,
     bgColor: "bg-amber-700",
     borderColor: "border-amber-500",
+    iconColor: "text-white",
+    textColor: "text-white",
+  },
+  [EKCardType.SUPER_SKIP]: {
+    name: { en: "SUPER SKIP", vi: "SIÊU BỎ LƯỢT" },
+    description: {
+      en: "End ALL turns, even from Attack cards.",
+      vi: "Kết thúc TẤT CẢ lượt, kể cả từ lá Tấn Công.",
+    },
+    icon: FastForward,
+    bgColor: "bg-emerald-600",
+    borderColor: "border-emerald-400",
     iconColor: "text-white",
     textColor: "text-white",
   },

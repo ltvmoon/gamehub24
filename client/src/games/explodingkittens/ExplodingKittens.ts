@@ -20,6 +20,7 @@ export default class ExplodingKittens extends BaseGame<EKState> {
   // Local config (Host only)
   private static readonly DECK_CONFIG_KEY = "ek_deck_config";
   private deckConfig: Record<EKCardType, boolean>;
+  private botActionPending = false; // Prevent overlapping bot actions
 
   constructor(room: Room, socket: Socket, isHost: boolean, userId: string) {
     super(room, socket, isHost, userId);
@@ -68,6 +69,7 @@ export default class ExplodingKittens extends BaseGame<EKState> {
       drawPile: [],
       discardPile: [],
       discardHistory: [],
+      privateLogs: [],
       currentTurnIndex: 0,
       attackStack: 1,
       direction: 1,
@@ -189,42 +191,47 @@ export default class ExplodingKittens extends BaseGame<EKState> {
     };
 
     switch (type) {
+      // Core action cards
       case EKCardType.ATTACK:
         return getCount(4);
       case EKCardType.SKIP:
         return getCount(4);
       case EKCardType.FAVOR:
-        return getCount(4);
+        return getCount(3);
       case EKCardType.SHUFFLE:
-        return getCount(4);
+        return getCount(3);
       case EKCardType.SEE_THE_FUTURE:
-        return getCount(5);
+        return getCount(4);
       case EKCardType.NOPE:
         return getCount(5);
+
+      // Cat cards - higher count for combos
       case EKCardType.CAT_1:
       case EKCardType.CAT_2:
       case EKCardType.CAT_3:
       case EKCardType.CAT_4:
       case EKCardType.CAT_5:
-        return getCount(4, 3);
+        return getCount(5, 4);
 
-      // Expansion cards
+      // Expansion cards - reduced counts
       case EKCardType.REVERSE:
-        return getCount(4);
+        return getCount(3, 2);
       case EKCardType.TARGETED_ATTACK:
-        return getCount(3);
-      case EKCardType.ALTER_THE_FUTURE_3:
-        return getCount(4);
-      case EKCardType.ALTER_THE_FUTURE_5:
         return getCount(2, 1);
+      case EKCardType.ALTER_THE_FUTURE_3:
+        return getCount(3, 2);
+      case EKCardType.ALTER_THE_FUTURE_5:
+        return getCount(1, 1);
       case EKCardType.PERSONAL_ATTACK:
-        return getCount(3);
+        return getCount(2, 1);
       case EKCardType.CATOMIC_BOMB:
         return 1; // Very powerful, only 1
       case EKCardType.DRAW_BOTTOM:
-        return getCount(4);
+        return getCount(3, 2);
       case EKCardType.BURY:
-        return getCount(4);
+        return getCount(3, 2);
+      case EKCardType.SUPER_SKIP:
+        return getCount(2, 1);
 
       default:
         return 0;
@@ -321,6 +328,10 @@ export default class ExplodingKittens extends BaseGame<EKState> {
     addCards(
       EKCardType.BURY,
       this.getCardCountForType(EKCardType.BURY, numPlayers),
+    );
+    addCards(
+      EKCardType.SUPER_SKIP,
+      this.getCardCountForType(EKCardType.SUPER_SKIP, numPlayers),
     );
 
     // Check for minimum deck size (User request: min 6-7 cards per player)
@@ -743,6 +754,7 @@ export default class ExplodingKittens extends BaseGame<EKState> {
           action.cardIndices.length,
           action.targetPlayerId,
           action.requestedCardType,
+          entryTimestamp,
         );
       }
     }
@@ -828,10 +840,10 @@ export default class ExplodingKittens extends BaseGame<EKState> {
         // "Same as Attack but only for yourself".
         // Attack ends current turn without drawing, and gives next player 2 turns.
         // Personal Attack ends current turn without drawing, and gives *self* 3 turns.
-        // So, set attackStack to 3, and then call finishTurnAction to end the current "action" turn.
-        // finishTurnAction will decrement attackStack to 2, and since it's > 0, the current player (self) will continue.
-        this.state.attackStack = 3;
-        this.finishTurnAction(); // This will decrement attackStack to 2 and keep current player
+        // So, set attackStack to 4. finishTurnAction will decrement it to 3.
+        // Result: Player takes 3 more turns.
+        this.state.attackStack = 4;
+        this.finishTurnAction(); // This will decrement attackStack to 3 and keep current player
         break;
 
       case EKCardType.CATOMIC_BOMB:
@@ -887,6 +899,12 @@ export default class ExplodingKittens extends BaseGame<EKState> {
           this.finishTurnAction();
         }
         break;
+
+      case EKCardType.SUPER_SKIP:
+        // End ALL turns, even stacked ones from Attack cards
+        this.state.attackStack = 0;
+        this.advanceTurn();
+        break;
     }
   }
 
@@ -895,6 +913,7 @@ export default class ExplodingKittens extends BaseGame<EKState> {
     count: number,
     targetPlayerId: string,
     requestedCardType?: EKCardType,
+    discardEntryTimestamp?: number,
   ): void {
     const playerIndex = this.state.players.findIndex((p) => p.id === playerId);
     const player = this.state.players[playerIndex];
@@ -909,11 +928,12 @@ export default class ExplodingKittens extends BaseGame<EKState> {
       return;
 
     const target = this.state.players[targetIndex];
+    let stolen: EKCard | undefined;
 
     if (count === 2) {
       if (target.hand.length > 0) {
         const randIdx = Math.floor(Math.random() * target.hand.length);
-        const stolen = target.hand.splice(randIdx, 1)[0];
+        stolen = target.hand.splice(randIdx, 1)[0];
         if (stolen) {
           player.hand.push(stolen);
         }
@@ -924,12 +944,25 @@ export default class ExplodingKittens extends BaseGame<EKState> {
           (c) => c[0] === requestedCardType,
         );
         if (foundIdx !== -1) {
-          const stolen = target.hand.splice(foundIdx, 1)[0];
+          stolen = target.hand.splice(foundIdx, 1)[0];
           if (stolen) {
             player.hand.push(stolen);
           }
         }
       }
+    }
+
+    // Add private log for card steal
+    if (stolen && discardEntryTimestamp) {
+      this.state.privateLogs.push({
+        id: Date.now(),
+        timestamp: Date.now(),
+        discardEntryTimestamp,
+        visibleTo: [playerId, targetPlayerId],
+        stolenCard: stolen,
+        fromPlayerId: targetPlayerId,
+        toPlayerId: playerId,
+      });
     }
   }
 
@@ -1040,6 +1073,28 @@ export default class ExplodingKittens extends BaseGame<EKState> {
       const card = target.hand.splice(cardIndex, 1)[0];
       if (card) {
         requester.hand.push(card);
+
+        // Add private log for Favor card steal
+        if (this.state.favorFrom && this.state.favorTo) {
+          // Find the favor discard entry timestamp
+          const favorEntry = this.state.discardHistory.find(
+            (e) =>
+              e.playerId === this.state.favorTo &&
+              e.targetPlayerId === this.state.favorFrom &&
+              e.cards.some((c) => c[0] === EKCardType.FAVOR),
+          );
+          if (favorEntry) {
+            this.state.privateLogs.push({
+              id: Date.now(),
+              timestamp: Date.now(),
+              discardEntryTimestamp: favorEntry.timestamp,
+              visibleTo: [this.state.favorFrom, this.state.favorTo],
+              stolenCard: card,
+              fromPlayerId: this.state.favorFrom,
+              toPlayerId: this.state.favorTo,
+            });
+          }
+        }
       }
 
       this.state.gamePhase = EKGamePhase.PLAYING;
@@ -1231,7 +1286,13 @@ export default class ExplodingKittens extends BaseGame<EKState> {
 
     const currentPlayer = this.state.players[this.state.currentTurnIndex];
     if (currentPlayer?.isBot && !currentPlayer.isExploded) {
-      setTimeout(() => this.makeBotMove(currentPlayer), 1500);
+      // Prevent overlapping bot actions
+      if (this.botActionPending) return;
+      this.botActionPending = true;
+      setTimeout(() => {
+        this.botActionPending = false;
+        this.makeBotMove(currentPlayer);
+      }, 1500);
     }
   }
 
@@ -1425,8 +1486,8 @@ export default class ExplodingKittens extends BaseGame<EKState> {
       this.state.gamePhase !== EKGamePhase.WAITING
     )
       return;
-    const player = this.state.players[slotIndex];
-    if (!player.isBot) return;
+    // const player = this.state.players[slotIndex];
+    // if (!player.isBot) return;
 
     this.state.players[slotIndex] = {
       id: null,
