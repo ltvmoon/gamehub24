@@ -28,6 +28,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Thirteen;
   const [state] = useGameState(game);
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
+  const [highlightedCards, setHighlightedCards] = useState<number[]>([]);
   const [expandPlays, setExpandPlays] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const { username } = useUserStore();
@@ -59,18 +60,58 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   useEffect(() => {
     return game.onUpdate((_newState) => {
       setSelectedCards([]);
+      setHighlightedCards([]);
     });
   }, [game]);
 
   const handleCardClick = (index: number) => {
-    if (!isMyTurn || state.gamePhase !== "playing") return;
+    if (!isMyTurn || state.gamePhase !== "playing" || !mySlot) return;
 
-    setSelectedCards((prev) => {
-      if (prev.includes(index)) {
-        return prev.filter((i) => i !== index);
+    // Check if clicking a highlighted card
+    if (highlightedCards.includes(index) && !selectedCards.includes(index)) {
+      // Select ALL highlighted cards
+      setSelectedCards((prev) => {
+        // Merge previous selected with highlighted (unique)
+        const combined = new Set([...prev, ...highlightedCards]);
+        return Array.from(combined);
+      });
+      // Clear highlights
+      setHighlightedCards([]);
+      return;
+    }
+
+    // Normal toggle behavior
+    let newSelected: number[];
+    if (selectedCards.includes(index)) {
+      newSelected = selectedCards.filter((i) => i !== index);
+      // If deselecting, also clear highlights? Yes, usually.
+      setHighlightedCards([]);
+    } else {
+      newSelected = [...selectedCards, index];
+    }
+
+    setSelectedCards(newSelected);
+
+    // Trigger suggestion if we just added a card
+    if (newSelected.length > 0 && newSelected.includes(index)) {
+      const selectedHandCards = newSelected.map((i) => mySlot.hand[i]);
+      const suggestion = game.getSuggestion(mySlot.hand, selectedHandCards);
+
+      if (suggestion.length > 0) {
+        // Map back to indices
+        // Need to be careful with duplicates if hand has duplicates?
+        // Standard deck doesn't, so mapping by value is safe.
+        const indices = suggestion.map((card) => mySlot.hand.indexOf(card));
+
+        // Filter out already selected ones from highlights (User selected them,
+        // strictly speaking they are highlighted too, but we visualy distinguish)
+        // If we want to highlight the REST of the set.
+        const highlights = indices.filter((i) => !newSelected.includes(i));
+        setHighlightedCards(highlights);
+      } else {
+        setHighlightedCards([]);
       }
-      return [...prev, index];
-    });
+    }
   };
 
   const handlePlay = () => {
@@ -80,6 +121,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
       .sort((a, b) => a - b);
     game.requestPlayCards(cards);
     setSelectedCards([]);
+    setHighlightedCards([]);
   };
 
   const handlePass = () => {
@@ -432,7 +474,9 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
           </div>
         )}
 
-        {state.gamePhase === "playing" && <>{renderPlayArea("mobile")}</>}
+        {(state.gamePhase === "playing" || state.gamePhase === "ended") && (
+          <>{renderPlayArea("mobile")}</>
+        )}
 
         {state.gamePhase === "ended" && renderWinner("mobile")}
       </div>
@@ -453,6 +497,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                 key={card}
                 card={card}
                 selected={selectedCards.includes(index)}
+                highlighted={highlightedCards.includes(index)}
                 onClick={() => handleCardClick(index)}
                 disabled={!isMyTurn}
                 index={index}
@@ -593,12 +638,14 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
 function CardDisplay({
   card,
   selected,
+  highlighted,
   onClick,
   disabled = false,
   index = 0,
 }: {
   card: Card;
   selected?: boolean;
+  highlighted?: boolean;
   onClick?: () => void;
   disabled?: boolean;
   index?: number;
@@ -624,12 +671,15 @@ function CardDisplay({
         border-2 transition-all duration-150 font-bold shrink-0 relative
         ${
           selected
-            ? "border-primary-500 -translate-y-3 ring-2 ring-primary-400 shadow-primary-500/30 shadow-xl z-50"
-            : "border-slate-300 hover:border-slate-400"
+            ? "border-green-500 -translate-y-3.5 ring-2 ring-green-400 shadow-green-500/30 shadow-xl z-50"
+            : highlighted
+              ? "border-yellow-400 ring-2 ring-yellow-400/70 shadow-yellow-500/20 shadow-lg z-40"
+              : "border-slate-200 hover:border-slate-400"
         }
         ${
           !disabled && onClick
-            ? (!selected ? "md:hover:-translate-y-1" : "") + " cursor-pointer"
+            ? (!selected && !highlighted ? "md:hover:-translate-y-1" : "") +
+              " cursor-pointer"
             : "cursor-default"
         }
       `}
@@ -682,7 +732,7 @@ function TableCard({
         <span className="text-xs @md:text-lg font-bold">
           {RANK_DISPLAY[rank]}
         </span>
-        <span className="text-[10px] @md:text-sm">{SUIT_SYMBOLS[suit]}</span>
+        <span className="text-xs @md:text-sm">{SUIT_SYMBOLS[suit]}</span>
       </div>
     </div>
   );
@@ -782,14 +832,45 @@ function PlayerSlotDisplay({
               </button>
             )}
           </div>
-          {gamePhase === "playing" ||
-            (gamePhase === "ended" && (
-              <span className="text-[10px] text-slate-400">
+          {gamePhase === "ended" && slot.hand.length > 0 ? (
+            <div className="flex flex-wrap justify-center gap-0.5 max-w-[140px] @md:max-w-[200px]">
+              {slot.hand.map((card, i) => {
+                const { rank, suit } = decodeCard(card);
+                const suitColor =
+                  suit === Suit.HEART || suit === Suit.DIAMOND
+                    ? "text-red-500"
+                    : "text-slate-800";
+                return (
+                  <div
+                    key={i}
+                    className={`
+                      w-6 h-10 @md:w-8
+                      bg-white rounded
+                      relative shrink-0
+                      ${suitColor}
+                    `}
+                  >
+                    <div className="flex flex-col items-center">
+                      <span className="text-sm @md:text-md font-bold">
+                        {RANK_DISPLAY[rank]}
+                      </span>
+                      <span className="text-sm @md:text-md -mt-0.5">
+                        {SUIT_SYMBOLS[suit]}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            (gamePhase === "playing" || gamePhase === "ended") && (
+              <span className="text-xs text-slate-400">
                 {slot.hand.length} {ts({ en: "cards", vi: "lá" })}
               </span>
-            ))}
+            )
+          )}
           {slot.passed && (
-            <span className="text-[10px] text-yellow-400">
+            <span className="text-xs text-yellow-400">
               {ts({ en: "Passed", vi: "Bỏ lượt" })}
             </span>
           )}

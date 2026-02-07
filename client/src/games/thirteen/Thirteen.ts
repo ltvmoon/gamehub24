@@ -494,7 +494,11 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   }
 
   private handleNewGameRequest(playerId: string, playerName: string): void {
-    this.state.newGameRequest = { fromId: playerId, fromName: playerName };
+    if (this.isHost) {
+      this.reset();
+    } else {
+      this.state.newGameRequest = { fromId: playerId, fromName: playerName };
+    }
   }
 
   reset(): void {
@@ -740,35 +744,226 @@ export default class Thirteen extends BaseGame<ThirteenState> {
     return [hand[0]];
   }
 
-  private findThreeConsecutivePairs(hand: Card[]): Card[][] {
-    const pairs = this.findPairs(hand);
-    if (pairs.length < 3) return [];
+  // ============== Smart Selection Logic ==============
 
-    const consecutivePairs: Card[][] = [];
+  /**
+   * Suggests the best cards to select based on the user's current selection.
+   * prioritizing larger sets (straights, quads, triples, pairs) over smaller ones.
+   */
+  public getSuggestion(hand: Card[], currentSelection: Card[]): Card[] {
+    if (currentSelection.length === 0) return [];
 
-    // Sort pairs by rank
-    pairs.sort((a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank);
+    // Use the last selected card as the "pivot" for suggestion
+    const pivotCard = currentSelection[currentSelection.length - 1];
 
-    for (let i = 0; i <= pairs.length - 3; i++) {
-      // Check if p1, p2, p3 are consecutive
-      const p1 = pairs[i];
-      const p2 = pairs[i + 1];
-      const p3 = pairs[i + 2];
+    // Find all valid combinations containing the pivot card
+    const candidates = this.findAllCombinationsWithCard(hand, pivotCard);
 
-      if (
-        decodeCard(p2[0]).rank === decodeCard(p1[0]).rank + 1 &&
-        decodeCard(p3[0]).rank === decodeCard(p2[0]).rank + 1
-      ) {
-        // Found 3 consecutive pairs
-        // Don't include 2s in 3 consecutive pairs usually (rule variation?)
-        // Standard rule: 3 consecutive pairs cannot contain 2.
-        if (decodeCard(p3[0]).rank !== Rank.TWO) {
-          consecutivePairs.push([...p1, ...p2, ...p3]);
+    // Filter based on game state (must beat last combination if exists)
+    const validCandidates = candidates.filter((cards) => {
+      // 1. Must contain the pivot card (already guaranteed)
+
+      // 2. If defending, must beat the last combination
+      if (this.state.lastCombination) {
+        // Special check: if last combo is 2 (single), we can use 3-pairs or 4-kinds
+        // The canBeat logic handles this, but we need to ensure getCombination detects it correctly
+        const combo = this.getCombination(cards);
+        return combo && this.canBeat(combo, this.state.lastCombination);
+      }
+
+      // If attacking (new trick), any valid combo is fine
+      return true;
+    });
+
+    if (validCandidates.length === 0) return [];
+
+    // Sort candidates by priority:
+    // 1. Length (descending)
+    // 2. Value (ascending) - weakest valid set first
+    validCandidates.sort((a, b) => {
+      // Length descending
+      if (b.length !== a.length) return b.length - a.length;
+
+      // Value ascending
+      const comboA = this.getCombination(a);
+      const comboB = this.getCombination(b);
+      if (!comboA || !comboB) return 0;
+      return comboA.value - comboB.value;
+    });
+
+    return validCandidates[0];
+  }
+
+  private findAllCombinationsWithCard(hand: Card[], pivotCard: Card): Card[][] {
+    const results: Card[][] = [];
+    const pivotRank = decodeCard(pivotCard).rank;
+
+    // 1. Straights containing pivot
+    // Generate straights dynamically to avoid explosion
+    const straights = this.findStraightsWaitCard(hand, pivotCard);
+    results.push(...straights);
+
+    // 2. Same Rank Combinations (Pair, Triple, Quad)
+    const sameRankCards = hand.filter((c) => decodeCard(c).rank === pivotRank);
+    // Sort same rank cards
+    sameRankCards.sort((a, b) => a - b);
+
+    // Add the full set (e.g. if 3 cards, add as Triple)
+    if (sameRankCards.length === 4) results.push(sameRankCards); // Quad
+    if (sameRankCards.length >= 3) {
+      // Add all triples containing pivot
+      // For simplicity, just add the set of 3 if length is 3.
+      // If 4, we have combinations. But priority is Quad.
+      // If we strictly follow "attacking", Quad > Triple.
+      // If defending against Triple, we need Triple.
+
+      // Let's generate all subsets containing pivot
+      if (sameRankCards.length === 4) {
+        // 4 choose 3 containing pivot -> 3 triples
+        const others = sameRankCards.filter((c) => c !== pivotCard);
+        // others has 3 cards. 3 choose 2 -> 3 pairs.
+        // triples = pivot + 2 others.
+        for (let i = 0; i < others.length; i++) {
+          for (let j = i + 1; j < others.length; j++) {
+            results.push(
+              [pivotCard, others[i], others[j]].sort((a, b) => a - b),
+            );
+          }
         }
+      } else {
+        results.push(sameRankCards); // Triple
+      }
+    }
+    if (sameRankCards.length >= 2) {
+      // Add pairs containing pivot
+      const others = sameRankCards.filter((c) => c !== pivotCard);
+      for (const other of others) {
+        results.push([pivotCard, other].sort((a, b) => a - b));
       }
     }
 
+    // 3. Three consecutive pairs containing pivot
+    const threePairs = this.findThreeConsecutivePairs(hand);
+    for (const tp of threePairs) {
+      if (tp.includes(pivotCard)) results.push(tp);
+    }
+
+    // 4. Single
+    results.push([pivotCard]);
+
+    return results;
+  }
+
+  // Find straights that strictly contain the pivot card
+  private findStraightsWaitCard(hand: Card[], pivotCard: Card): Card[][] {
+    if (decodeCard(pivotCard).rank === Rank.TWO) return [];
+
+    const straights: Card[][] = [];
+    // 1. Group valid cards (no 2s) by rank
+    const validCards = hand.filter((c) => decodeCard(c).rank !== Rank.TWO);
+    const grouped = this.groupByRank(validCards);
+    const ranks = Object.keys(grouped)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    // 2. Find all consecutive rank sequences of length >= 3 that include pivotRank
+    const pivotRank = decodeCard(pivotCard).rank;
+
+    // Check if pivotRank exists in ranks (it should)
+    if (!ranks.includes(pivotRank)) return [];
+
+    for (let i = 0; i < ranks.length; i++) {
+      const sequenceRanks = [ranks[i]];
+      // Only potential if this sequence *could* reach pivotRank
+      // if ranks[i] > pivotRank, stop? No, sorted.
+
+      for (let j = i + 1; j < ranks.length; j++) {
+        if (ranks[j] === sequenceRanks[sequenceRanks.length - 1] + 1) {
+          sequenceRanks.push(ranks[j]);
+
+          // If sequence length >= 3 and contains pivotRank
+          if (sequenceRanks.length >= 3 && sequenceRanks.includes(pivotRank)) {
+            // Build a straight
+            const straight: Card[] = [];
+            for (const r of sequenceRanks) {
+              if (r === pivotRank) {
+                straight.push(pivotCard);
+              } else {
+                // Pick the smallest card of that rank
+                straight.push(grouped[r][0]);
+              }
+            }
+            straights.push(straight);
+          }
+        } else {
+          break;
+        }
+      }
+    }
+    return straights;
+  }
+
+  // Keep these as they are useful helper but might fail if calling 'this'
+  // so we rewrite them cleanly or ensure `this` context is fine
+
+  private findThreeConsecutivePairs(hand: Card[]): Card[][] {
+    // Basic implementation: find distinct pairs
+    const grouped = this.groupByRank(hand);
+    // Get all pairs (just one pair per rank for simplicity in "checking existence")
+    // But for suggestion we might need specific ones?
+    // Let's iterate ranks
+    const ranks = Object.keys(grouped)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    const consecutivePairs: Card[][] = [];
+
+    for (let i = 0; i <= ranks.length - 3; i++) {
+      const r1 = ranks[i];
+      const r2 = ranks[i + 1];
+      const r3 = ranks[i + 2];
+
+      if (r2 === r1 + 1 && r3 === r2 + 1 && r3 !== Rank.TWO) {
+        const c1 = grouped[r1];
+        const c2 = grouped[r2];
+        const c3 = grouped[r3];
+
+        if (c1.length >= 2 && c2.length >= 2 && c3.length >= 2) {
+          // Return a valid set
+          consecutivePairs.push([
+            ...c1.slice(0, 2),
+            ...c2.slice(0, 2),
+            ...c3.slice(0, 2),
+          ]);
+        }
+      }
+    }
     return consecutivePairs;
+  }
+
+  // Helper for bot (legacy/simple)
+  private findPairs(hand: Card[]): Card[][] {
+    const grouped = this.groupByRank(hand);
+    const pairs: Card[][] = [];
+    for (const cards of Object.values(grouped)) {
+      if (cards.length >= 2) {
+        pairs.push(cards.slice(0, 2)); // Just return the first pair
+      }
+    }
+    return pairs.sort((a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank);
+  }
+
+  private findTriples(hand: Card[]): Card[][] {
+    const grouped = this.groupByRank(hand);
+    const triples: Card[][] = [];
+    for (const cards of Object.values(grouped)) {
+      if (cards.length >= 3) {
+        triples.push(cards.slice(0, 3));
+      }
+    }
+    return triples.sort(
+      (a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank,
+    );
   }
 
   private findFourOfAKind(hand: Card[]): Card[][] {
@@ -779,73 +974,44 @@ export default class Thirteen extends BaseGame<ThirteenState> {
         quads.push(cards);
       }
     }
-    // Sort by rank
     return quads.sort((a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank);
   }
 
   private findStraights(hand: Card[]): Card[][] {
+    // This is for Bot/Opening play - find ANY good straights
     const straights: Card[][] = [];
-    // Filter out 2s (cannot be in straight)
     const validCards = hand.filter((c) => decodeCard(c).rank !== Rank.TWO);
-    // Sort by rank
-    validCards.sort((a, b) => decodeCard(a).rank - decodeCard(b).rank);
+    const grouped = this.groupByRank(validCards);
+    const ranks = Object.keys(grouped)
+      .map(Number)
+      .sort((a, b) => a - b);
 
-    let currentSequence: Card[] = [];
+    // Standard greedy straight finder
+    let currentSequence: number[] = [];
 
-    for (let i = 0; i < validCards.length; i++) {
-      const card = validCards[i];
-
+    for (let i = 0; i < ranks.length; i++) {
+      const r = ranks[i];
       if (currentSequence.length === 0) {
-        currentSequence.push(card);
-        continue;
-      }
-
-      const last = currentSequence[currentSequence.length - 1];
-      if (decodeCard(card).rank === decodeCard(last).rank + 1) {
-        currentSequence.push(card);
-      } else if (decodeCard(card).rank === decodeCard(last).rank) {
-        // Same rank, ignore for current straight build
-        continue;
+        currentSequence.push(r);
       } else {
-        // Break in sequence
-        if (currentSequence.length >= 3) {
-          straights.push([...currentSequence]);
+        if (r === currentSequence[currentSequence.length - 1] + 1) {
+          currentSequence.push(r);
+        } else {
+          if (currentSequence.length >= 3) {
+            // Convert rank sequence to cards
+            straights.push(currentSequence.map((rk) => grouped[rk][0]));
+          }
+          currentSequence = [r];
         }
-        currentSequence = [card];
       }
     }
-
     if (currentSequence.length >= 3) {
-      straights.push([...currentSequence]);
+      straights.push(currentSequence.map((rk) => grouped[rk][0]));
     }
 
+    // Sort by length
+    straights.sort((a, b) => b.length - a.length);
     return straights;
-  }
-
-  private findTriples(hand: Card[]): Card[][] {
-    const grouped = this.groupByRank(hand);
-    const triples: Card[][] = [];
-    for (const cards of Object.values(grouped)) {
-      if (cards.length === 3) {
-        triples.push(cards);
-      }
-    }
-    // Sort by rank (lowest first)
-    return triples.sort(
-      (a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank,
-    );
-  }
-
-  private findPairs(hand: Card[]): Card[][] {
-    const grouped = this.groupByRank(hand);
-    const pairs: Card[][] = [];
-    for (const cards of Object.values(grouped)) {
-      if (cards.length === 2) {
-        pairs.push(cards);
-      }
-    }
-    // Sort by rank (lowest first)
-    return pairs.sort((a, b) => decodeCard(a[0]).rank - decodeCard(b[0]).rank);
   }
 
   // ============== Public API ==============
@@ -883,7 +1049,10 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   }
 
   requestRemovePlayer(slotIndex: number): void {
-    const action: ThirteenAction = { type: "REMOVE_PLAYER", slotIndex };
+    const action: ThirteenAction = {
+      type: "REMOVE_PLAYER",
+      slotIndex,
+    };
     this.makeAction(action);
   }
 
@@ -893,20 +1062,15 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   }
 
   requestNewGame(): void {
-    if (this.isHost) {
-      this.onSocketGameAction({ action: { type: "NEW_GAME" } });
-    } else {
-      // Guest requests - send to host for approval
-      const player = this.state.players.find((p) => p.id === this.userId);
-      const action: ThirteenAction = {
-        type: "REQUEST_NEW_GAME",
-        playerId: this.userId,
-        playerName: player?.username || "Guest",
-      };
-      this.makeAction(action);
-    }
+    const action: ThirteenAction = {
+      type: "REQUEST_NEW_GAME",
+      playerId: this.userId,
+      playerName: "",
+    };
+    this.makeAction(action);
   }
 
+  // Note: These need public helpers or fix calls in UI
   acceptNewGame(): void {
     if (!this.isHost) return;
     this.onSocketGameAction({ action: { type: "ACCEPT_NEW_GAME" } });
