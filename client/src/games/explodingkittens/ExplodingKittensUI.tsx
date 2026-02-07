@@ -416,6 +416,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
     null,
   );
   const [showDiscardHistory, setShowDiscardHistory] = useState(false);
+  const [showLastDiscard, setShowLastDiscard] = useState(true);
   const [gameLogs, setGameLogs] = useState<
     {
       id: number;
@@ -694,10 +695,31 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       // 1. Detect if a card was played (discard pile grew)
       if (
         newState.discardPile.length > prevDiscardLengthRef.current &&
-        newState.gamePhase === EKGamePhase.PLAYING
+        newState.gamePhase !== EKGamePhase.WAITING
       ) {
         const newCard = newState.discardPile[newState.discardPile.length - 1];
-        const fromPlayerIndex = prevTurnIndexRef.current;
+
+        // Find who played it by checking discard history or lastAction
+        let fromPlayerId = newState.lastAction?.playerId;
+
+        // Fallback or specific check for history
+        if (!fromPlayerId) {
+          const lastHistory =
+            newState.discardHistory[newState.discardHistory.length - 1];
+          if (lastHistory) fromPlayerId = lastHistory.playerId;
+        }
+
+        let fromPlayerIndex = -1;
+        if (fromPlayerId) {
+          const index = newState.players.findIndex(
+            (p) => p.id === fromPlayerId,
+          );
+          if (index !== -1) fromPlayerIndex = index;
+        }
+
+        // Fallback to turn player if not found (shouldn't happen for valid plays)
+        if (fromPlayerIndex === -1) fromPlayerIndex = prevTurnIndexRef.current;
+
         const arrangedFromIndex = arrangedPlayers.findIndex(
           (p) => p.actualIndex === fromPlayerIndex,
         );
@@ -707,6 +729,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
           fromPlayerIndex: arrangedFromIndex,
           direction: "toDiscard",
         };
+        setShowLastDiscard(false);
       }
 
       // 2. Detect if cards were drawn (hand grew)
@@ -1213,14 +1236,25 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
             </div>
 
             {state.gamePhase !== EKGamePhase.WAITING && (
-              <div className="flex items-center gap-2">
-                {slot.isExploded ? (
-                  <Bomb className="w-4 h-4 text-red-500 animate-pulse" />
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <Layers className="w-3 h-3 text-slate-400" />
-                    <span className="text-xs text-slate-400 font-bold">
-                      {slot.hand.length}
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2">
+                  {slot.isExploded ? (
+                    <Bomb className="w-4 h-4 text-red-500 animate-pulse" />
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <Layers className="w-3 h-3 text-slate-400" />
+                      <span className="text-xs text-slate-400 font-bold">
+                        {slot.hand.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Attack Stack Indicator */}
+                {isCurrent && state.attackStack > 1 && (
+                  <div className="flex items-center gap-1 bg-orange-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-orange-500/30 origin-top">
+                    <Swords className="w-3 h-3" />
+                    <span className="text-[10px] font-bold uppercase whitespace-nowrap">
+                      {state.attackStack} {ti({ en: "TURNS", vi: "LƯỢT" })}
                     </span>
                   </div>
                 )}
@@ -2116,8 +2150,10 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       <div className="flex items-center justify-center gap-3 text-xs text-slate-500 mt-2 mb-2 py-1 px-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
         <span className="flex items-center gap-1">
           <span className="text-orange-400">←</span>
-          {ti({ en: "Prev", vi: "Trước" })}
-          <span className="text-slate-400">{prevPlayer?.username}</span>
+          <div className="flex flex-col items-start">
+            {ti({ en: "Prev", vi: "Trước" })}
+            <span className="text-slate-400">{prevPlayer?.username}</span>
+          </div>
         </span>
         <span className="text-slate-600">•</span>
         <span className="text-slate-400 font-medium uppercase tracking-wider">
@@ -2125,8 +2161,10 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
         </span>
         <span className="text-slate-600">•</span>
         <span className="flex items-center gap-1">
-          <span className="text-slate-400">{nextPlayer?.username}</span>
-          {ti({ en: "Next", vi: "Sau" })}
+          <div className="flex flex-col items-end">
+            {ti({ en: "Next", vi: "Sau" })}
+            <span className="text-slate-400">{nextPlayer?.username}</span>
+          </div>
           <span className="text-green-400">→</span>
         </span>
       </div>
@@ -2139,30 +2177,34 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
         ref={logContainerRef}
         className="max-h-20 @md:max-h-24 overflow-y-auto overflow-x-hidden custom-scrollbar w-full flex items-center flex-col"
       >
-        {gameLogs.map((log, i) => (
-          <div
-            key={log.id}
-            className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-lg text-center ${
-              log.type === "private"
-                ? "text-purple-300 bg-purple-900/30"
-                : log.type === "success"
-                  ? "text-slate-300"
-                  : "text-red-400"
-            }
-            ${i === gameLogs.length - 1 ? "animate-bounce" : ""}`}
-          >
-            <log.icon
-              className={`w-4 h-4 shrink-0 ${
+        {gameLogs.map((log, i) => {
+          const isLast = i === gameLogs.length - 1;
+
+          return (
+            <div
+              key={log.id}
+              className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-lg text-center ${
                 log.type === "private"
-                  ? "text-purple-400"
+                  ? "text-purple-300 bg-purple-900/30"
                   : log.type === "success"
-                    ? "text-green-500"
-                    : "text-red-500"
-              }`}
-            />
-            <span className="text-xs font-medium">{log.message}</span>
-          </div>
-        ))}
+                    ? "text-slate-300"
+                    : "text-red-400"
+              }
+            ${isLast ? "animate-bounce" : "opacity-50"}`}
+            >
+              <log.icon
+                className={`w-4 h-4 shrink-0 ${
+                  log.type === "private"
+                    ? "text-purple-400"
+                    : log.type === "success"
+                      ? "text-green-500"
+                      : "text-red-500"
+                }`}
+              />
+              <span className="text-xs font-medium">{log.message}</span>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -2999,17 +3041,22 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
               </div>
               {state.discardPile.length > 0 ? (
                 <div className="relative w-full h-full flex items-center justify-center">
-                  {state.discardPile.slice(-3).map((card, i) => {
-                    return (
-                      <div
-                        key={`${card[1]}-${i}`}
-                        className="absolute transition-all"
-                        style={{ transform: `rotate(${(i - 1) * 8}deg)` }}
-                      >
-                        {renderCard(card, false, undefined, "medium")}
-                      </div>
-                    );
-                  })}
+                  {(showLastDiscard
+                    ? state.discardPile
+                    : state.discardPile.slice(0, -1)
+                  )
+                    .slice(-3)
+                    .map((card, i) => {
+                      return (
+                        <div
+                          key={`${card[1]}-${i}`}
+                          className="absolute transition-all"
+                          style={{ transform: `rotate(${(i - 1) * 8}deg)` }}
+                        >
+                          {renderCard(card, false, undefined, "medium")}
+                        </div>
+                      );
+                    })}
                 </div>
               ) : (
                 <span className="text-[10px] text-center text-slate-600 font-bold uppercase tracking-widest">
@@ -3018,16 +3065,6 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
               )}
             </div>
           </div>
-
-          {state.attackStack > 1 && isMyTurn && (
-            <div className="flex items-center gap-2 bg-orange-500/20 text-yellow-400 px-3 py-1 rounded-full border border-orange-500/30 animate-pulse">
-              <Swords className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase">
-                {state.attackStack}{" "}
-                {ti({ en: "TURNS REMAINING", vi: "LƯỢT CÒN LẠI" })}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Right: PC only */}
@@ -3185,7 +3222,10 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
         sourceRect={animationElements?.sourceRect}
         targetRect={animationElements?.targetRect}
         isOpen={!!flyingCard}
-        onComplete={() => setFlyingCard(null)}
+        onComplete={() => {
+          setFlyingCard(null);
+          setShowLastDiscard(true);
+        }}
       >
         <div className="w-20 h-28 relative">
           {flyingCard?.card &&

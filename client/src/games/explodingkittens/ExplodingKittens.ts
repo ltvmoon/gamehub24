@@ -1429,9 +1429,73 @@ export default class ExplodingKittens extends BaseGame<EKState> {
 
   private makeBotFavor(bot: PlayerSlot): void {
     if (bot.hand.length > 0) {
-      const idx = Math.floor(Math.random() * bot.hand.length);
-      this.handleGiveFavor(bot.id!, idx);
+      // Calculate value for each card
+      const handValues = bot.hand.map((card, index) => ({
+        index,
+        value: this.getCardFavorPriority(card, bot.hand),
+        card,
+      }));
+
+      // Sort by value (ascending)
+      handValues.sort((a, b) => a.value - b.value);
+
+      // Select from the lowest values (to be less predictable)
+      // If there are multiple cards with the same lowest value, pick random among them
+      const lowestValue = handValues[0].value;
+      const candidates = handValues.filter((c) => c.value <= lowestValue + 5);
+
+      const choice = candidates[Math.floor(Math.random() * candidates.length)];
+      this.handleGiveFavor(bot.id!, choice.index);
     }
+  }
+
+  private getCardFavorPriority(card: EKCard, hand: EKCard[]): number {
+    const type = card[0];
+    let value = 0;
+
+    switch (type) {
+      case EKCardType.DEFUSE:
+        value = 100;
+        break;
+      case EKCardType.NOPE:
+        value = 90;
+        break;
+      case EKCardType.ATTACK:
+      case EKCardType.TARGETED_ATTACK:
+        value = 80;
+        break;
+      case EKCardType.SKIP:
+      case EKCardType.SUPER_SKIP:
+        value = 75;
+        break;
+      case EKCardType.ALTER_THE_FUTURE_3:
+      case EKCardType.ALTER_THE_FUTURE_5:
+        value = 70;
+        break;
+      case EKCardType.SEE_THE_FUTURE:
+        value = 60;
+        break;
+      case EKCardType.SHUFFLE:
+      case EKCardType.DRAW_BOTTOM:
+        value = 50;
+        break;
+      case EKCardType.FAVOR:
+        value = 40;
+        break;
+      default:
+        // Cat cards and others
+        value = 10;
+        break;
+    }
+
+    // Dynamic Adjustments for Combos (Pairs/Triplets)
+    // If we have 2 or more of this type, it's a combo, increase value
+    const count = hand.filter((c) => c[0] === type).length;
+    if (count >= 2) {
+      value += 60; // Huge boost for pairs (e.g., Cat pair 10+60 = 70, making it harder to give away)
+    }
+
+    return value;
   }
 
   // ============== Slot Management ==============
