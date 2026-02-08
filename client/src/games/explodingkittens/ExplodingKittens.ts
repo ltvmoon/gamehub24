@@ -842,7 +842,7 @@ export default class ExplodingKittens extends BaseGame<EKState> {
         // Personal Attack ends current turn without drawing, and gives *self* 3 turns.
         // So, set attackStack to 4. finishTurnAction will decrement it to 3.
         // Result: Player takes 3 more turns.
-        this.state.attackStack = 4;
+        this.state.attackStack += 4;
         this.finishTurnAction(); // This will decrement attackStack to 3 and keep current player
         break;
 
@@ -1196,7 +1196,7 @@ export default class ExplodingKittens extends BaseGame<EKState> {
     };
 
     this.state.players[index].isExploded = true;
-    this.state.players[index].hand = []; // Discard everything
+    // this.state.players[index].hand = []; // Discard everything (Keep cards to show at the end of game)
 
     // Check if only one player left
     const alivePlayers = this.state.players.filter(

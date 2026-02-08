@@ -24,6 +24,8 @@ import {
   Play,
   Coins,
   Disc,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import useLanguage from "../../stores/languageStore";
 import { createPortal } from "react-dom";
@@ -39,6 +41,7 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
   const { confirm: showConfirm } = useAlertStore();
   const [raiseAmount, setRaiseAmount] = useState(0);
   const [showRules, setShowRules] = useState(false);
+  const [showMyCards, setShowMyCards] = useState(true);
 
   const isHost = game.isHost;
   const myIndex = game.getMyPlayerIndex();
@@ -440,6 +443,8 @@ export default function PokerUI({ game: baseGame }: GameUIProps) {
                 isHost={isHost}
                 gamePhase={state.gamePhase}
                 winnerIds={state.winnerIds}
+                showMyCards={showMyCards}
+                onToggleShowCards={() => setShowMyCards(!showMyCards)}
                 bestHandName={
                   (myIndex === p.actualIndex || state.gamePhase === "ended") &&
                   p.slot.hand.length > 0
@@ -787,6 +792,8 @@ function PlayerSlot({
   winnerIds,
   onAddBot,
   onRemove,
+  showMyCards,
+  onToggleShowCards,
   bestHandName,
   bestHandRank,
   onOpenRules,
@@ -799,6 +806,8 @@ function PlayerSlot({
   winnerIds: string[];
   onAddBot: () => void;
   onRemove: () => void;
+  showMyCards: boolean;
+  onToggleShowCards: () => void;
   bestHandName?: React.ReactNode;
   bestHandRank?: HandRanking;
   onOpenRules?: () => void;
@@ -867,7 +876,9 @@ function PlayerSlot({
         <div className="flex justify-center -space-x-4 min-h-[50px] mt-1 relative">
           {player.hand.length > 0 ? (
             <>
-              {isSelf || gamePhase === "showdown" || gamePhase === "ended" ? (
+              {(isSelf && showMyCards) ||
+              gamePhase === "showdown" ||
+              gamePhase === "ended" ? (
                 player.hand.map((card, i) => (
                   <div
                     key={i}
@@ -884,11 +895,28 @@ function PlayerSlot({
                 <>
                   <div className="w-10 h-14 bg-blue-900 rounded border-2 border-white/20 transform -rotate-6 shadow-lg bg-[url('/card-back.png')]"></div>
                   <div className="w-10 h-14 bg-blue-900 rounded border-2 border-white/20 transform rotate-6 shadow-lg bg-[url('/card-back.png')]"></div>
+                  {isSelf && !showMyCards && (
+                    <button
+                      onClick={onToggleShowCards}
+                      className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 rounded hover:bg-black/20 transition-colors"
+                    >
+                      <Eye className="w-6 h-6 text-white" />
+                    </button>
+                  )}
                 </>
               )}
             </>
           ) : (
             <div className="h-[50px]"></div>
+          )}
+
+          {isSelf && showMyCards && player.hand.length > 0 && (
+            <button
+              onClick={onToggleShowCards}
+              className="absolute -top-2 -right-6 p-1 bg-slate-800 rounded-full border border-slate-700 text-slate-400 hover:text-white z-50"
+            >
+              <EyeOff className="w-3 h-3" />
+            </button>
           )}
 
           {/* Folded Indicator */}
@@ -907,17 +935,15 @@ function PlayerSlot({
         )}
 
         {/* Best Hand Indicator - Only for Self or Showdown */}
-        {(isSelf || gamePhase === "ended") &&
-          !player.hasFolded &&
-          bestHandName && (
-            <div
-              onClick={onOpenRules}
-              className={`absolute -top-6 whitespace-nowrap border px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg animate-in fade-in slide-in-from-bottom-2 z-40 flex items-center gap-1 transition-all duration-300 cursor-pointer hover:scale-110 ${getHandStyle(bestHandRank)}`}
-            >
-              <Trophy className={`w-3 h-3 ${getHandIconColor(bestHandRank)}`} />
-              {bestHandName}
-            </div>
-          )}
+        {(isSelf || gamePhase === "ended") && bestHandName && (
+          <div
+            onClick={onOpenRules}
+            className={`absolute -top-6 whitespace-nowrap border px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg animate-in fade-in slide-in-from-bottom-2 z-40 flex items-center gap-1 transition-all duration-300 cursor-pointer hover:scale-110 ${getHandStyle(bestHandRank)}`}
+          >
+            <Trophy className={`w-3 h-3 ${getHandIconColor(bestHandRank)}`} />
+            {bestHandName}
+          </div>
+        )}
       </div>
 
       {/* Host Controls */}

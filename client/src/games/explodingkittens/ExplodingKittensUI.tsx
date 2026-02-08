@@ -855,6 +855,12 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
   };
 
   const getTurnHint = () => {
+    if (state.gamePhase === EKGamePhase.ENDED) {
+      return ti({
+        en: "Game Over!",
+        vi: "Trò chơi kết thúc!",
+      });
+    }
     if (mySlot?.isExploded) {
       return ti({
         en: "You exploded! You are out of the game.",
@@ -1238,7 +1244,7 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
             {state.gamePhase !== EKGamePhase.WAITING && (
               <div className="flex flex-col items-center gap-1">
                 <div className="flex items-center gap-2">
-                  {slot.isExploded ? (
+                  {slot.isExploded && state.gamePhase !== EKGamePhase.ENDED ? (
                     <Bomb className="w-4 h-4 text-red-500 animate-pulse" />
                   ) : (
                     <div className="flex items-center gap-1">
@@ -1249,6 +1255,17 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
                     </div>
                   )}
                 </div>
+
+                {/* Hand display at the end of the game */}
+                {state.gamePhase === EKGamePhase.ENDED &&
+                  slot.hand.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-0.5 mt-1 max-w-[100px]">
+                      {slot.hand.map((card, i) => (
+                        <div key={i}>{renderMiniCard(card[0])}</div>
+                      ))}
+                    </div>
+                  )}
+
                 {/* Attack Stack Indicator */}
                 {isCurrent && state.attackStack > 1 && (
                   <div className="flex items-center gap-1 bg-orange-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-orange-500/30 origin-top">
@@ -1262,6 +1279,19 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
             )}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderMiniCard = (type: EKCardType) => {
+    const config = CARD_CONFIG[type];
+    const Icon = config.icon;
+    return (
+      <div
+        className={`w-5 h-7 rounded-[3px] border border-slate-700/50 flex items-center justify-center ${config.bgColor} shadow-sm overflow-hidden`}
+        title={ts(config.name)}
+      >
+        <Icon className={`w-3.5 h-3.5 ${config.iconColor}`} />
       </div>
     );
   };
@@ -3075,6 +3105,71 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
 
       {renderGameLogs()}
 
+      {/* Exploded Message in Bottom Area */}
+      {mySlot?.isExploded && state.gamePhase !== EKGamePhase.ENDED && (
+        <div className="w-full flex flex-col items-center gap-2 p-4 bg-red-950/40 rounded-2xl border border-red-500/30 animate-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-center gap-3">
+            <Bomb className="w-8 h-8 text-red-500 animate-pulse" />
+            <div className="flex flex-col">
+              <h3 className="text-xl font-black text-white uppercase italic leading-none">
+                {ti({ en: "YOU EXPLODED!", vi: "BẠN ĐÃ NỔ TUNG!" })}
+              </h3>
+              <p className="text-sm text-red-400 font-bold">
+                {ti({
+                  en: "Better luck next time!",
+                  vi: "Chúc bạn may mắn lần sau!",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Winner Announcement in Bottom Area */}
+      {state.gamePhase === EKGamePhase.ENDED && (
+        <div className="w-full flex flex-col items-center gap-4 p-4 bg-slate-950/40 rounded-2xl border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] animate-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Sparkle className="w-12 h-12 text-yellow-400 animate-spin-slow" />
+            </div>
+            <div className="text-left">
+              <span className="text-3xl font-black text-yellow-500 tracking-[0.2em] uppercase leading-none block mb-1">
+                {ti({ en: "VICTORIOUS!", vi: "CHIẾN THẮNG!" })}
+              </span>
+              <h2 className="text-2xl font-black text-white italic truncate max-w-[200px]">
+                {state.players.find((p) => p.id === state.winner)?.username}
+              </h2>
+            </div>
+          </div>
+
+          <div className="w-full max-w-xs">
+            {game.isHost ? (
+              <button
+                onClick={() => game.requestNewGame()}
+                className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 text-slate-950 rounded-xl font-black text-lg shadow-[0_5px_15px_rgba(250,204,21,0.2)] transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-5 h-5" />
+                {ti({ en: "PLAY AGAIN", vi: "CHƠI LẠI" })}
+              </button>
+            ) : (
+              <div className="py-3 px-4 bg-slate-900/50 border border-slate-800 rounded-xl flex items-center justify-center gap-3">
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
+                </div>
+                <span className="text-xs text-slate-400 font-bold">
+                  {ti({
+                    en: "Waiting for host..",
+                    vi: "Đang chờ chủ phòng..",
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Bottom area: My Slot and Hand */}
       <div className="flex flex-col items-center gap-2 @md:gap-4 bg-slate-900/80 backdrop-blur-md rounded-3xl p-3 @md:p-4 border-t border-slate-800 shadow-2xl z-10">
         <div className="flex flex-col items-center">
@@ -3128,26 +3223,28 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
           </div>
         )}
 
-        {isHost && state.gamePhase !== EKGamePhase.WAITING && (
-          <button
-            onClick={async () => {
-              if (
-                await showConfirm(
-                  ts({
-                    en: "Current game will be lost. Continue?",
-                    vi: "Tiến trình hiện tại sẽ bị mất. Tiếp tục?",
-                  }),
-                  ts({ vi: "Chơi lại?", en: "New game?" }),
+        {isHost &&
+          state.gamePhase !== EKGamePhase.WAITING &&
+          state.gamePhase !== EKGamePhase.ENDED && (
+            <button
+              onClick={async () => {
+                if (
+                  await showConfirm(
+                    ts({
+                      en: "Current game will be lost. Continue?",
+                      vi: "Tiến trình hiện tại sẽ bị mất. Tiếp tục?",
+                    }),
+                    ts({ vi: "Chơi lại?", en: "New game?" }),
+                  )
                 )
-              )
-                game.requestNewGame();
-            }}
-            className="px-4 py-1 text-sm bg-slate-700 hover:bg-slate-600 text-slate-400 rounded-full flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4" />
-            {ti({ en: "New Game", vi: "Chơi lại" })}
-          </button>
-        )}
+                  game.requestNewGame();
+              }}
+              className="px-4 py-1 text-sm bg-slate-700 hover:bg-slate-600 text-slate-400 rounded-full flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              {ti({ en: "New Game", vi: "Chơi lại" })}
+            </button>
+          )}
       </div>
 
       {/* Modals & Overlays */}
@@ -3163,58 +3260,6 @@ export default function ExplodingKittensUI({ game: baseGame }: GameUIProps) {
       {renderComboTargetSelection()}
       {renderComboCardTypeSelection()}
       {renderDeckConfig()}
-
-      {/* Exploded Overlay for Local Player */}
-      {mySlot?.isExploded && state.gamePhase !== EKGamePhase.ENDED && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-[2px] pointer-events-none">
-          <div className="bg-red-900/80 border-2 border-red-500 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 animate-in zoom-in duration-300 pointer-events-auto">
-            <Bomb className="w-16 h-16 text-white animate-pulse" />
-            <div className="text-center">
-              <h3 className="text-2xl font-black text-white uppercase italic">
-                {ti({ en: "YOU EXPLODED!", vi: "BẠN ĐÃ NỔ TUNG!" })}
-              </h3>
-              <p className="text-red-200 font-bold">
-                {ti({
-                  en: "Better luck next time!",
-                  vi: "Chúc bạn may mắn lần sau!",
-                })}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Winner Overlay */}
-      {state.gamePhase === EKGamePhase.ENDED && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-md">
-          <div className="flex flex-col items-center gap-8 animate-in zoom-in duration-500">
-            <div className="relative">
-              <Sparkle className="w-32 h-32 text-yellow-400 animate-spin-slow" />
-              {/* <Crown className="absolute inset-0 m-auto w-16 h-16 text-yellow-400" /> */}
-            </div>
-            <div className="text-center">
-              <h2 className="text-5xl font-black text-white mb-2 italic">
-                {state.players.find((p) => p.id === state.winner)?.username}
-              </h2>
-              <p className="text-2xl text-yellow-400 font-bold tracking-widest uppercase">
-                {ti({ en: "VICTORIOUS!", vi: "CHIẾN THẮNG!" })}
-              </p>
-            </div>
-            {game.isHost ? (
-              <button
-                onClick={() => game.requestNewGame()}
-                className="px-8 py-3 bg-white text-slate-900 rounded-full font-black hover:bg-yellow-400 transition-colors cursor-pointer"
-              >
-                {ti({ en: "PLAY AGAIN", vi: "CHƠI LẠI" })}
-              </button>
-            ) : (
-              <p className="text-md text-slate-400">
-                {ti({ en: "Waiting for host..", vi: "Đang chờ chủ phòng.." })}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Flying Card Animation */}
       <CommonFlyingCard
