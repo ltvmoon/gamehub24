@@ -1,21 +1,24 @@
-# GameHub24 Client
+# GameHub Client
 
-Frontend xây dựng bằng React + TypeScript + Bun.
+Frontend built with React + TypeScript + Vite.
 
-## 1. Kết Nối / Connection
-Sử dụng `socket.io-client`. Thông tin kết nối và danh tính (User ID, Username) được lưu trong `localStorage`.
+## Connection
+
+Uses `socket.io-client` for real-time communication. Connection info and identity (User ID, Username) are stored in `localStorage`.
 
 ```mermaid
 sequenceDiagram
     Client->>Server: Connect (UserId, Username)
     Server-->>Client: Connection Established
 ```
-*Bạn có thể đổi server URL hoặc tạo danh tính mới trong phần **Settings**.*
+
+You can change the server URL or create a new identity in **Settings**.
 
 ---
 
-## 2. Đồng Bộ Game / Game Synchronization
-Kiến trúc **Host-Guest** (Host đóng vai trò Server xử lý logic).
+## Game Synchronization
+
+The platform uses a **Host-Guest** architecture where the Host acts as the game server and processes all logic.
 
 ```mermaid
 sequenceDiagram
@@ -35,23 +38,28 @@ sequenceDiagram
     Note over Guest: 3. Update UI
 ```
 
-### Điểm Nổi Bật / Key Features:
-- **Optimization**: Tự động gộp Patch (Compaction) và chỉ gửi thay đổi nhỏ nhất để tiết kiệm băng thông.
-- **Structural Sharing**: Sử dụng Immer giúp React re-render cực nhanh và chính xác.
-- **Persistence**: Host tự động lưu state vào `localStorage`. Nếu bị mất kết nối, Host có thể Resume game ngay lập tức.
+### Key Features
+
+- **Optimization**: Automatic patch compaction - only the smallest necessary changes are sent to save bandwidth
+- **Structural Sharing**: Uses Immer for fast and accurate React re-renders
+- **Persistence**: Host automatically saves state to `localStorage`. If disconnected, the Host can resume the game immediately
 
 ---
 
-## ⚙️ Cài Đặt / Development
+## Development
+
 ```bash
-# Cài đặt
+# Install dependencies
 bun install
 
-# Chạy Dev
+# Start development server
 bun run dev
 
-# Build
+# Build for production
 bun run build
+
+# Lint code
+bun run lint
 ```
 
-Xem thêm [src/games/README.md](src/games/README.md) để biết cách tạo game mới.
+See [src/games/README.md](src/games/README.md) for instructions on creating new games.

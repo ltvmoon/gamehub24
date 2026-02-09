@@ -1,16 +1,19 @@
-# Game Architecture Documentation
+# Game Architecture
 
-## 📖 Tổng Quan / Overview
-Kiến trúc **client-authoritative** với **host-as-server**:
-- **Host**: Server xử lý logic, validate actions, quản lý Bot và đồng bộ state.
-- **Guest**: Nhận state patches/updates từ host và render UI.
-- **BaseGame**: Core framework quản lý đồng bộ và state.
+## Overview
+
+This platform uses a **client-authoritative** architecture with **host-as-server**:
+
+- **Host**: Processes game logic, validates actions, manages bots, and syncs state
+- **Guest**: Receives state patches/updates from host and renders UI
+- **BaseGame**: Core framework for synchronization and state management
 
 ---
 
-## 🏗️ Kiến Trúc / Architecture
+## Architecture
 
-### 1. Thành Phần / Components
+### Components
+
 ```mermaid
 graph TB
     UI[Game UI] -->|Actions| Game[Game Instance]
@@ -19,34 +22,45 @@ graph TB
     Room[Room Store] -->|Info| Game
 ```
 
-### 2. BaseGame Deep Dive 🔍
+### BaseGame Deep Dive
 
-#### A. State & Reactivity
-`BaseGame` dùng **Immer** & **Proxy** để quản lý state:
-- **Proxy Tracking**: Mutate trực tiếp (`state.x++`) tự động ghi lại Patch.
-- **Immutable Snapshot**: `useGameState` cung cấp snapshot không thể thay đổi (`lastSnapshot`).
-- **React Optimization**: Mỗi khi update, `BaseGame` ép tạo reference mới cho snapshot để React re-render tin cậy 100%.
+#### State & Reactivity
 
-#### B. Synchronization Optimization 🚀
-Cơ chế đồng bộ 3 lớp giúp tối ưu băng thông:
-1. **Patch Compaction (New)**: Các thay đổi được gom vào một `Map`. Nếu một `path` bị đổi nhiều lần (vd: di chuyển), chỉ giá trị cuối cùng được giữ lại.
-2. **Incremental Patching**: Chỉ gửi các phần thay đổi (Patch) qua `game:state:patch`.
-3. **Full Sync**: Gửi toàn bộ state khi có người mới vào hoặc lỗi đồng bộ.
+`BaseGame` uses **Immer** & **Proxy** for state management:
+
+- **Proxy Tracking**: Direct mutations (`state.x++`) are automatically recorded as patches
+- **Immutable Snapshot**: `useGameState` provides an immutable snapshot (`lastSnapshot`)
+- **React Optimization**: Each update forces a new reference for reliable React re-renders
+
+#### Synchronization Optimization
+
+Three-layer sync mechanism for bandwidth optimization:
+
+1. **Patch Compaction**: Changes are collected in a `Map`. If a path changes multiple times (e.g., during movement), only the final value is kept
+2. **Incremental Patching**: Only changed parts (patches) are sent via `game:state:patch`
+3. **Full Sync**: Complete state is sent when new players join or sync errors occur
 
 ---
 
-## 🛠️ Tạo Game Mới / Quick Start
+## Creating a New Game
 
-### 1. Files Structure
-- `MyGame.ts`: Kế thừa `BaseGame<T>`, implement `getInitState` và `onSocketGameAction`.
-- `MyGameUI.tsx`: Dùng `const [state] = useGameState(game)` để lấy state.
-- `types.ts`: Định nghĩa `State` và `Action`.
+### File Structure
 
-### 2. Implementation Guide
+| File | Purpose |
+|------|---------|
+| `MyGame.ts` | Extends `BaseGame<T>`, implements `getInitState` and `onSocketGameAction` |
+| `MyGameUI.tsx` | Uses `const [state] = useGameState(game)` to get state |
+| `types.ts` | Defines `State` and `Action` types |
+
+### Implementation Example
+
 ```typescript
 // MyGame.ts
 export default class MyGame extends BaseGame<MyGameState> {
-  getInitState() { return { score: 0 }; }
+  getInitState() {
+    return { score: 0 };
+  }
+
   onSocketGameAction({ action }) {
     if (!this.isHost) return;
     if (action.type === 'ADD') this.state.score++;
@@ -56,16 +70,30 @@ export default class MyGame extends BaseGame<MyGameState> {
 
 ---
 
-## 💡 Best Practices
+## Best Practices
 
-1. **Host-Only Logic**: Tính điểm, thắng thua chỉ nên viết ở class Game (chạy trên Host). UI chỉ gửi action.
-2. **Deterministic State**: State chỉ chứa data (object, array, primitive). Không lưu class/function.
-3. **Always Mutate**: Không gán lại `this.state = ...`, hãy mutate trực tiếp hoặc `Object.assign` để Proxy hoạt động.
-4. **Persistence**: Gọi `this.setGameName("name")` để tự động lưu/load game khi refresh trang.
-5. **Bot AI & Side Effects**: Hạn chế dùng `setTimeout` rời rạc. Nếu cần trì hoãn hành động của Bot, phải quản lý timer chặt chẽ và luôn dọn dẹp (clear) trong hàm `destroy()` để tránh memory leak hoặc lỗi khi nhảy sang game mới.
-6. **Minimal Game State 📉**: Luôn giữ state nhỏ nhất có thể để tối ưu băng thông (vì game đồng bộ qua JSON patch):
-    - **Numeric Constants**: Dùng số thay vì chuỗi cho Game Phase, Symbol, Power-up type (vd: `0` thay vì `"betting"`).
-    - **Tuples over Objects**: Dùng mảng cố định `[id, amount]` thay vì object `{id, amount}` cho các dữ liệu lặp lại nhiều.
-    - **History Limits**: Luôn giới hạn độ dài mảng lịch sử (vd: `balanceHistory`, `recentRolls`) bằng `shift()` hoặc `delete` key cũ.
-    - **Precision**: Làm tròn số thập phân (vd: `Math.round(val * 10) / 10`) trước khi lưu vào state.
-    - **Short IDs**: Dùng `uuidShort()` hoặc Round ID (`R1`, `R2`) thay vì `Date.now()` làm key trong Object.
+### 1. Host-Only Logic
+Scoring, win/lose conditions should only be in the Game class (runs on Host). UI only sends actions.
+
+### 2. Deterministic State
+State should only contain data (objects, arrays, primitives). Do not store classes or functions.
+
+### 3. Always Mutate
+Never reassign `this.state = ...`. Mutate directly or use `Object.assign` for Proxy to work correctly.
+
+### 4. Persistence
+Call `this.setGameName("name")` to enable automatic save/load on page refresh.
+
+### 5. Bot AI & Side Effects
+Avoid scattered `setTimeout` calls. If you need delayed bot actions, manage timers carefully and always clean up in `destroy()` to prevent memory leaks.
+
+### 6. Minimal Game State
+Keep state as small as possible to optimize bandwidth (games sync via JSON patches):
+
+| Technique | Example |
+|-----------|---------|
+| Numeric constants | Use `0` instead of `"betting"` for game phases |
+| Tuples over objects | Use `[id, amount]` instead of `{id, amount}` |
+| History limits | Limit array lengths with `shift()` or delete old keys |
+| Precision | Round decimals: `Math.round(val * 10) / 10` |
+| Short IDs | Use `uuidShort()` or round IDs (`R1`, `R2`) instead of `Date.now()` |

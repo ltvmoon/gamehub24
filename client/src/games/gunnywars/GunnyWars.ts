@@ -1742,13 +1742,15 @@ export default class GunnyWars extends BaseGame<GunnyWarsState> {
 
     // Create tanks - spread them out across the world
     const playerCount = this.state.players.length;
-    const spacing = WORLD_WIDTH / (playerCount + 1);
+    const spacing = 1000;
 
     this.state.tanks = this.state.players.map((player, index) => {
       const tankId = `tank-${index + 1}`;
       player.tankId = tankId;
 
-      const x = Math.floor(spacing * (index + 1));
+      const x = Math.floor(
+        WORLD_WIDTH / 2 - (spacing * playerCount) / 2 + spacing * (index + 1),
+      );
       const y = this.getTerrainHeight(x);
 
       return {

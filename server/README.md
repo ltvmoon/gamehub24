@@ -1,16 +1,19 @@
-# 🎮 GameHub Server
+# GameHub Server
 
-Relay server thời gian thực sử dụng Socket.IO.
+Real-time relay server using Socket.IO.
 
-## 📖 Tổng Quan / Overview
-Server đóng vai trò là **Pure Relay** (Chỉ chuyển tiếp dữ liệu):
-- 🏠 Quản lý Phòng (Room) và Player.
-- 💬 Hệ thống Chat Real-time.
-- 🎮 Chuyển tiếp Action và State (Không chứa logic game).
+## Overview
+
+The server acts as a **Pure Relay** (only forwards data):
+
+- Room and player management
+- Real-time chat system
+- Action and state forwarding (no game logic)
 
 ---
 
-## 🏗️ Kiến Trúc / Architecture
+## Architecture
+
 ```mermaid
 graph TB
     subgraph Clients
@@ -29,30 +32,45 @@ graph TB
     SocketIO <--> RoomMgr
 ```
 
-### Flow chính:
-1. **Pure Relay Pattern**: Server không validate action, không lưu game state. Mọi thứ được xử lý tại Host Client.
-2. **Spectator-First**: Người mới vào sẽ là khán giả, Host sẽ thủ công thêm vào slot chơi để tránh phá hỏng game đang diễn ra.
-3. **Host Authority**: Phòng sẽ bị xóa khi Host rời đi (trừ trường hợp tự động recreation khi Host quay lại).
+### Core Concepts
+
+1. **Pure Relay Pattern**: Server does not validate actions or store game state. Everything is processed on the Host Client.
+2. **Spectator-First**: New players join as spectators. The Host manually adds them to a player slot to avoid disrupting ongoing games.
+3. **Host Authority**: Rooms are deleted when the Host leaves (except for automatic recreation when Host reconnects).
 
 ---
 
-## 🚀 Cài Đặt / Development
+## Development
+
 ```bash
 cd server
 bun install
-bun run dev  # Chạy port 3001
+bun run dev  # Runs on port 3001
 ```
 
-### Biến môi trường (.env):
-- `PORT`: Mặc định 3001
-- `CLIENT_URL`: URL của frontend để cấu hình CORS
+### Environment Variables (.env)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | 3001 |
+| `CLIENT_URL` | Frontend URL for CORS configuration | - |
 
 ---
 
-## 🔌 API & Events
-- **HTTP**: `/health` (Health check), `/stats` (Online users, rooms count).
-- **Socket**:
-  - Room: `room:create`, `room:join`, `room:update`.
-  - Game: `game:action`, `game:state`, `game:state:patch`.
+## API & Events
 
-Xem chi tiết trong code để biết thêm về payload của từng event.
+### HTTP Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/health` | Health check |
+| `/stats` | Online users and room count |
+
+### Socket Events
+
+| Category | Events |
+|----------|--------|
+| Room | `room:create`, `room:join`, `room:update` |
+| Game | `game:action`, `game:state`, `game:state:patch` |
+
+See the source code for detailed event payloads.
