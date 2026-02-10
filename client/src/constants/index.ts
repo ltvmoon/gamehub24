@@ -65,6 +65,13 @@ export const updates: {
   link?: string;
 }[] = [
   {
+    type: "new",
+    en: "New game: Iro Karuta",
+    vi: "Game mới: Trộn màu",
+    gameId: "irokaruta",
+    timestamp: 1770699140883,
+  },
+  {
     type: "fix",
     en: "Gunny Wars: new guns",
     vi: "Bắn Gunny: thêm vũ khí",

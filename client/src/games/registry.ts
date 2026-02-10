@@ -20,6 +20,7 @@ import {
   Accessibility,
   SquareDashedBottom,
   Cat,
+  Pencil,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
@@ -203,7 +204,7 @@ games.set("draw", {
     en: "Draw and guess words with friends!",
     vi: "Vẽ và đoán từ cùng bạn bè!",
   },
-  icon: Palette,
+  icon: Pencil,
   categories: ["party", "relax"],
   minPlayers: 1,
   maxPlayers: 30,
@@ -461,6 +462,26 @@ games.set("explodingkittens", {
   },
   loadUI: () =>
     import("./explodingkittens/ExplodingKittensUI").then((m) => m.default),
+});
+
+// Register Iro Karuta (Color Mixing)
+games.set("irokaruta", {
+  id: "irokaruta",
+  name: { en: "Mix colors", vi: "Trộn màu" },
+  description: {
+    en: "Japanese color mixing card game!",
+    vi: "Game trộn thẻ màu Nhật Bản!",
+  },
+  icon: Palette,
+  categories: ["party", "puzzle"],
+  minPlayers: 1,
+  maxPlayers: 20,
+  isAvailable: true,
+  createGame: async (room, socket, isHost, userId) => {
+    const { default: IroKaruta } = await import("./irokaruta/IroKaruta");
+    return new IroKaruta(room, socket, isHost, userId);
+  },
+  loadUI: () => import("./irokaruta/IroKarutaUI").then((m) => m.default),
 });
 
 // Registry functions
