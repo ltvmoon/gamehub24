@@ -58,10 +58,8 @@ const GameCategoryFilter = memo(
             <button
               key={category}
               onClick={() => onSelectCategory(category)}
-              className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
-                selectedCategory === category
-                  ? CATEGORY_CONFIG[category].color
-                  : "bg-white/5 text-text-secondary border-white/10 hover:bg-white/10"
+              className={`px-3 py-1.5 text-sm rounded-full border cursor-pointer ${CATEGORY_CONFIG[category].color} ${
+                selectedCategory === category ? "opacity-100" : "opacity-50"
               }`}
             >
               {ti(CATEGORY_CONFIG[category].label)} ({count})

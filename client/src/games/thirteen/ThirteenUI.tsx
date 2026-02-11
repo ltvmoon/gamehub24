@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Thirteen from "./Thirteen";
 import type { Card, PlayerSlot } from "./types";
-import { SUIT_SYMBOLS, RANK_DISPLAY, Suit, decodeCard } from "./types";
+import { RANK_DISPLAY, Suit, decodeCard } from "./types";
 import { useRoomStore } from "../../stores/roomStore";
 import {
   Play,
@@ -14,6 +14,10 @@ import {
   Crown,
   BookOpen,
   Trophy,
+  Spade,
+  Club,
+  Diamond,
+  Heart,
 } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
 import { useAlertStore } from "../../stores/alertStore";
@@ -24,6 +28,13 @@ import useGameState from "../../hooks/useGameState";
 import SoundManager from "../../utils/SoundManager";
 import usePrevious from "../../hooks/usePrevious";
 
+export const SUIT_SYMBOLS: Record<Suit, React.ReactNode> = {
+  [Suit.SPADE]: <Spade className="@md:w-4 @md:h-4 w-3 h-3" fill="black" />,
+  [Suit.CLUB]: <Club className="@md:w-4 @md:h-4 w-3 h-3" fill="black" />,
+  [Suit.DIAMOND]: <Diamond className="@md:w-4 @md:h-4 w-3 h-3" fill="red" />,
+  [Suit.HEART]: <Heart className="@md:w-4 @md:h-4 w-3 h-3" fill="red" />,
+};
+
 export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const game = baseGame as Thirteen;
   const [state] = useGameState(game);
@@ -31,6 +42,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const [highlightedCards, setHighlightedCards] = useState<number[]>([]);
   const [expandPlays, setExpandPlays] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const myHandRef = useRef<HTMLDivElement>(null);
   const { username } = useUserStore();
   const { ti, ts } = useLanguage();
   const { confirm: showConfirm } = useAlertStore();
@@ -141,19 +153,12 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   }, [state.players, myIndex]);
 
   // Reusable Play Area element
-  const renderPlayArea = (variant: "desktop" | "mobile") => {
-    const isDesktop = variant === "desktop";
-    const minHeight = isDesktop ? "min-h-[80px]" : "min-h-[60px]";
-    const textSize = isDesktop ? "text-sm" : "text-xs";
-    const marginTop = isDesktop ? "mt-6" : "mt-4";
-
+  const renderPlayArea = () => {
     return (
       <>
-        <div
-          className={`relative ${minHeight} flex items-center justify-center`}
-        >
+        <div className="relative min-h-[60px] @md:min-h-[80px] flex items-center justify-center">
           {state.currentTrick.length === 0 ? (
-            <span className={`text-slate-500 ${isDesktop ? "" : "text-sm"}`}>
+            <span className="text-slate-500 text-sm @md:text-base">
               New Round
             </span>
           ) : (
@@ -177,7 +182,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                 const translateX = stepX * playIndex + centerShift;
 
                 // Add Y offset for visual distinction
-                const offsetY = playIndex * (isDesktop ? 6 : 4);
+                const offsetY = playIndex * 4; // default to mobile offset, can be responsive if needed
                 return (
                   <div
                     key={playIndex}
@@ -204,14 +209,14 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
           )}
         </div>
         {state.gamePhase === "playing" && (
-          <div className={`${textSize} border-t ${marginTop} pt-2`}>
+          <div className="text-xs @md:text-sm border-t border-slate-700 mt-4 @md:mt-6 pt-2">
             {isMyTurn ? (
               <span className="text-primary-400 font-medium">
                 {ts({ en: "Your Turn", vi: "Lượt của bạn" })}
               </span>
             ) : (
               <span className="text-slate-400">
-                {ts({ en: "Turn of", vi: "Lượt của" })}
+                {ts({ en: "Turn of", vi: "Lượt của" })}{" "}
                 {state.players[state.currentTurnIndex]?.username}
               </span>
             )}
@@ -224,24 +229,16 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   const RANK_MEDALS = ["🥇", "🥈", "🥉"];
 
   // Reusable Rankings display element
-  const renderWinner = (variant: "desktop" | "mobile") => {
-    const isDesktop = variant === "desktop";
-    const textSize = isDesktop ? "text-base" : "text-sm";
-    const gap = isDesktop ? "gap-3" : "gap-2";
-
+  const renderWinner = () => {
     return (
-      <div className={`flex flex-col items-center ${gap}`}>
+      <div className="flex flex-col items-center gap-2 @md:gap-3">
         <div className="flex items-center gap-2">
-          <Trophy
-            className={`${isDesktop ? "w-8 h-8" : "w-6 h-6"} text-yellow-400`}
-          />
-          <span
-            className={`${isDesktop ? "text-xl" : "text-base"} font-bold text-yellow-400`}
-          >
+          <Trophy className="w-6 h-6 @md:w-8 @md:h-8 text-yellow-400" />
+          <span className="text-base @md:text-xl font-bold text-yellow-400">
             {ts({ en: "Game Over", vi: "Kết thúc" })}
           </span>
         </div>
-        <div className={`flex flex-col ${gap} w-full max-w-[250px]`}>
+        <div className="flex flex-col gap-2 @md:gap-3 w-full max-w-[250px]">
           {state.rankings.map((playerId, index) => {
             const player = state.players.find((p) => p.id === playerId);
             if (!player) return null;
@@ -249,7 +246,7 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
             return (
               <div
                 key={playerId}
-                className={`flex items-center gap-2 ${textSize} ${
+                className={`flex items-center gap-2 text-sm @md:text-base ${
                   index === 0 ? "text-yellow-400 font-bold" : "text-slate-300"
                 }`}
               >
@@ -418,68 +415,19 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
   };
 
   return (
-    <div className="flex flex-col h-full p-2 @md:p-4 gap-2 @md:gap-4 overflow-hidden @md:min-h-[500px] pb-16!">
-      {/* Mobile: Top row with 3 opponents */}
-      <div className="flex @md:hidden justify-center gap-2">
+    <div className="flex flex-col h-full p-2 @md:p-4 gap-4 @md:gap-6 overflow-hidden pb-16!">
+      {/* Opponents row (Auto-wrap) */}
+      <div className="flex flex-wrap justify-center gap-2 @md:gap-4">
         {renderPlayerSlot(1, true)}
         {renderPlayerSlot(2, true)}
         {renderPlayerSlot(3, true)}
       </div>
 
-      {/* Desktop: Top Player */}
-      <div className="hidden @md:flex justify-center">
-        {renderPlayerSlot(2)}
-      </div>
-
-      {/* Desktop: Middle Row with Left/Right players and Play Area */}
-      <div className="hidden @md:flex flex-1 items-center justify-between gap-4">
-        {renderPlayerSlot(1)}
-
-        {/* Play Area - Desktop */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-[200px] bg-slate-800/30 rounded-2xl p-4">
-          {state.gamePhase === "waiting" && (
-            <div className="flex flex-col items-center gap-4">
-              <span className="text-slate-400">
-                {ts({
-                  en: "Waiting for players...",
-                  vi: "Đang chờ người chơi...",
-                })}
-              </span>
-              {isHost && canStart && (
-                <button
-                  onClick={() => game.requestStartGame()}
-                  className="px-6 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2"
-                >
-                  <Play className="w-5 h-5" />
-                  {ts({ en: "Start Game", vi: "Bắt đầu" })}
-                </button>
-              )}
-              {isHost && !canStart && (
-                <span className="text-sm text-slate-500">
-                  {ts({
-                    en: "Need at least 2 players",
-                    vi: "Cần ít nhất 2 người chơi",
-                  })}
-                </span>
-              )}
-            </div>
-          )}
-
-          {(state.gamePhase === "playing" || state.gamePhase === "ended") && (
-            <>{renderPlayArea("desktop")}</>
-          )}
-
-          {state.gamePhase === "ended" && renderWinner("desktop")}
-        </div>
-
-        {renderPlayerSlot(3)}
-      </div>
-
-      {/* Mobile: Play Area */}
-      <div className="flex @md:hidden flex-1 flex-col items-center justify-center gap-2 bg-slate-800/30 rounded-xl p-2 min-h-[120px]">
+      {/* Play Area */}
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[160px] @md:min-h-[220px] bg-slate-800/30 rounded-2xl p-4 @md:p-8">
         {state.gamePhase === "waiting" && (
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-slate-400 text-sm">
+          <div className="flex flex-col items-center gap-2 @md:gap-4">
+            <span className="text-slate-400 text-sm @md:text-base">
               {ts({
                 en: "Waiting for players...",
                 vi: "Đang chờ người chơi...",
@@ -488,14 +436,14 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
             {isHost && canStart && (
               <button
                 onClick={() => game.requestStartGame()}
-                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2 text-sm"
+                className="px-6 py-2 @md:px-8 @md:py-3 bg-slate-600 hover:bg-slate-500 rounded-lg @md:rounded-xl font-medium @md:font-bold flex items-center gap-2"
               >
-                <Play className="w-4 h-4" />
-                {ts({ en: "Start", vi: "Bắt đầu" })}
+                <Play className="w-4 h-4 @md:w-5 @md:h-5" />
+                {ts({ en: "Start Game", vi: "Bắt đầu" })}
               </button>
             )}
             {isHost && !canStart && (
-              <span className="text-xs text-slate-500">
+              <span className="text-xs @md:text-sm text-slate-500">
                 {ts({
                   en: "Need at least 2 players",
                   vi: "Cần ít nhất 2 người chơi",
@@ -506,34 +454,58 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
         )}
 
         {(state.gamePhase === "playing" || state.gamePhase === "ended") && (
-          <>{renderPlayArea("mobile")}</>
+          <>{renderPlayArea()}</>
         )}
 
-        {state.gamePhase === "ended" && renderWinner("mobile")}
+        {state.gamePhase === "ended" && renderWinner()}
       </div>
 
       {/* Bottom: My Slot and Hand */}
-      <div className="flex flex-col items-center gap-2 @md:gap-4">
-        {/* Desktop: My Player Slot */}
-        <div className="hidden @md:block">{renderPlayerSlot(0)}</div>
-
-        {/* Mobile: My Player Slot */}
-        <div className="flex @md:hidden">{renderPlayerSlot(0, true)}</div>
+      <div className="flex flex-col items-center gap-3 @md:gap-6 mt-auto">
+        {renderPlayerSlot(0, true)}
 
         {/* My Hand */}
         {mySlot && state.gamePhase === "playing" && mySlot.hand.length > 0 && (
-          <div className="flex justify-center max-w-full overflow-x-auto overflow-y-visible pt-4 p-0 @md:p-4 pb-1">
-            {mySlot.hand.map((card, index) => (
-              <CardDisplay
-                key={card}
-                card={card}
-                selected={selectedCards.includes(index)}
-                highlighted={highlightedCards.includes(index)}
-                onClick={() => handleCardClick(index)}
-                disabled={!isMyTurn}
-                index={index}
-              />
-            ))}
+          <div className="w-full relative mt-4">
+            <div
+              ref={myHandRef}
+              className="flex justify-center h-28 @md:h-36 relative"
+            >
+              {mySlot.hand.map((card, index) => {
+                const totalCards = mySlot.hand.length;
+                const containerWidth = myHandRef.current?.offsetWidth || 400;
+                const cardWidth = 80; // Approximate card width
+                const minOverlap = 30; // Minimum overlap space
+
+                const neededWidth = totalCards * minOverlap + cardWidth;
+                const availableWidth = containerWidth * 0.9;
+                const scale = Math.min(1, availableWidth / neededWidth);
+                const baseShift = Math.max(
+                  15,
+                  Math.min(40, availableWidth / totalCards),
+                );
+
+                const mid = (totalCards - 1) / 2;
+                const offset = index - mid;
+                const rotation = offset * 1; // Fan effect
+                const translateX = offset * baseShift;
+
+                return (
+                  <CardDisplay
+                    key={card}
+                    card={card}
+                    selected={selectedCards.includes(index)}
+                    highlighted={highlightedCards.includes(index)}
+                    onClick={() => handleCardClick(index)}
+                    disabled={!isMyTurn}
+                    index={index}
+                    rotation={rotation}
+                    translateX={translateX}
+                    scale={scale}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -672,7 +644,10 @@ function CardDisplay({
   highlighted,
   onClick,
   disabled = false,
-  index = 0,
+  // index = 0,
+  rotation = 0,
+  translateX = 0,
+  scale = 1,
 }: {
   card: Card;
   selected?: boolean;
@@ -680,6 +655,9 @@ function CardDisplay({
   onClick?: () => void;
   disabled?: boolean;
   index?: number;
+  rotation?: number;
+  translateX?: number;
+  scale?: number;
 }) {
   const { rank, suit } = decodeCard(card);
   const suitColor =
@@ -687,43 +665,51 @@ function CardDisplay({
       ? "text-red-500"
       : "text-slate-800";
 
-  // Overlap cards: negative margin based on index
-  const marginLeft = index === 0 ? "ml-0" : "-ml-5 @md:-ml-9";
-
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ zIndex: index }}
+      style={{
+        // zIndex: selected ? 100 : index,
+        transform: `translateX(${translateX}px) rotate(${rotation}deg) translateY(${selected ? -30 : 0}px) scale(${scale})`,
+      }}
       className={`
-        ${marginLeft}
-        w-10 h-16 @md:w-16 @md:h-20
-        bg-white rounded-md @md:rounded-lg shadow-lg
-        border-2 transition-all duration-150 font-bold shrink-0 relative
+        absolute
+        w-16 h-24 @md:w-20 @md:h-28
+        bg-white rounded-lg @md:rounded-xl shadow-lg
+        border-2 transition-all duration-300 font-bold shrink-0
         ${
           selected
-            ? "border-green-500 -translate-y-3.5 ring-2 ring-green-400 shadow-green-500/30 shadow-xl z-50"
+            ? "border-green-500 ring-2 ring-green-400 shadow-green-500/30 shadow-xl"
             : highlighted
-              ? "border-yellow-400 ring-2 ring-yellow-400/70 shadow-yellow-500/20 shadow-lg z-40"
-              : "border-slate-200 hover:border-slate-400"
+              ? "border-yellow-400 ring-2 ring-yellow-400/70 shadow-yellow-500/20 shadow-lg"
+              : "border-slate-200"
         }
         ${
           !disabled && onClick
-            ? (!selected && !highlighted ? "md:hover:-translate-y-1" : "") +
-              " cursor-pointer"
+            ? (!selected && !highlighted
+                ? "hover:border-slate-400 hover:scale-105 hover:-translate-y-2"
+                : "") + " cursor-pointer"
             : "cursor-default"
         }
       `}
     >
       {/* Top-left corner */}
       <div
-        className={`absolute top-0.5 left-1 flex flex-col items-center leading-none ${suitColor}`}
+        className={`absolute top-1 left-1 @md:top-1.5 @md:left-2 flex flex-col items-center leading-none ${suitColor}`}
       >
-        <span className="text-sm @md:text-lg font-bold">
+        <span className="text-base @md:text-xl font-bold">
           {RANK_DISPLAY[rank]}
         </span>
-        <span className="text-sm @md:text-sm">{SUIT_SYMBOLS[suit]}</span>
+        <span className="text-sm @md:text-lg">{SUIT_SYMBOLS[suit]}</span>
       </div>
+
+      {/* Center symbol */}
+      {/* <div
+        className={`absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none`}
+      >
+        <span className="text-4xl @md:text-6xl">{SUIT_SYMBOLS[suit]}</span>
+      </div> */}
     </button>
   );
 }
@@ -751,19 +737,19 @@ function TableCard({
       style={{ animationDelay: `${delay}ms` }}
       className={`
         ${marginLeft}
-        w-10 h-14 @md:w-16 @md:h-20
-        bg-white rounded-md @md:rounded-lg shadow-lg
+        w-12 h-18 @md:w-16 @md:h-24
+        bg-white rounded-lg @md:rounded-xl shadow-lg
         border-2 border-slate-200 font-bold shrink-0 relative
         animate-[cardPlay_0.3s_ease-out_forwards]
       `}
     >
       <div
-        className={`absolute top-0.5 left-1 flex flex-col items-center leading-none ${suitColor}`}
+        className={`absolute top-1 left-1.5 @md:top-1.5 @md:left-2 flex flex-col items-center leading-none ${suitColor}`}
       >
-        <span className="text-xs @md:text-lg font-bold">
+        <span className="text-sm @md:text-xl font-bold">
           {RANK_DISPLAY[rank]}
         </span>
-        <span className="text-xs @md:text-sm">{SUIT_SYMBOLS[suit]}</span>
+        <span className="text-xs @md:text-base">{SUIT_SYMBOLS[suit]}</span>
       </div>
     </div>
   );
@@ -832,7 +818,8 @@ function PlayerSlotDisplay({
                 className="flex-1 p-1 bg-slate-700 hover:bg-slate-600 rounded text-xs flex items-center justify-center"
                 title="Add Bot"
               >
-                <Bot className="w-5 h-5" />
+                <Bot className="w-5 h-5" />{" "}
+                {ts({ en: "Add Bot", vi: "Thêm Bot" })}
               </button>
             )}
             {canJoin && (

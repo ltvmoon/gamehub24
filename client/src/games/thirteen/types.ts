@@ -184,13 +184,6 @@ export type ThirteenAction =
   | DeclineNewGameAction;
 
 // Helper type for card display
-export const SUIT_SYMBOLS: Record<Suit, string> = {
-  [Suit.SPADE]: "♠",
-  [Suit.CLUB]: "♣",
-  [Suit.DIAMOND]: "♦",
-  [Suit.HEART]: "♥",
-};
-
 export const RANK_DISPLAY: Record<Rank, string> = {
   [Rank.THREE]: "3",
   [Rank.FOUR]: "4",

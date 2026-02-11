@@ -1,3 +1,7 @@
+// UNO Constants
+export const ABS_MAX_PLAYERS = 10;
+export const MIN_PLAYERS = 2;
+
 // UNO Card Colors
 export const CardColor = {
   RED: 0,
@@ -99,6 +103,7 @@ export function decodeUnoCard(card: UnoCard): {
 // Player slot in the game
 export interface PlayerSlot {
   id: string | null;
+  slotId: string; // Unique stable ID for the slot
   username: string;
   hand: UnoCard[];
   isBot: boolean;
@@ -116,10 +121,10 @@ export interface NewGameRequest {
 
 // Main game state
 export interface UnoState {
-  players: PlayerSlot[]; // Always 4 slots
+  players: PlayerSlot[]; // Supports 2 to MAX_PLAYERS slots
   discardPile: UnoCard[]; // Top card is the current card
   drawPile: UnoCard[]; // Remaining deck
-  currentTurnIndex: number; // 0-3, whose turn
+  currentTurnIndex: number; // whose turn
   turnDirection: TurnDirection;
   currentColor: CardColor; // Current active color (for wild cards)
   pendingDraw: number; // Accumulated draw penalty (Draw Two stacking)
@@ -171,6 +176,15 @@ export interface RemovePlayerAction {
   slotIndex: number;
 }
 
+export interface AddSlotAction {
+  type: "ADD_SLOT";
+}
+
+export interface RemoveSlotAction {
+  type: "REMOVE_SLOT";
+  slotIndex: number;
+}
+
 export interface StartGameAction {
   type: "START_GAME";
 }
@@ -205,7 +219,9 @@ export type UnoAction =
   | NewGameAction
   | RequestNewGameAction
   | AcceptNewGameAction
-  | DeclineNewGameAction;
+  | DeclineNewGameAction
+  | AddSlotAction
+  | RemoveSlotAction;
 
 // Display helpers
 export const COLOR_NAMES: Record<CardColor, string> = {

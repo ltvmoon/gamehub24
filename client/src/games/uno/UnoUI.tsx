@@ -7,6 +7,7 @@ import {
   COLOR_BG_CLASSES,
   TYPE_DISPLAY,
   decodeUnoCard,
+  ABS_MAX_PLAYERS,
 } from "./types";
 import {
   Play,
@@ -20,6 +21,7 @@ import {
   Layers,
   Hand,
   BookOpen,
+  Plus,
 } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
 import { useRoomStore } from "../../stores/roomStore";
@@ -51,22 +53,11 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
     hidden?: boolean;
   } | null>(null);
 
-  const desktopSlotRefs = useRef<(HTMLDivElement | null)[]>([
-    null,
-    null,
-    null,
-    null,
-  ]);
-  const mobileSlotRefs = useRef<(HTMLDivElement | null)[]>([
-    null,
-    null,
-    null,
-    null,
-  ]);
-  const desktopDiscardPileRef = useRef<HTMLDivElement>(null);
-  const mobileDiscardPileRef = useRef<HTMLDivElement>(null);
-  const desktopDrawPileRef = useRef<HTMLButtonElement>(null);
-  const mobileDrawPileRef = useRef<HTMLButtonElement>(null);
+  const slotRefs = useRef<(HTMLDivElement | null)[]>(
+    Array(ABS_MAX_PLAYERS).fill(null),
+  );
+  const discardPileRef = useRef<HTMLDivElement>(null);
+  const drawPileRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const myHandRef = useRef<HTMLDivElement>(null);
 
@@ -89,7 +80,9 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   // Track previous discard pile length to detect new cards
   const prevDiscardLengthRef = useRef(state.discardPile.length);
   // Track previous hand lengths for all players to detect drawn cards
-  const prevHandLengthsRef = useRef(state.players.map((p) => p.hand.length));
+  const prevHandLengthsRef = useRef(
+    state.players.map((p) => p?.hand?.length || 0),
+  );
   // Track previous turn index to know who played the card
   const prevTurnIndexRef = useRef(state.currentTurnIndex);
 
@@ -98,39 +91,26 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 
     const { fromPlayerIndex, direction } = flyingCard;
 
-    // Convert actual player index to screen position
-    // Screen positions: 0=me (bottom), 1=left, 2=top, 3=right
+    // Screen positions: 0=me (bottom), then others mapped by arranged index
     const baseIndex = myIndex >= 0 ? myIndex : 0;
-    const screenPosition = (fromPlayerIndex - baseIndex + 4) % 4;
+    const numPlayers = state.players.length;
+    const screenPosition =
+      (fromPlayerIndex - baseIndex + numPlayers) % numPlayers;
 
     let playerEl: HTMLElement | null = null;
     if (screenPosition === 0 && isVisible(myHandRef.current)) {
       playerEl = myHandRef.current;
-    } else if (isVisible(desktopSlotRefs.current?.[screenPosition])) {
-      playerEl = desktopSlotRefs.current?.[screenPosition];
-    } else if (isVisible(mobileSlotRefs.current?.[screenPosition])) {
-      playerEl = mobileSlotRefs.current?.[screenPosition];
+    } else if (isVisible(slotRefs.current?.[screenPosition])) {
+      playerEl = slotRefs.current?.[screenPosition];
     }
 
     // Fallback
     if (!playerEl) {
-      playerEl =
-        myHandRef.current ||
-        desktopSlotRefs.current?.[screenPosition] ||
-        mobileSlotRefs.current?.[screenPosition];
+      playerEl = myHandRef.current || slotRefs.current?.[screenPosition];
     }
 
-    const discardPileEl = isVisible(desktopDiscardPileRef.current)
-      ? desktopDiscardPileRef.current
-      : mobileDiscardPileRef.current ||
-        desktopDiscardPileRef.current ||
-        mobileDiscardPileRef.current;
-
-    const drawPileEl = isVisible(desktopDrawPileRef?.current)
-      ? desktopDrawPileRef?.current
-      : mobileDrawPileRef?.current ||
-        desktopDrawPileRef?.current ||
-        mobileDrawPileRef?.current;
+    const discardPileEl = discardPileRef.current;
+    const drawPileEl = drawPileRef.current;
 
     if (!playerEl || !discardPileEl || !drawPileEl) return null;
 
@@ -169,16 +149,18 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 
       // Detect if cards were drawn (hand grew) - for ALL players
       newState.players.forEach((player, index) => {
+        if (!player) return; // Guard against undefined player
         const prevLength = prevHandLengthsRef.current[index] || 0;
-        const newLength = player.hand.length;
+        const newLength = player.hand?.length || 0;
 
         if (newLength > prevLength && newState.gamePhase === "playing") {
           const isMe = index === myIndex;
           // const drawnCount = newLength - prevLength;
           // If it's me, we know the card. If it's opponent, use hidden card.
-          const drawnCard = isMe
-            ? player.hand[player.hand.length - 1]
-            : undefined;
+          const drawnCard =
+            isMe && player.hand && player.hand.length > 0
+              ? player.hand[player.hand.length - 1]
+              : undefined;
 
           // Trigger flying animation for drawn card
           setFlyingCard({
@@ -192,7 +174,9 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
 
       // Update refs for next comparison
       prevDiscardLengthRef.current = newState.discardPile.length;
-      prevHandLengthsRef.current = newState.players.map((p) => p.hand.length);
+      prevHandLengthsRef.current = newState.players.map(
+        (p) => p?.hand?.length || 0,
+      );
       prevTurnIndexRef.current = newState.currentTurnIndex;
 
       setSelectedCard(null);
@@ -238,8 +222,9 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   const arrangedPlayers = useMemo(() => {
     const result = [];
     const baseIndex = myIndex >= 0 ? myIndex : 0;
-    for (let i = 0; i < 4; i++) {
-      const actualIndex = (baseIndex + i) % 4;
+    const numPlayers = state.players.length;
+    for (let i = 0; i < numPlayers; i++) {
+      const actualIndex = (baseIndex + i) % numPlayers;
       result.push({ slot: state.players[actualIndex], actualIndex });
     }
     return result;
@@ -253,10 +238,11 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
     targetRefArray?: React.MutableRefObject<(HTMLDivElement | null)[]>,
   ) => {
     const player = arrangedPlayers[playerIndex];
+    if (!player) return null;
     const isInGame = myIndex >= 0;
     return (
       <div
-        key={player.actualIndex}
+        key={player.slot.slotId}
         ref={(el: HTMLDivElement | null) => {
           if (targetRefArray) {
             targetRefArray.current[playerIndex] = el;
@@ -272,6 +258,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
           onAddBot={() => game.requestAddBot(player.actualIndex)}
           onJoinSlot={() => game.requestJoinSlot(player.actualIndex, username)}
           onRemove={() => game.requestRemovePlayer(player.actualIndex)}
+          onRemoveSlot={() => game.requestRemoveSlot(player.actualIndex)}
           compact={compact}
           isInGame={isInGame}
           canJoin={
@@ -286,16 +273,14 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
   };
 
   const renderPlayArea = (
-    isMobile: boolean,
     pileRef: React.RefObject<HTMLDivElement | null>,
     drawRef: React.RefObject<HTMLButtonElement | null>,
   ) => {
-    const cardSize = isMobile ? "medium" : "large";
-    const pileDims = isMobile ? "w-14 h-20" : "w-20 h-28";
-    const iconSize = isMobile ? "w-5 h-5" : "w-8 h-8";
-    const containerClass = isMobile
-      ? "flex @md:hidden flex-1 flex-col items-center justify-center gap-2 bg-slate-800/30 rounded-xl p-2 min-h-[120px]"
-      : "hidden @md:flex flex-1 flex-col items-center justify-center gap-4 min-h-[200px] bg-slate-800/30 rounded-2xl p-4";
+    const isMobile = window.innerWidth < 768;
+    const pileDims = "w-16 h-24 @md:w-20 @md:h-28";
+    const iconSize = "w-6 h-6 @md:w-8 @md:h-8";
+    const containerClass =
+      "flex flex-col items-center justify-center gap-4 min-h-[160px] @md:min-h-[220px] bg-slate-800/30 rounded-3xl p-4 @md:p-8 w-full max-w-2xl border border-slate-700/50";
 
     return (
       <div className={containerClass}>
@@ -308,20 +293,23 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
             <span
               className={isMobile ? "text-slate-400 text-sm" : "text-slate-400"}
             >
-              {ti({
-                en: "Waiting for players...",
-                vi: "Đang chờ người chơi...",
-              })}
+              {isHost
+                ? ti({
+                    en: "Waiting for players...",
+                    vi: "Đang chờ người chơi...",
+                  })
+                : ti({
+                    en: "Waiting for host to start...",
+                    vi: "Đang chờ chủ phòng bắt đầu...",
+                  })}
             </span>
             {isHost && canStart && (
               <button
                 onClick={() => game.requestStartGame()}
-                className={`px-6 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-medium flex items-center gap-2 ${
-                  isMobile ? "text-sm px-4 py-2" : ""
-                }`}
+                className="px-8 py-3 bg-slate-600 hover:bg-slate-500 rounded-xl font-bold flex items-center gap-2 text-white shadow-lg active:scale-95 transition-all @md:text-lg"
               >
-                <Play className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
-                {ti({ en: "Start", vi: "Bắt đầu" })}
+                <Play className="w-5 h-5 @md:w-6 @md:h-6" />
+                {ti({ en: "Start Game", vi: "Bắt đầu Game" })}
               </button>
             )}
             {isHost && !canStart && (
@@ -381,7 +369,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                           opacity: isTop ? 1 : 0.7,
                         }}
                       >
-                        <UnoCardDisplay card={card} size={cardSize} />
+                        <UnoCardDisplay card={card} size={"large"} />
                       </div>
                     );
                   })}
@@ -409,8 +397,6 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
               </div>
             )}
 
-            {/* Turn & Direction (Desktop Only or Small Mobile?) */}
-            {/* Simplified for mobile to save space, visible on Desktop */}
             <div className={`text-sm ${isMobile ? "hidden" : "block"}`}>
               {isMyTurn ? (
                 <span className="text-primary-400 font-medium">
@@ -425,11 +411,12 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 <span className="text-slate-400">
                   {ti({
                     en:
-                      state.players[state.currentTurnIndex]?.username +
-                      "'s Turn",
+                      (state.players[state.currentTurnIndex]?.username ||
+                        "Someone") + "'s Turn",
                     vi:
                       "Lượt chơi của " +
-                      state.players[state.currentTurnIndex]?.username,
+                      (state.players[state.currentTurnIndex]?.username ||
+                        "người chơi"),
                   })}
                 </span>
               )}
@@ -460,7 +447,8 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
                 isMobile ? "text-lg" : "text-xl"
               } font-bold text-yellow-400`}
             >
-              {state.players.find((p) => p.id === state.winner)?.username}{" "}
+              {state.players.find((p) => p.id === state.winner)?.username ||
+                "Someone"}{" "}
               {ti({ en: "Won!", vi: "Thắng!" })}
             </span>
           </div>
@@ -592,43 +580,40 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
     );
   };
 
+  // Layout configuration
+  const opponents = arrangedPlayers.slice(1);
+
   return (
     <div
       ref={containerRef}
-      className="relative flex flex-col h-full p-2 @md:p-4 gap-2 @md:gap-4 overflow-hidden pb-16!"
+      className="relative flex flex-col h-full p-2 @md:p-4 gap-4 @md:gap-6 overflow-hidden pb-16!"
     >
-      {/* Mobile: Top row with 3 opponents */}
-      <div className="flex @md:hidden justify-center gap-2">
-        {renderPlayerSlot(1, true, mobileSlotRefs)}
-        {renderPlayerSlot(2, true, mobileSlotRefs)}
-        {renderPlayerSlot(3, true, mobileSlotRefs)}
+      {/* Opponents row (Auto-wrap) */}
+      <div className="flex flex-wrap justify-center gap-2 @md:gap-4">
+        {opponents.map((_, i) => renderPlayerSlot(i + 1, true, slotRefs))}
+        {isHost &&
+          state.gamePhase === "waiting" &&
+          state.players.length < ABS_MAX_PLAYERS && (
+            <button
+              onClick={() => game.requestAddSlot()}
+              className="flex flex-col items-center justify-center p-2 min-w-[90px] @md:min-w-[110px] rounded-xl border-2 border-dashed border-slate-700 bg-slate-800/30 hover:bg-slate-800/50 text-slate-500 transition-all hover:border-slate-500 hover:text-slate-400"
+            >
+              <Plus className="w-6 h-6 @md:w-8 @md:h-8" />
+              <span className="text-[10px] @md:text-xs mt-1 font-medium">
+                {ti({ en: "Add Slot", vi: "Thêm chỗ" })}
+              </span>
+            </button>
+          )}
       </div>
 
-      {/* Desktop: Top Player */}
-      <div className="hidden @md:flex justify-center">
-        {renderPlayerSlot(2, false, desktopSlotRefs)}
+      {/* Play Area */}
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        {renderPlayArea(discardPileRef, drawPileRef)}
       </div>
-
-      {/* Desktop: Middle Row */}
-      <div className="hidden @md:flex flex-1 items-center justify-between gap-4">
-        {renderPlayerSlot(1, false, desktopSlotRefs)}
-
-        {renderPlayArea(false, desktopDiscardPileRef, desktopDrawPileRef)}
-
-        {renderPlayerSlot(3, false, desktopSlotRefs)}
-      </div>
-
-      {/* Mobile: Play Area */}
-      {renderPlayArea(true, mobileDiscardPileRef, mobileDrawPileRef)}
 
       {/* Bottom: My Slot and Hand */}
-      <div className="flex flex-col items-center gap-2 @md:gap-4">
-        <div className="hidden @md:block">
-          {renderPlayerSlot(0, false, desktopSlotRefs)}
-        </div>
-        <div className="flex @md:hidden">
-          {renderPlayerSlot(0, true, mobileSlotRefs)}
-        </div>
+      <div className="flex flex-col items-center gap-3 @md:gap-6 mt-auto">
+        {renderPlayerSlot(0, false, slotRefs)}
 
         {/* My Hand */}
         {mySlot && state.gamePhase === "playing" && (
@@ -835,7 +820,7 @@ export default function UnoUI({ game: baseGame }: GameUIProps) {
       >
         <UnoCardDisplay
           card={flyingCard?.card}
-          size="large"
+          size="medium"
           hidden={flyingCard?.hidden}
         />
       </CommonFlyingCard>
@@ -938,6 +923,7 @@ function PlayerSlotDisplay({
   onAddBot,
   onJoinSlot,
   onRemove,
+  onRemoveSlot,
   compact = false,
   // isInGame,
   canJoin = false,
@@ -950,6 +936,7 @@ function PlayerSlotDisplay({
   onAddBot: () => void;
   onJoinSlot: () => void;
   onRemove: () => void;
+  onRemoveSlot: () => void;
   compact?: boolean;
   isInGame: boolean;
   canJoin?: boolean;
@@ -976,7 +963,16 @@ function PlayerSlotDisplay({
       `}
     >
       {isEmpty ? (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 relative">
+          {isHost && index !== 0 && (
+            <button
+              onClick={onRemoveSlot}
+              className="absolute -top-1 -right-1 p-0.5 bg-red-500 rounded-full text-white hover:bg-red-600 transition-colors z-10"
+              title="Remove Slot"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
           <span className="text-slate-500 text-xs text-center">
             Slot {index + 1}
           </span>

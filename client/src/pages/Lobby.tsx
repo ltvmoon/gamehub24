@@ -11,6 +11,8 @@ import {
   Star,
   MessageSquare,
   Github,
+  RotateCcw,
+  GamepadDirectional,
 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
@@ -30,6 +32,8 @@ import { useChatStore } from "../stores/chatStore";
 import Portal from "../components/Portal";
 import SearchInput from "../components/SearchInput";
 import { useGamesFilter } from "../hooks/useGamesFilter";
+import { useRecentlyPlayed } from "../hooks/useRecentlyPlayed";
+import { getGame } from "../games/registry";
 
 export default function Lobby() {
   const { ti } = useLanguage();
@@ -38,6 +42,7 @@ export default function Lobby() {
   const { publicRooms, setPublicRooms } = useRoomStore();
   const { setGlobalChatOpen, onlineCount } = useChatStore();
   const { favorites, toggleFavorite, favoritesCount } = useGameFavorites();
+  const { recentGameIds } = useRecentlyPlayed();
 
   const [showCreateModal, setShowCreateModal] = useState<string | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -46,7 +51,6 @@ export default function Lobby() {
     GameCategory | "favorites" | null
   >(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAnimating, setIsAnimating] = useState(false);
 
   const gamesToShow = useGamesFilter(searchQuery, selectedCategory);
 
@@ -77,11 +81,7 @@ export default function Lobby() {
     category: GameCategory | "favorites" | null,
   ) => {
     if (selectedCategory === category) return;
-    setIsAnimating(true);
-    setTimeout(() => {
-      setSelectedCategory(category);
-      setIsAnimating(false);
-    }, 150);
+    setSelectedCategory(category);
   };
 
   return (
@@ -119,10 +119,10 @@ export default function Lobby() {
       </nav>
 
       {/* Main Content */}
-      <main className="pt-32 px-2 md:px-4 pb-16">
+      <main className="pt-32 px-2 md:px-4 pb-4">
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-5xl font-display text-text-primary mb-4">
               {ti({
                 en: "Play Together, Anywhere",
@@ -152,7 +152,7 @@ export default function Lobby() {
                 {ti({ en: "Join Room", vi: "Vào Phòng" })}
               </button>
 
-              <button
+              {/* <button
                 onClick={() => {
                   const roomDiv = document.getElementById(
                     "public-rooms-section",
@@ -166,11 +166,25 @@ export default function Lobby() {
                 <Users className="w-5 h-5" />
                 {ti({ en: "Public Rooms", vi: "Phòng Công Khai" })} (
                 {publicRooms.length})
+              </button> */}
+
+              {/* Github button */}
+              <button
+                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 glass-blur"
+                onClick={() =>
+                  window.open(
+                    "https://github.com/hoangtran0410/gamehub24",
+                    "_blank",
+                  )
+                }
+              >
+                <Github className="w-5 h-5" />
+                {ti({ en: "GitHub", vi: "GitHub" })}
               </button>
             </div>
 
             {/* Online Users Count */}
-            <div className="mt-6 flex items-center justify-center gap-2">
+            <div className="mt-4 flex items-center justify-center gap-2">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-500/10 border border-green-500/30 rounded-full text-green-400 text-sm font-medium">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 {onlineCount}{" "}
@@ -191,79 +205,13 @@ export default function Lobby() {
               </button>
             </div>
 
-            {/* Github button */}
-            <div className="flex items-center justify-center mt-6">
-              <button
-                className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white font-display rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer flex items-center gap-2 glass-blur"
-                onClick={() =>
-                  window.open(
-                    "https://github.com/hoangtran0410/gamehub24",
-                    "_blank",
-                  )
-                }
-              >
-                <Github className="w-5 h-5" />
-                {ti({ en: "GitHub", vi: "GitHub" })}
-              </button>
-            </div>
-
             {/* Updates Section */}
             <RecentUpdates onOpenGame={setShowCreateModal} />
           </div>
 
-          {/* Games Gallery */}
-          <section className="mb-16">
-            <div className="flex flex-col gap-6 mb-8">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <Gamepad className="w-6 h-6 text-primary" />
-                  <h3 className="text-2xl font-display text-text-primary">
-                    {ti({ en: "Available Games", vi: "Trò Chơi" })}
-                  </h3>
-                </div>
-
-                {/* Category Filter */}
-                <GameCategoryFilter
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={handleCategoryChange}
-                  favoritesCount={favoritesCount}
-                />
-              </div>
-
-              <div className="flex justify-center">
-                <SearchInput
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  className="w-full max-w-md"
-                />
-              </div>
-            </div>
-
-            <div
-              className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 md:gap-4 gap-2 transition-opacity duration-150 ${
-                isAnimating ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {gamesToShow.length <= 0 && (
-                <p className="text-text-muted text-center col-span-full">
-                  {ti({ en: "No games available", vi: "Không có trò chơi" })}
-                </p>
-              )}
-              {gamesToShow.map((game) => (
-                <GameCard
-                  key={game.id}
-                  game={game}
-                  isFavorite={favorites.includes(game.id)}
-                  onToggleFavorite={toggleFavorite}
-                  onSelect={handleSelectGame}
-                />
-              ))}
-            </div>
-          </section>
-
           {/* Public Rooms */}
-          <section id="public-rooms-section">
-            <div className="flex items-center justify-between mb-6">
+          <section id="public-rooms-section" className="mb-16">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Users className="w-6 h-6 text-primary" />
                 <h3 className="text-xl md:text-2xl font-display text-text-primary">
@@ -296,6 +244,79 @@ export default function Lobby() {
                 ))}
               </div>
             )}
+          </section>
+
+          {/* Games Gallery */}
+          <section>
+            {recentGameIds.length > 0 && !searchQuery && !selectedCategory && (
+              <div className="animate-fadeIn mb-16">
+                <div className="flex items-center gap-2 mb-4">
+                  <RotateCcw className="w-5 h-5 text-primary" />
+                  <h3 className="text-2xl font-display text-text-primary">
+                    {ti({ en: "Recently Played", vi: "Chơi gần đây" })}
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 md:gap-4 gap-2">
+                  {recentGameIds
+                    .map((id) => getGame(id))
+                    .filter((game): game is GameModule => !!game)
+                    .map((game) => (
+                      <GameCard
+                        key={`recent-${game.id}`}
+                        game={game}
+                        isFavorite={favorites.includes(game.id)}
+                        onToggleFavorite={toggleFavorite}
+                        onSelect={handleSelectGame}
+                      />
+                    ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-6 mb-4">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <GamepadDirectional className="w-6 h-6 text-primary" />
+                  <h3 className="text-2xl font-display text-text-primary">
+                    {ti({ en: "Available Games", vi: "Trò Chơi" })}
+                  </h3>
+                </div>
+
+                {/* Category Filter */}
+                <GameCategoryFilter
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={handleCategoryChange}
+                  favoritesCount={favoritesCount}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-center mb-4">
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                className="w-full max-w-md"
+              />
+            </div>
+
+            <div
+              className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 md:gap-4 gap-2 transition-opacity duration-150`}
+            >
+              {gamesToShow.length <= 0 && (
+                <p className="text-text-muted text-center col-span-full">
+                  {ti({ en: "No games available", vi: "Không có trò chơi" })}
+                </p>
+              )}
+              {gamesToShow.map((game) => (
+                <GameCard
+                  key={game.id}
+                  game={game}
+                  isFavorite={favorites.includes(game.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onSelect={handleSelectGame}
+                />
+              ))}
+            </div>
           </section>
         </div>
       </main>
@@ -557,6 +578,7 @@ const CreateRoomModal = memo(
     const { show: showAlert } = useAlertStore();
     const { isConnected } = useSocketStore();
     const { ti, ts } = useLanguage();
+    const { addRecentGame } = useRecentlyPlayed();
 
     useEffect(() => {
       if (gameType) localStorage.setItem("gamehub24_lastGameId", gameType);
@@ -583,12 +605,16 @@ const CreateRoomModal = memo(
           name: roomName.trim() || username,
           gameType: selectedGame.id,
           isPublic,
-          password: requirePassword ? password : undefined,
+          password:
+            requirePassword && password?.trim?.()?.length > 0
+              ? password.trim()
+              : undefined,
           maxPlayers: selectedGame.maxPlayers,
         },
         (response: { success: boolean; room?: Room; error?: string }) => {
           if (response.success && response.room) {
             setCurrentRoom(response.room);
+            addRecentGame(selectedGame.id);
             navigate(`/room/${response.room.id}`, { replace: true });
           } else {
             showAlert(response.error || "Failed to create room", {
@@ -626,6 +652,7 @@ const CreateRoomModal = memo(
       };
 
       setCurrentRoom(localRoom);
+      addRecentGame(selectedGame.id);
       navigate(`/room/${localRoomId}`, { replace: true });
     };
 

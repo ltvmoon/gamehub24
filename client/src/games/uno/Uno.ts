@@ -9,6 +9,7 @@ import {
   CardType,
   encodeUnoCard,
   decodeUnoCard,
+  ABS_MAX_PLAYERS,
 } from "./types";
 
 export default class Uno extends BaseGame<UnoState> {
@@ -17,13 +18,15 @@ export default class Uno extends BaseGame<UnoState> {
   }
 
   getInitState(): UnoState {
-    // Initialize 4 player slots
-    const slots: PlayerSlot[] = Array(4)
+    // Initialize player slots - start with 4 or number of actual players, min 2
+    const initialSlotCount = Math.max(4, this.players.length);
+    const slots: PlayerSlot[] = Array(initialSlotCount)
       .fill(null)
       .map((_, i) => {
         const player = this.players[i];
         return {
           id: player?.id || null,
+          slotId: `slot-${Date.now()}-${i}`,
           username: player?.username || `Slot ${i + 1}`,
           hand: [],
           isBot: false,
@@ -93,7 +96,12 @@ export default class Uno extends BaseGame<UnoState> {
         break;
       case "DECLINE_NEW_GAME":
         this.state.newGameRequest = null;
-
+        break;
+      case "ADD_SLOT":
+        this.handleAddSlot();
+        break;
+      case "REMOVE_SLOT":
+        this.handleRemoveSlot(action.slotIndex);
         break;
     }
   }
@@ -426,10 +434,12 @@ export default class Uno extends BaseGame<UnoState> {
     let attempts = 0;
 
     do {
-      nextIndex = (nextIndex + this.state.turnDirection + 4) % 4;
+      nextIndex =
+        (nextIndex + this.state.turnDirection + this.state.players.length) %
+        this.state.players.length;
       attempts++;
     } while (
-      attempts < 4 &&
+      attempts < this.state.players.length &&
       (this.state.players[nextIndex].id === null ||
         this.state.players[nextIndex].hand.length === 0)
     );
@@ -440,7 +450,7 @@ export default class Uno extends BaseGame<UnoState> {
   // ============== Slot Management ==============
 
   private handleAddBot(slotIndex: number): void {
-    if (slotIndex < 0 || slotIndex >= 4) return;
+    if (slotIndex < 0 || slotIndex >= this.state.players.length) return;
     if (this.state.gamePhase !== "waiting") return;
     if (this.state.players[slotIndex].id !== null) return;
 
@@ -448,6 +458,7 @@ export default class Uno extends BaseGame<UnoState> {
     const newPlayers = [...this.state.players];
     newPlayers[slotIndex] = {
       id: botId,
+      slotId: `slot-${Date.now()}-${slotIndex}`, // Added slotId
       username: `Bot ${slotIndex + 1}`,
       hand: [],
       isBot: true,
@@ -462,15 +473,44 @@ export default class Uno extends BaseGame<UnoState> {
     playerId: string,
     playerName: string,
   ): void {
-    if (slotIndex < 0 || slotIndex >= 4) return;
+    if (slotIndex < 0 || slotIndex >= this.state.players.length) return;
     if (this.state.gamePhase !== "waiting") return;
     if (this.state.players[slotIndex].id !== null) return;
     if (this.state.players.some((p) => p.id === playerId)) return;
 
     const newPlayers = [...this.state.players];
     newPlayers[slotIndex] = {
+      ...this.state.players[slotIndex], // Preserve existing slotId
       id: playerId,
       username: playerName,
+      hand: [],
+      isBot: false,
+      isHost: playerId === this.userId, // Corrected isHost logic
+      calledUno: false,
+    };
+    this.state.players = newPlayers;
+  }
+
+  private handleRemovePlayer(slotIndex: number): void {
+    if (slotIndex < 0 || slotIndex >= this.state.players.length) return;
+    if (this.state.gamePhase !== "waiting") return;
+
+    const player = this.state.players[slotIndex];
+    if (player.id === null) return; // Already empty
+    if (
+      player.isHost &&
+      this.state.players.filter((p) => p.id !== null).length > 1
+    ) {
+      // Prevent host from removing themselves if other players are present
+      // Or handle host transfer logic if needed
+      return;
+    }
+
+    const newPlayers = [...this.state.players];
+    newPlayers[slotIndex] = {
+      ...this.state.players[slotIndex], // Preserve existing slotId
+      id: null,
+      username: `Slot ${slotIndex + 1}`,
       hand: [],
       isBot: false,
       isHost: false,
@@ -479,22 +519,40 @@ export default class Uno extends BaseGame<UnoState> {
     this.state.players = newPlayers;
   }
 
-  private handleRemovePlayer(slotIndex: number): void {
-    if (slotIndex < 0 || slotIndex >= 4) return;
+  private handleAddSlot(): void {
     if (this.state.gamePhase !== "waiting") return;
+    if (this.state.players.length >= ABS_MAX_PLAYERS) return;
 
-    const player = this.state.players[slotIndex];
-    if (!player.isBot) return;
+    this.state.players = [
+      ...this.state.players,
+      {
+        id: null,
+        slotId: `slot-${Date.now()}-${this.state.players.length}`,
+        username: `Slot ${this.state.players.length + 1}`,
+        hand: [],
+        isBot: false,
+        isHost: false,
+        calledUno: false,
+      },
+    ];
+  }
+
+  private handleRemoveSlot(slotIndex: number): void {
+    if (this.state.gamePhase !== "waiting") return;
+    if (this.state.players.length <= 2) return;
+    if (slotIndex < 0 || slotIndex >= this.state.players.length) return;
+    if (this.state.players[slotIndex].id !== null) return;
 
     const newPlayers = [...this.state.players];
-    newPlayers[slotIndex] = {
-      id: null,
-      username: `Slot ${slotIndex + 1}`,
-      hand: [],
-      isBot: false,
-      isHost: false,
-      calledUno: false,
-    };
+    newPlayers.splice(slotIndex, 1);
+
+    // Renumber remaining empty slots
+    newPlayers.forEach((p, i) => {
+      if (p.id === null) {
+        p.username = `Slot ${i + 1}`;
+      }
+    });
+
     this.state.players = newPlayers;
   }
 
@@ -516,7 +574,8 @@ export default class Uno extends BaseGame<UnoState> {
 
     // Find first active player
     while (this.state.players[this.state.currentTurnIndex].id === null) {
-      this.state.currentTurnIndex = (this.state.currentTurnIndex + 1) % 4;
+      this.state.currentTurnIndex =
+        (this.state.currentTurnIndex + 1) % this.state.players.length;
     }
 
     // Handle if starting card is an action card
@@ -540,6 +599,7 @@ export default class Uno extends BaseGame<UnoState> {
   reset(): void {
     const slots: PlayerSlot[] = this.state.players.map((p, _i) => ({
       id: p.id,
+      slotId: p.slotId,
       username: p.username,
       hand: [],
       isBot: p.isBot,
@@ -572,7 +632,7 @@ export default class Uno extends BaseGame<UnoState> {
 
   updatePlayers(players: Player[]): void {
     // Determine which players are currently in slots
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < this.state.players.length; i++) {
       const slot = this.state.players[i];
       if (!slot.isBot && slot.id) {
         // Check if this player is still in the room
@@ -752,6 +812,16 @@ export default class Uno extends BaseGame<UnoState> {
 
   requestRemovePlayer(slotIndex: number): void {
     const action: UnoAction = { type: "REMOVE_PLAYER", slotIndex };
+    this.makeAction(action);
+  }
+
+  requestAddSlot(): void {
+    const action: UnoAction = { type: "ADD_SLOT" };
+    this.makeAction(action);
+  }
+
+  requestRemoveSlot(slotIndex: number): void {
+    const action: UnoAction = { type: "REMOVE_SLOT", slotIndex };
     this.makeAction(action);
   }
 

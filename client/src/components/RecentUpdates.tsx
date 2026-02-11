@@ -10,7 +10,7 @@ const RecentUpdates = memo(
     const [showUpdates, setShowUpdates] = useState(false);
 
     return (
-      <div className="mt-2 flex flex-col justify-center items-center">
+      <div className="mt-4 flex flex-col justify-center items-center">
         <button
           onClick={() => setShowUpdates(!showUpdates)}
           className="w-full max-w-[350px] flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-200 group"

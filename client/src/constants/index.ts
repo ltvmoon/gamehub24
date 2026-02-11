@@ -66,6 +66,13 @@ export const updates: {
 }[] = [
   {
     type: "new",
+    en: "New game: Phom",
+    vi: "Game mới: Phỏm (Tá lả)",
+    gameId: "phom",
+    timestamp: 1770770372506,
+  },
+  {
+    type: "new",
     en: "New feature: Direct chat",
     vi: "Chức năng mới: Chat riêng tư",
     timestamp: 1770719322993,

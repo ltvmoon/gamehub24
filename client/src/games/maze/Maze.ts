@@ -20,11 +20,6 @@ export default class Maze extends BaseGame<MazeState> {
   private mazeGrid: Cell[][] | null = null;
   private seed: number | null = null;
 
-  constructor(room: any, socket: any, isHost: boolean, userId: string) {
-    super(room, socket, isHost, userId);
-    this.setGameName("maze");
-  }
-
   getInitState(): MazeState {
     return {
       config: {

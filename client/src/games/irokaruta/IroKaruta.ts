@@ -42,10 +42,6 @@ function buildDeck(): ColorCard[] {
 export default class IroKaruta extends BaseGame<IroKarutaState> {
   private roundTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected init(): void {
-    this.setGameName("irokaruta");
-  }
-
   getInitState(): IroKarutaState {
     return {
       phase: "waiting",

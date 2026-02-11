@@ -268,7 +268,7 @@ games.set("uno", {
   icon: Layers,
   categories: ["card", "party"],
   minPlayers: 2,
-  maxPlayers: 4,
+  maxPlayers: 10,
   isAvailable: true,
   createGame: async (room, socket, isHost, userId) => {
     const { default: Uno } = await import("./uno/Uno");
@@ -482,6 +482,26 @@ games.set("irokaruta", {
     return new IroKaruta(room, socket, isHost, userId);
   },
   loadUI: () => import("./irokaruta/IroKarutaUI").then((m) => m.default),
+});
+
+// Register Phom
+games.set("phom", {
+  id: "phom",
+  name: { en: "Phom (Tá Lả)", vi: "Phỏm (Tá Lả)" },
+  description: {
+    en: "Traditional Vietnamese card game",
+    vi: "Trò chơi dân gian Việt Nam",
+  },
+  icon: Spade,
+  categories: ["card", "party", "strategy"],
+  minPlayers: 2,
+  maxPlayers: 4,
+  isAvailable: true,
+  createGame: async (room, socket, isHost, userId) => {
+    const { default: PhomGame } = await import("./phom/Phom");
+    return new PhomGame(room, socket, isHost, userId);
+  },
+  loadUI: () => import("./phom/PhomUI").then((m) => m.default),
 });
 
 // Registry functions
