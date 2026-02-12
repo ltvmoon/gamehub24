@@ -74,7 +74,7 @@ class ChatPersistence {
             }
         }
     }
-    getRecentMessages(roomId, limit = 20) {
+    getRecentMessages(roomId, limit = 20, includeDeleted = false) {
         try {
             const allMessages = [];
             // Get all date directories, sorted newest first
@@ -108,7 +108,7 @@ class ChatPersistence {
                         ...msg,
                         ...ModerationStore_1.moderationStore.getModeration(msg.id),
                     }))
-                        .filter((msg) => !msg.isDeleted); // Filter out deleted messages
+                        .filter((msg) => includeDeleted || !msg.isDeleted); // Filter out deleted messages unless requested
                     // We need the NEWEST messages.
                     // Reverse messages from file so [0] is newest in that file
                     msgsInFile.reverse();
@@ -251,7 +251,7 @@ class ChatPersistence {
             return [];
         }
     }
-    getLogMessages(dateStr, roomId) {
+    getLogMessages(dateStr, roomId, includeDeleted = false) {
         try {
             const filePath = this.getFilePath(roomId, dateStr);
             if (!fs_1.default.existsSync(filePath))
@@ -268,7 +268,12 @@ class ChatPersistence {
                     return null;
                 }
             })
-                .filter((msg) => msg !== null);
+                .filter((msg) => msg !== null)
+                .map((msg) => ({
+                ...msg,
+                ...ModerationStore_1.moderationStore.getModeration(msg.id),
+            }))
+                .filter((msg) => includeDeleted || !msg.isDeleted);
         }
         catch (error) {
             console.error("[ChatPersistence] Error getting log messages:", error);

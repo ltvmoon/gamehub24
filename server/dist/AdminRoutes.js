@@ -139,7 +139,7 @@ function setupAdminRoutes(app, roomManager, statsManager, chatPersistence, io, s
                     .status(400)
                     .json({ error: "Date and room parameters are required" });
             }
-            const messages = chatPersistence.getLogMessages(date, room);
+            const messages = chatPersistence.getLogMessages(date, room, true);
             res.json(messages);
         }
         catch (error) {
@@ -153,7 +153,7 @@ function setupAdminRoutes(app, roomManager, statsManager, chatPersistence, io, s
             if (!roomId || typeof roomId !== "string") {
                 return res.status(400).json({ error: "roomId parameter is required" });
             }
-            const messages = chatPersistence.getRecentMessages(roomId, limit ? parseInt(limit) : 50);
+            const messages = chatPersistence.getRecentMessages(roomId, limit ? parseInt(limit) : 50, true);
             res.json(messages);
         }
         catch (error) {
@@ -214,18 +214,19 @@ function setupAdminRoutes(app, roomManager, statsManager, chatPersistence, io, s
     app.get("/api/admin/moderation/reports", (req, res) => {
         try {
             const reports = ModerationStore_1.moderationStore.getAllReports();
+            const deleted = ModerationStore_1.moderationStore.getAllDeleted();
             const reportedMessages = [];
-            // This is a bit expensive, but dashboard usage is low.
-            // We search across last few days of logs for these message IDs.
+            const monitoredIds = new Set([
+                ...Object.keys(reports),
+                ...Object.keys(deleted),
+            ]);
             const dates = chatPersistence.getLogDates().slice(0, 7); // Last 7 days
-            const reportIds = Object.keys(reports);
             for (const date of dates) {
-                const rooms = ["global"]; // Mostly global chat reports.
-                // We could expand to room chats if needed.
+                const rooms = ["global"];
                 for (const roomId of rooms) {
-                    const msgs = chatPersistence.getLogMessages(date, roomId);
+                    const msgs = chatPersistence.getLogMessages(date, roomId, true); // Include deleted
                     for (const msg of msgs) {
-                        if (reportIds.includes(msg.id)) {
+                        if (monitoredIds.has(msg.id)) {
                             reportedMessages.push({
                                 ...msg,
                                 ...ModerationStore_1.moderationStore.getModeration(msg.id),
