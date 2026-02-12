@@ -14,7 +14,7 @@ export interface ChatMessage {
   isDeleted?: boolean;
 }
 
-interface ChatStore {
+interface GlobalChatStore {
   onlineCount: number;
   setOnlineCount: (count: number) => void;
   messages: ChatMessage[];
@@ -30,7 +30,7 @@ interface ChatStore {
   unhideAllUsers: () => void;
 }
 
-export const useChatStore = create<ChatStore>()(
+export const useGlobalChatStore = create<GlobalChatStore>()(
   persist(
     (set) => ({
       onlineCount: 0,

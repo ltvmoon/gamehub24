@@ -115,15 +115,15 @@ export default function App() {
   return (
     <HashRouter>
       <AlertModal />
+      <GlobalChat />
+      {showSettingsModal && <SettingsModal />}
+
       <Routes>
         <Route path="/" element={<Lobby />} />
         <Route path="/room/:roomId" element={<Room />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
-      <GlobalChat />
-      {showSettingsModal && <SettingsModal />}
     </HashRouter>
   );
 }

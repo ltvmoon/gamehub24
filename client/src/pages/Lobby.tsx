@@ -28,7 +28,7 @@ import { useGameFavorites } from "../hooks/useGameFavorites";
 import GameCategoryFilter from "../components/GameCategoryFilter";
 import RecentUpdates from "../components/RecentUpdates";
 import { CATEGORY_CONFIG, type GameCategory } from "../constants";
-import { useChatStore } from "../stores/chatStore";
+import { useGlobalChatStore } from "../stores/globalChatStore";
 import Portal from "../components/Portal";
 import SearchInput from "../components/SearchInput";
 import { useGamesFilter } from "../hooks/useGamesFilter";
@@ -40,7 +40,7 @@ export default function Lobby() {
   const { username } = useUserStore();
   const { isConnected } = useSocketStore();
   const { publicRooms, setPublicRooms } = useRoomStore();
-  const { setGlobalChatOpen, onlineCount } = useChatStore();
+  const { setGlobalChatOpen, onlineCount } = useGlobalChatStore();
   const { favorites, toggleFavorite, favoritesCount } = useGameFavorites();
   const { recentGameIds } = useRecentlyPlayed();
 

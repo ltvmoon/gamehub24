@@ -22,7 +22,7 @@ import {
   INSTANT_WIN_DESC,
   SPECIAL_BONUS_NAMES,
   SpecialBonus,
-  type SpecialBonusKey,
+  SpecialBonusValue,
 } from "./types";
 import {
   User,
@@ -219,6 +219,53 @@ export default function MauBinhUI({ game: baseGame }: GameUIProps) {
     SoundManager.play("click");
   }, [game]);
 
+  const handleAutoSubmit = useCallback(() => {
+    if (state.gamePhase !== "arranging" || !mySlot || mySlot.isReady) return;
+
+    let f = tempFront;
+    let m = tempMiddle;
+    let b = tempBack;
+    let auto = isAuto;
+
+    if (!isArrangementComplete) {
+      if (suggestions.length > 0) {
+        const s = suggestions[0];
+        f = s.front;
+        m = s.middle;
+        b = s.back;
+        auto = true;
+      }
+    }
+
+    game.requestArrangeCards(f, m, b, auto);
+    SoundManager.play("click");
+  }, [
+    state.gamePhase,
+    mySlot,
+    tempFront,
+    tempMiddle,
+    tempBack,
+    isAuto,
+    isArrangementComplete,
+    suggestions,
+    game,
+  ]);
+
+  // Auto-submit when timer ends
+  useEffect(() => {
+    if (state.gamePhase !== "arranging" || !mySlot || mySlot.isReady) return;
+
+    const interval = setInterval(() => {
+      const remaining = state.timerEndsAt - Date.now();
+      if (remaining <= 500) {
+        clearInterval(interval);
+        handleAutoSubmit();
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [state.gamePhase, state.timerEndsAt, mySlot?.isReady, handleAutoSubmit]);
+
   // Arrange players around table (self at bottom)
   const arrangedPlayers = useMemo(() => {
     const arr: { player: MauBinhPlayer; index: number }[] = [];
@@ -412,21 +459,24 @@ export default function MauBinhUI({ game: baseGame }: GameUIProps) {
             <div className="space-y-4">
               {/* Special Bonuses Table */}
               <div className="space-y-0 text-sm">
-                {(Object.keys(SpecialBonus) as SpecialBonusKey[]).map(
-                  (key, i) => (
+                {(Object.values(SpecialBonus) as SpecialBonus[])
+                  .filter(
+                    (v) =>
+                      v !== SpecialBonus.SCOOP && v !== SpecialBonus.SCOOP_ALL,
+                  )
+                  .map((value, i) => (
                     <div
                       key={i}
                       className={`flex justify-between items-center p-2 rounded ${i % 2 === 0 ? "bg-slate-800/50" : ""}`}
                     >
                       <span className="text-slate-200">
-                        {ti(SPECIAL_BONUS_NAMES[key])}
+                        {ti(SPECIAL_BONUS_NAMES[value])}
                       </span>
                       <span className="font-bold text-green-400">
-                        +{SpecialBonus[key]}
+                        +{SpecialBonusValue[value]}
                       </span>
                     </div>
-                  ),
-                )}
+                  ))}
               </div>
 
               {/* Extra Rules */}
@@ -440,6 +490,21 @@ export default function MauBinhUI({ game: baseGame }: GameUIProps) {
                     {ti({
                       en: "Win all 3 hands against an opponent to get +3 bonus.",
                       vi: "Thắng cả 3 chi trước 1 đối thủ được thưởng thêm +3.",
+                    })}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Trophy className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <p>
+                    <span className="font-bold text-indigo-300 mr-1">
+                      {ti({
+                        en: "Scoop All (Bắt sập làng):",
+                        vi: "Bắt sập làng:",
+                      })}
+                    </span>
+                    {ti({
+                      en: "Win all 3 hands against ALL opponents to get +6 bonus.",
+                      vi: "Thắng cả 3 chi trước TẤT CẢ đối thủ được thưởng thêm +6.",
                     })}
                   </p>
                 </div>
@@ -548,52 +613,138 @@ export default function MauBinhUI({ game: baseGame }: GameUIProps) {
           </div>
 
           {/* Results */}
-          {state.gamePhase === "ended" && state.roundResults.length > 0 && (
-            <div className="bg-slate-900/80 px-3 py-2 rounded-xl border border-yellow-500/30 w-full max-w-xs">
-              <h3 className="text-yellow-400 font-bold text-md mb-1 flex items-center justify-center gap-1">
-                <Trophy className="w-3 h-3" />
-                {ti({ en: "Results", vi: "Kết quả" })}
-              </h3>
-              <div className="space-y-0.5">
-                {state.roundResults.map((r: RoundResult, i: number) => {
-                  const p1 = state.players[r.p1Index];
-                  const p2 = state.players[r.p2Index];
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between text-xs bg-slate-800/50 px-1.5 py-0.5 rounded"
-                    >
-                      <span
-                        className={
-                          r.p1Total > 0
-                            ? "text-green-400 font-bold"
-                            : r.p1Total < 0
-                              ? "text-red-400"
-                              : "text-slate-400"
-                        }
+          {state.gamePhase === "ended" &&
+            (state.roundResults.length > 0 || state.roundEvents.length > 0) && (
+              <div className="bg-slate-900/80 px-3 py-2 rounded-xl border border-yellow-500/30 w-full max-w-sm">
+                <h3 className="text-yellow-400 font-bold text-md mb-2 flex items-center justify-center gap-1 border-b border-yellow-500/20 pb-1">
+                  <Trophy className="w-4 h-4" />
+                  {ti({ en: "Results", vi: "Kết quả" })}
+                </h3>
+
+                <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-1">
+                  {/* Peer-to-peer results */}
+                  {state.roundResults.map((r: RoundResult, i: number) => {
+                    const p1 = state.players[r.p1Index];
+                    const p2 = state.players[r.p2Index];
+
+                    return (
+                      <div
+                        key={`res-${i}`}
+                        className="flex flex-col gap-1 bg-slate-800/40 p-2 rounded-lg border border-slate-700/50"
                       >
-                        {p1.username} ({r.p1Total > 0 ? "+" : ""}
-                        {r.p1Total})
-                      </span>
-                      <span className="text-slate-500 mx-1">vs</span>
-                      <span
-                        className={
-                          r.p2Total > 0
-                            ? "text-green-400 font-bold"
-                            : r.p2Total < 0
-                              ? "text-red-400"
-                              : "text-slate-400"
-                        }
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex flex-col">
+                            <span
+                              className={`${r.p1Total > 0 ? "text-green-400 font-bold" : r.p1Total < 0 ? "text-red-400" : "text-slate-400"} flex items-center gap-1`}
+                            >
+                              {p1.username}
+                              <span className="text-[10px] opacity-70">
+                                ({r.p1Total > 0 ? "+" : ""}
+                                {r.p1Total})
+                              </span>
+                            </span>
+                          </div>
+                          <span className="text-slate-600 font-mono text-[10px]">
+                            VS
+                          </span>
+                          <div className="flex flex-col items-end">
+                            <span
+                              className={`${r.p2Total > 0 ? "text-green-400 font-bold" : r.p2Total < 0 ? "text-red-400" : "text-slate-400"} flex items-center gap-1`}
+                            >
+                              <span className="text-[10px] opacity-70">
+                                ({r.p2Total > 0 ? "+" : ""}
+                                {r.p2Total})
+                              </span>
+                              {p2.username}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Details row */}
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {/* P1 Bonuses */}
+                          {r.p1InstantWin !== InstantWin.NONE && (
+                            <div className="bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-amber-500/30">
+                              {ti(INSTANT_WIN_NAMES[r.p1InstantWin])}
+                            </div>
+                          )}
+                          {r.p1SpecialBonuses.map((b) => (
+                            <div
+                              key={b}
+                              className="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded text-[9px] font-bold border border-indigo-500/30"
+                            >
+                              {ti(SPECIAL_BONUS_NAMES[b])}
+                            </div>
+                          ))}
+                          {r.scoopResult === 1 && (
+                            <div className="bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-500/30 flex items-center gap-0.5">
+                              🔥 {ti({ en: "Scoop", vi: "Sập 3 chi" })}
+                            </div>
+                          )}
+
+                          {/* Divider if both have bonuses */}
+                          {(r.p1SpecialBonuses.length > 0 ||
+                            r.p1InstantWin !== InstantWin.NONE ||
+                            r.scoopResult === 1) &&
+                            (r.p2SpecialBonuses.length > 0 ||
+                              r.p2InstantWin !== InstantWin.NONE ||
+                              r.scoopResult === -1) && (
+                              <div className="w-px h-3 bg-slate-700 mx-0.5 self-center" />
+                            )}
+
+                          {/* P2 Bonuses */}
+                          {r.p2InstantWin !== InstantWin.NONE && (
+                            <div className="bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-amber-500/30">
+                              {ti(INSTANT_WIN_NAMES[r.p2InstantWin])}
+                            </div>
+                          )}
+                          {r.p2SpecialBonuses.map((b) => (
+                            <div
+                              key={b}
+                              className="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded text-[9px] font-bold border border-indigo-500/30"
+                            >
+                              {ti(SPECIAL_BONUS_NAMES[b])}
+                            </div>
+                          ))}
+                          {r.scoopResult === -1 && (
+                            <div className="bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-500/30 flex items-center gap-0.5">
+                              🔥 {ti({ en: "Scoop", vi: "Sập 3 chi" })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Round-wide events */}
+                  {state.roundEvents.map((e, i) => {
+                    const p = state.players[e.playerIndex];
+                    return (
+                      <div
+                        key={`evt-${i}`}
+                        className="flex items-center justify-between text-[11px] bg-indigo-900/30 px-2 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-200"
                       >
-                        {p2.username} ({r.p2Total > 0 ? "+" : ""}
-                        {r.p2Total})
-                      </span>
-                    </div>
-                  );
-                })}
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-3 h-3 text-yellow-400" />
+                          <span className="font-bold">{p.username}</span>
+                          <span>
+                            {e.type === "SCOOP_ALL"
+                              ? ti({ en: "Scooped All!", vi: "Bắt sập làng!" })
+                              : ti({
+                                  en: "Manual Bonus",
+                                  vi: "Thưởng thủ công",
+                                })}
+                          </span>
+                        </div>
+                        <span className="font-bold text-green-400">
+                          +{e.points}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
 
         {/* Self player slot */}

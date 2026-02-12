@@ -3,17 +3,14 @@ import { MessageSquare, Users } from "lucide-react";
 import ChatPanel from "./ChatPanel";
 import UserList from "./UserList";
 import useLanguage from "../stores/languageStore";
-import { useChatStore } from "../stores/chatStore";
+import { useRoomChatStore } from "../stores/roomChatStore";
 import { useRoomStore } from "../stores/roomStore";
 
 export default function SidePanel() {
   const [activeTab, setActiveTab] = useState<"chat" | "users">("chat");
   const { ti } = useLanguage();
-  const { messages } = useChatStore();
+  const { messages, unreadCount, clearUnread } = useRoomChatStore();
   const { currentRoom } = useRoomStore();
-  const [lastReadMessageTime, setLastReadMessageTime] = useState<number>(
-    Date.now(),
-  );
   const [lastSeenParticipantCount, setLastSeenParticipantCount] =
     useState<number>(0);
 
@@ -23,11 +20,7 @@ export default function SidePanel() {
   const participantCount = playersCount + spectatorsCount;
 
   // Track if there are any unread messages
-  // A message is unread if its timestamp is greater than lastReadMessageTime
-  // AND we are not currently on the chat tab
-  const hasUnreadMessages =
-    activeTab !== "chat" &&
-    messages.some((msg) => msg.timestamp > lastReadMessageTime);
+  const hasUnreadMessages = unreadCount > 0;
 
   // Track if there are changes in user count
   // We show badge if the current count is different from the last seen count
@@ -37,10 +30,10 @@ export default function SidePanel() {
 
   // Update lastReadTime when switching to chat tab or when receiving new messages while on chat tab
   useEffect(() => {
-    if (activeTab === "chat") {
-      setLastReadMessageTime(Date.now());
+    if (activeTab === "chat" && unreadCount > 0) {
+      clearUnread();
     }
-  }, [activeTab, messages.length]);
+  }, [activeTab, unreadCount, clearUnread]);
 
   // Update lastSeenParticipantCount when switching to users tab or when count changes while on users tab
   useEffect(() => {
@@ -118,7 +111,7 @@ export default function SidePanel() {
               : "opacity-0 z-0 pointer-events-none"
           }`}
         >
-          <ChatPanel />
+          <ChatPanel isVisible={activeTab === "chat"} />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-300 ${

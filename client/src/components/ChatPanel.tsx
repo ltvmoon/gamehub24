@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
-import { useChatStore, type ChatMessage } from "../stores/chatStore";
+import { type ChatMessage } from "../stores/globalChatStore";
+import { useRoomChatStore } from "../stores/roomChatStore";
 import { useRoomStore } from "../stores/roomStore";
 import { useUserStore } from "../stores/userStore";
 import { getSocket } from "../services/socket";
 import useLanguage from "../stores/languageStore";
 import { PRESET_EMOJIS } from "../constants";
 
-export default function ChatPanel() {
+export default function ChatPanel({
+  isVisible = true,
+}: {
+  isVisible?: boolean;
+}) {
   const [message, setMessage] = useState("");
-  const { messages, addMessage, clearMessages } = useChatStore();
+  const { messages, addMessage, clearMessages, setChatVisible } =
+    useRoomChatStore();
+
+  useEffect(() => {
+    if (isVisible) {
+      setChatVisible(true);
+      return () => setChatVisible(false);
+    }
+  }, [isVisible, setChatVisible]);
+
   const { currentRoom } = useRoomStore();
   const { userId, username } = useUserStore();
   const { ti } = useLanguage();
@@ -82,10 +96,10 @@ export default function ChatPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full min-h-[400px] md:min-h-[100px]">
+    <div className="flex flex-col h-full w-full">
       {/* Messages */}
       <div
-        className="flex-1 p-4 overflow-y-auto space-y-3 max-h-[70vh]"
+        className="flex-1 p-4 overflow-y-auto space-y-3 max-h-[70vh] min-h-[200px]"
         ref={messagesContainerRef}
       >
         {messages.length === 0 && (

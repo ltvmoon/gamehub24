@@ -15,7 +15,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useRoomStore } from "../stores/roomStore";
-import { useChatStore } from "../stores/chatStore";
+import { useRoomChatStore } from "../stores/roomChatStore";
 import { useUserStore } from "../stores/userStore";
 import { useAlertStore } from "../stores/alertStore";
 import useLanguage from "../stores/languageStore";
@@ -40,7 +40,11 @@ export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { currentRoom, setCurrentRoom, updatePlayers } = useRoomStore();
-  const { clearMessages, messages } = useChatStore();
+  const {
+    clearMessages,
+    messages,
+    unreadCount: roomUnreadCount,
+  } = useRoomChatStore();
   const { userId, username } = useUserStore();
   const { show: showAlert, confirm: showConfirm } = useAlertStore();
   const { ti, ts } = useLanguage();
@@ -541,6 +545,7 @@ export default function RoomPage() {
                 icon: MessageSquare,
                 label: { en: "Chat", vi: "Chat" },
                 badge: messages.length,
+                hasUnread: roomUnreadCount > 0,
               },
               {
                 value: "user",
@@ -553,7 +558,7 @@ export default function RoomPage() {
                     ? `${currentRoom?.players.length}/${(currentRoom?.players.length || 0) + (currentRoom?.spectators.length || 0)}`
                     : `${currentRoom?.players.length}`,
               },
-            ].map(({ value, icon: Icon, label, badge }) => (
+            ].map(({ value, icon: Icon, label, badge, hasUnread }) => (
               <button
                 key={value}
                 onClick={() => setMobileTab(value)}
@@ -563,10 +568,17 @@ export default function RoomPage() {
                     : "text-text-secondary hover:text-text-primary hover:bg-white/5"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <div className="relative">
+                  <Icon className="w-4 h-4" />
+                  {hasUnread && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1a1b26]" />
+                  )}
+                </div>
                 {ti(label)}
                 {badge !== undefined && (
-                  <span className="bg-white/10 text-xs py-0.5 px-1.5 rounded-md text-text-muted">
+                  <span
+                    className={`bg-white/10 text-xs py-0.5 px-1.5 rounded-md text-text-muted`}
+                  >
                     {badge}
                   </span>
                 )}
@@ -634,7 +646,7 @@ export default function RoomPage() {
                   mobileTab === "chat" ? "flex" : "hidden"
                 }`}
               >
-                <ChatPanel />
+                <ChatPanel isVisible={mobileTab === "chat"} />
               </div>
             )}
 

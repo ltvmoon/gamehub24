@@ -13,17 +13,23 @@ import {
   Flag,
   RotateCcw,
   Undo2,
+  DoorOpen,
 } from "lucide-react";
 import { useUserStore } from "../stores/userStore";
 import { getSocket } from "../services/socket";
 import useLanguage from "../stores/languageStore";
-import { useChatStore, type ChatMessage } from "../stores/chatStore";
+import {
+  useGlobalChatStore,
+  type ChatMessage,
+} from "../stores/globalChatStore";
 import { useDMStore, type DMMessage, type OnlineUser } from "../stores/dmStore";
 import { useRoomStore } from "../stores/roomStore";
+import { useRoomChatStore } from "../stores/roomChatStore";
 import { useAlertStore } from "../stores/alertStore";
 import { formatTimeAgo } from "../utils";
+import ChatPanel from "./ChatPanel";
 
-type Tab = "global" | "online";
+type Tab = "global" | "room" | "online";
 
 export default function GlobalChat() {
   const { currentRoom } = useRoomStore();
@@ -42,7 +48,7 @@ export default function GlobalChat() {
     hideUser,
     unhideUser,
     unhideAllUsers,
-  } = useChatStore();
+  } = useGlobalChatStore();
   const {
     onlineUsers,
     setOnlineUsers,
@@ -59,6 +65,11 @@ export default function GlobalChat() {
     typingUsers,
     setTyping,
   } = useDMStore();
+  const {
+    messages: roomMessages,
+    unreadCount: roomUnreadCount,
+    setChatVisible,
+  } = useRoomChatStore();
   const { ti, ts } = useLanguage();
   const alert = useAlertStore();
   const socket = getSocket();
@@ -202,14 +213,31 @@ export default function GlobalChat() {
       messagesContainerRef.current.scrollTop =
         messagesContainerRef.current.scrollHeight;
     }
-  }, [messages, isGlobalChatOpen, activeChat, conversations]);
+  }, [
+    messages,
+    roomMessages,
+    isGlobalChatOpen,
+    activeChat,
+    conversations,
+    tab,
+  ]);
 
   // Mark read & fetch DM history when opening a DM
   useEffect(() => {
     if (activeChat && tab === "online") {
       markRead(activeChat);
     }
-  }, [activeChat, tab, socket]);
+    if (tab === "room") {
+      setChatVisible(isGlobalChatOpen);
+      return () => setChatVisible(false);
+    }
+  }, [activeChat, isGlobalChatOpen, tab, socket]);
+
+  useEffect(() => {
+    if (!currentRoom && tab === "room") {
+      setTab("global");
+    }
+  }, [currentRoom, tab]);
 
   // Typing debounce for DM
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -404,14 +432,16 @@ export default function GlobalChat() {
 
   // --- Collapsed button ---
   if (!isGlobalChatOpen) {
-    const totalBadge = unreadCount + dmTotalUnread;
+    const totalBadge = unreadCount + roomUnreadCount + dmTotalUnread;
     return (
       <button
         onClick={() => {
           setGlobalChatOpen(true);
+          if (roomUnreadCount > 0) setTab("room");
+          else if (unreadCount > 0) setTab("global");
+          else if (dmTotalUnread > 0) setTab("online");
+
           setUnreadCount(0);
-          // Auto-switch to online tab if there's an active DM
-          if (activeChat) setTab("online");
         }}
         className={`fixed bottom-4 right-4 z-40 bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-white rounded-full transition-all duration-300 flex items-center gap-2 cursor-pointer group
               ${compactMode ? "w-12 h-12 flex items-center justify-center opacity-70" : "px-5 py-3"}`}
@@ -419,7 +449,7 @@ export default function GlobalChat() {
         <MessageSquare className="w-5 h-5 group-hover:scale-120 transition-transform" />
         {!compactMode && <span className="font-semibold">Chat</span>}
         {totalBadge > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-slate-700 animate-pulse">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-slate-700">
             {totalBadge > 9 ? "9+" : totalBadge}
           </span>
         )}
@@ -442,7 +472,7 @@ export default function GlobalChat() {
   const isTargetTyping = activeChat ? typingUsers.get(activeChat) : false;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-80 md:w-96 bg-background-secondary/95 glass-blur border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-scaleIn max-h-[600px] h-[500px]">
+    <div className="fixed bottom-4 right-2 md:right-4 z-40 max-w-[calc(100vw-1em)] w-96 bg-background-secondary/95 glass-blur border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-scaleIn max-h-[600px] h-[500px]">
       {/* Header */}
       <div className="p-3 border-b border-white/10 bg-white/5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -484,9 +514,16 @@ export default function GlobalChat() {
               <h3 className="font-bold text-text-primary flex items-center gap-1">
                 {tab === "global"
                   ? ti({ en: "Global Chat", vi: "Chat Tổng" })
-                  : ti({ en: "Online", vi: "Trực Tuyến" })}
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2" />
-                {onlineCount} online
+                  : tab === "room"
+                    ? ti({ en: "Room Chat", vi: "Chat Phòng" })
+                    : ti({ en: "Online", vi: "Trực Tuyến" })}
+
+                {tab !== "room" && (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2" />
+                    {onlineCount + " online"}
+                  </>
+                )}
               </h3>
             </>
           )}
@@ -504,6 +541,26 @@ export default function GlobalChat() {
       {/* Tabs */}
       {!activeChat && (
         <div className="flex border-b border-white/10 shrink-0">
+          {currentRoom && (
+            <button
+              onClick={() => {
+                setTab("room");
+              }}
+              className={`flex-1 py-2 text-xs font-semibold transition-all cursor-pointer relative ${
+                tab === "room"
+                  ? "text-orange-400 border-b-2 border-orange-400 bg-orange-400/5"
+                  : "text-text-muted hover:text-text-secondary hover:bg-white/5"
+              }`}
+            >
+              <DoorOpen className="w-3.5 h-3.5 inline mr-1" />
+              {ti({ en: "Room", vi: "Phòng" })}
+              {roomUnreadCount > 0 && tab !== "room" && (
+                <span className="absolute top-1 right-3 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {roomUnreadCount > 9 ? "9+" : roomUnreadCount}
+                </span>
+              )}
+            </button>
+          )}
           <button
             onClick={() => {
               setTab("global");
@@ -523,6 +580,7 @@ export default function GlobalChat() {
               </span>
             )}
           </button>
+
           <button
             onClick={() => setTab("online")}
             className={`flex-1 py-2 text-xs font-semibold transition-all cursor-pointer relative ${
@@ -543,7 +601,11 @@ export default function GlobalChat() {
       )}
 
       {/* Content area */}
-      {tab === "global" && !activeChat ? (
+      {tab === "room" && !activeChat ? (
+        <div className="flex-1 overflow-hidden bg-black/20 flex flex-col">
+          <ChatPanel isVisible={tab === "room" && isGlobalChatOpen} />
+        </div>
+      ) : tab === "global" && !activeChat ? (
         // --- Global Chat Messages ---
         <>
           <div
@@ -570,9 +632,9 @@ export default function GlobalChat() {
             )}
             {messages
               .filter((m) => !m.isDeleted)
-              // .filter((m) => !hiddenUsers.includes(m.userId))
               .map((msg) => {
                 const isHidden = hiddenUsersSet.has(msg.userId);
+                const isMine = msg.userId === userId;
                 return (
                   <div
                     key={msg.id}
@@ -584,12 +646,13 @@ export default function GlobalChat() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 mb-0.5">
                         <span className="text-sm font-bold text-text-primary truncate">
-                          {msg.username}
+                          {msg.username}{" "}
+                          {isMine ? ts({ en: "(You)", vi: "(Bạn)" }) : ""}
                         </span>
                         <span className="text-[10px] text-text-muted">
                           {ts(formatTimeAgo(msg.timestamp))}
                         </span>
-                        {msg.userId !== userId && (
+                        {!isMine && (
                           <div className="flex gap-1 ml-auto opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleHideUser(msg.userId)}
@@ -774,7 +837,7 @@ export default function GlobalChat() {
               return (
                 <div
                   key={msg.id}
-                  className={`flex gap-2.5 animate-fadeIn ${isMine ? "flex-row-reverse" : ""}`}
+                  className={`flex gap-2.5 animate-fadeIn items-center ${isMine ? "flex-row-reverse" : ""}`}
                 >
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white uppercase mt-0.5 shadow-lg ${

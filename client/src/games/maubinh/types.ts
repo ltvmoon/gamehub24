@@ -111,36 +111,62 @@ export const INSTANT_WIN_DESC: Record<InstantWin, { en: string; vi: string }> =
 
 // Special comparison bonuses
 export const SpecialBonus = {
-  THREE_OF_KIND_FRONT: 3, // Sám chi cuối (3-card hand)
+  THREE_OF_KIND_FRONT: 1, // Sám chi cuối (3-card hand)
   FULL_HOUSE_MIDDLE: 2, // Cù lũ chi giữa
-  FOUR_KIND_BACK: 4, // Tứ quý chi đầu
-  FOUR_KIND_MIDDLE: 8, // Tứ quý chi giữa
+  FOUR_KIND_BACK: 3, // Tứ quý chi đầu
+  FOUR_KIND_MIDDLE: 4, // Tứ quý chi giữa
   STRAIGHT_FLUSH_BACK: 5, // Thùng phá sảnh chi đầu
-  STRAIGHT_FLUSH_MIDDLE: 10, // Thùng phá sảnh chi giữa
-  SCOOP: 3, // Sập 3 chi bonus (on top of 3 wins)
-  SCOOP_ALL: 6, // Bắt sập làng (extra on top)
+  STRAIGHT_FLUSH_MIDDLE: 6, // Thùng phá sảnh chi giữa
+  SCOOP: 7, // Sập 3 chi bonus (on top of 3 wins)
+  SCOOP_ALL: 8, // Bắt sập làng (extra on top)
 } as const;
 
-export type SpecialBonusKey = keyof typeof SpecialBonus;
+export type SpecialBonus = (typeof SpecialBonus)[keyof typeof SpecialBonus];
+
+export const SpecialBonusValue: Record<SpecialBonus, number> = {
+  [SpecialBonus.THREE_OF_KIND_FRONT]: 3,
+  [SpecialBonus.FULL_HOUSE_MIDDLE]: 2,
+  [SpecialBonus.FOUR_KIND_BACK]: 4,
+  [SpecialBonus.FOUR_KIND_MIDDLE]: 8,
+  [SpecialBonus.STRAIGHT_FLUSH_BACK]: 5,
+  [SpecialBonus.STRAIGHT_FLUSH_MIDDLE]: 10,
+  [SpecialBonus.SCOOP]: 3,
+  [SpecialBonus.SCOOP_ALL]: 6,
+};
 
 export const SPECIAL_BONUS_NAMES: Record<
-  SpecialBonusKey,
+  SpecialBonus,
   { en: string; vi: string }
 > = {
-  THREE_OF_KIND_FRONT: { en: "Three of a Kind in front", vi: "Sám chi cuối" },
-  FULL_HOUSE_MIDDLE: { en: "Full House in middle", vi: "Cù lũ chi giữa" },
-  FOUR_KIND_BACK: { en: "Four of a Kind in back", vi: "Tứ quý chi đầu" },
-  FOUR_KIND_MIDDLE: { en: "Four of a Kind in middle", vi: "Tứ quý chi giữa" },
-  STRAIGHT_FLUSH_BACK: {
+  [SpecialBonus.THREE_OF_KIND_FRONT]: {
+    en: "Three of a Kind in front",
+    vi: "Sám chi cuối",
+  },
+  [SpecialBonus.FULL_HOUSE_MIDDLE]: {
+    en: "Full House in middle",
+    vi: "Cù lũ chi giữa",
+  },
+  [SpecialBonus.FOUR_KIND_BACK]: {
+    en: "Four of a Kind in back",
+    vi: "Tứ quý chi đầu",
+  },
+  [SpecialBonus.FOUR_KIND_MIDDLE]: {
+    en: "Four of a Kind in middle",
+    vi: "Tứ quý chi giữa",
+  },
+  [SpecialBonus.STRAIGHT_FLUSH_BACK]: {
     en: "Straight Flush in back",
     vi: "Thùng phá sảnh chi đầu",
   },
-  STRAIGHT_FLUSH_MIDDLE: {
+  [SpecialBonus.STRAIGHT_FLUSH_MIDDLE]: {
     en: "Straight Flush in middle",
     vi: "Thùng phá sảnh chi giữa",
   },
-  SCOOP: { en: "Scoop (win all 3)", vi: "Sập 3 chi" },
-  SCOOP_ALL: { en: "Scoop All (Whole table)", vi: "Bắt sập làng" },
+  [SpecialBonus.SCOOP]: { en: "Scoop (win all 3)", vi: "Sập 3 chi" },
+  [SpecialBonus.SCOOP_ALL]: {
+    en: "Scoop All (Whole table)",
+    vi: "Bắt sập làng",
+  },
 };
 
 export interface HandEval {
@@ -210,6 +236,17 @@ export interface RoundResult {
   p2Bonus: number;
   p1Total: number;
   p2Total: number;
+  p1SpecialBonuses: SpecialBonus[];
+  p2SpecialBonuses: SpecialBonus[];
+  p1InstantWin: InstantWin;
+  p2InstantWin: InstantWin;
+  scoopResult: number; // +1 if p1 scoops p2, -1 if p2 scoops p1, 0 otherwise
+}
+
+export interface RoundEvent {
+  playerIndex: number;
+  type: "SCOOP_ALL" | "MANUAL_BONUS";
+  points: number;
 }
 
 export interface MauBinhState {
@@ -217,6 +254,7 @@ export interface MauBinhState {
   gamePhase: GamePhase;
   timerEndsAt: number; // Timestamp when arranging phase ends
   roundResults: RoundResult[];
+  roundEvents: RoundEvent[];
   roundNumber: number;
 }
 

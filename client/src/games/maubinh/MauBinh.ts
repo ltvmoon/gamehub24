@@ -11,6 +11,7 @@ import {
   HandRank,
   InstantWin,
   SpecialBonus,
+  SpecialBonusValue,
 } from "./types";
 import { Suit, Rank, encodeCard, decodeCard } from "../poker/types";
 import type { Player } from "../../stores/roomStore";
@@ -59,6 +60,7 @@ export default class MauBinh extends BaseGame<MauBinhState> {
       gamePhase: "waiting",
       timerEndsAt: 0,
       roundResults: [],
+      roundEvents: [],
       roundNumber: 0,
     };
   }
@@ -161,6 +163,7 @@ export default class MauBinh extends BaseGame<MauBinhState> {
     this.state.gamePhase = "arranging";
     this.state.timerEndsAt = Date.now() + ARRANGE_TIME * 1000;
     this.state.roundResults = [];
+    this.state.roundEvents = [];
 
     // Reset player states and deal
     this.state.players.forEach((p) => {
@@ -670,6 +673,7 @@ export default class MauBinh extends BaseGame<MauBinhState> {
     }
 
     this.state.roundResults = results;
+    this.state.roundEvents = [];
 
     // Compute scores
     for (const r of results) {
@@ -689,13 +693,18 @@ export default class MauBinh extends BaseGame<MauBinhState> {
       });
       if (wonAll && myResults.length > 0 && activePlayers.length > 2) {
         // Bắt sập làng bonus
-        const bonus = SpecialBonus.SCOOP_ALL;
-        ap.player.score += bonus;
+        const bonusPoints = SpecialBonusValue[SpecialBonus.SCOOP_ALL];
+        ap.player.score += bonusPoints;
+        this.state.roundEvents.push({
+          playerIndex: ap.index,
+          type: "SCOOP_ALL",
+          points: bonusPoints,
+        });
         // Others lose
         for (const other of activePlayers) {
           if (other.index !== ap.index) {
             this.state.players[other.index].score -= Math.floor(
-              bonus / (activePlayers.length - 1),
+              bonusPoints / (activePlayers.length - 1),
             );
           }
         }
@@ -713,6 +722,11 @@ export default class MauBinh extends BaseGame<MauBinhState> {
         }, 0);
         if (totalScore > 0) {
           ap.player.score += 1; // Manual bonus
+          this.state.roundEvents.push({
+            playerIndex: ap.index,
+            type: "MANUAL_BONUS",
+            points: 1,
+          });
         }
       }
     }
@@ -738,6 +752,11 @@ export default class MauBinh extends BaseGame<MauBinhState> {
       p2Bonus: 0,
       p1Total: 0,
       p2Total: 0,
+      p1SpecialBonuses: [],
+      p2SpecialBonuses: [],
+      p1InstantWin: p1.instantWin,
+      p2InstantWin: p2.instantWin,
+      scoopResult: 0,
     };
 
     // Handle instant wins
@@ -800,42 +819,68 @@ export default class MauBinh extends BaseGame<MauBinhState> {
 
       // Special bonuses for p1
       if (result.frontResult === 1) {
-        if (f1.rank === HandRank.THREE_OF_A_KIND)
-          result.p1Bonus += SpecialBonus.THREE_OF_KIND_FRONT;
+        if (f1.rank === HandRank.THREE_OF_A_KIND) {
+          result.p1Bonus += SpecialBonusValue[SpecialBonus.THREE_OF_KIND_FRONT];
+          result.p1SpecialBonuses.push(SpecialBonus.THREE_OF_KIND_FRONT);
+        }
       }
       if (result.middleResult === 1) {
-        if (m1.rank === HandRank.FULL_HOUSE)
-          result.p1Bonus += SpecialBonus.FULL_HOUSE_MIDDLE;
-        if (m1.rank === HandRank.FOUR_OF_A_KIND)
-          result.p1Bonus += SpecialBonus.FOUR_KIND_MIDDLE;
-        if (m1.rank === HandRank.STRAIGHT_FLUSH)
-          result.p1Bonus += SpecialBonus.STRAIGHT_FLUSH_MIDDLE;
+        if (m1.rank === HandRank.FULL_HOUSE) {
+          result.p1Bonus += SpecialBonusValue[SpecialBonus.FULL_HOUSE_MIDDLE];
+          result.p1SpecialBonuses.push(SpecialBonus.FULL_HOUSE_MIDDLE);
+        }
+        if (m1.rank === HandRank.FOUR_OF_A_KIND) {
+          result.p1Bonus += SpecialBonusValue[SpecialBonus.FOUR_KIND_MIDDLE];
+          result.p1SpecialBonuses.push(SpecialBonus.FOUR_KIND_MIDDLE);
+        }
+        if (m1.rank === HandRank.STRAIGHT_FLUSH) {
+          result.p1Bonus +=
+            SpecialBonusValue[SpecialBonus.STRAIGHT_FLUSH_MIDDLE];
+          result.p1SpecialBonuses.push(SpecialBonus.STRAIGHT_FLUSH_MIDDLE);
+        }
       }
       if (result.backResult === 1) {
-        if (b1.rank === HandRank.FOUR_OF_A_KIND)
-          result.p1Bonus += SpecialBonus.FOUR_KIND_BACK;
-        if (b1.rank === HandRank.STRAIGHT_FLUSH)
-          result.p1Bonus += SpecialBonus.STRAIGHT_FLUSH_BACK;
+        if (b1.rank === HandRank.FOUR_OF_A_KIND) {
+          result.p1Bonus += SpecialBonusValue[SpecialBonus.FOUR_KIND_BACK];
+          result.p1SpecialBonuses.push(SpecialBonus.FOUR_KIND_BACK);
+        }
+        if (b1.rank === HandRank.STRAIGHT_FLUSH) {
+          result.p1Bonus += SpecialBonusValue[SpecialBonus.STRAIGHT_FLUSH_BACK];
+          result.p1SpecialBonuses.push(SpecialBonus.STRAIGHT_FLUSH_BACK);
+        }
       }
 
       // Special bonuses for p2
       if (result.frontResult === -1) {
-        if (f2.rank === HandRank.THREE_OF_A_KIND)
-          result.p2Bonus += SpecialBonus.THREE_OF_KIND_FRONT;
+        if (f2.rank === HandRank.THREE_OF_A_KIND) {
+          result.p2Bonus += SpecialBonusValue[SpecialBonus.THREE_OF_KIND_FRONT];
+          result.p2SpecialBonuses.push(SpecialBonus.THREE_OF_KIND_FRONT);
+        }
       }
       if (result.middleResult === -1) {
-        if (m2.rank === HandRank.FULL_HOUSE)
-          result.p2Bonus += SpecialBonus.FULL_HOUSE_MIDDLE;
-        if (m2.rank === HandRank.FOUR_OF_A_KIND)
-          result.p2Bonus += SpecialBonus.FOUR_KIND_MIDDLE;
-        if (m2.rank === HandRank.STRAIGHT_FLUSH)
-          result.p2Bonus += SpecialBonus.STRAIGHT_FLUSH_MIDDLE;
+        if (m2.rank === HandRank.FULL_HOUSE) {
+          result.p2Bonus += SpecialBonusValue[SpecialBonus.FULL_HOUSE_MIDDLE];
+          result.p2SpecialBonuses.push(SpecialBonus.FULL_HOUSE_MIDDLE);
+        }
+        if (m2.rank === HandRank.FOUR_OF_A_KIND) {
+          result.p2Bonus += SpecialBonusValue[SpecialBonus.FOUR_KIND_MIDDLE];
+          result.p2SpecialBonuses.push(SpecialBonus.FOUR_KIND_MIDDLE);
+        }
+        if (m2.rank === HandRank.STRAIGHT_FLUSH) {
+          result.p2Bonus +=
+            SpecialBonusValue[SpecialBonus.STRAIGHT_FLUSH_MIDDLE];
+          result.p2SpecialBonuses.push(SpecialBonus.STRAIGHT_FLUSH_MIDDLE);
+        }
       }
       if (result.backResult === -1) {
-        if (b2.rank === HandRank.FOUR_OF_A_KIND)
-          result.p2Bonus += SpecialBonus.FOUR_KIND_BACK;
-        if (b2.rank === HandRank.STRAIGHT_FLUSH)
-          result.p2Bonus += SpecialBonus.STRAIGHT_FLUSH_BACK;
+        if (b2.rank === HandRank.FOUR_OF_A_KIND) {
+          result.p2Bonus += SpecialBonusValue[SpecialBonus.FOUR_KIND_BACK];
+          result.p2SpecialBonuses.push(SpecialBonus.FOUR_KIND_BACK);
+        }
+        if (b2.rank === HandRank.STRAIGHT_FLUSH) {
+          result.p2Bonus += SpecialBonusValue[SpecialBonus.STRAIGHT_FLUSH_BACK];
+          result.p2SpecialBonuses.push(SpecialBonus.STRAIGHT_FLUSH_BACK);
+        }
       }
     }
 
@@ -855,8 +900,14 @@ export default class MauBinh extends BaseGame<MauBinhState> {
     // Scoop bonus (sập 3 chi)
     let scoopBonus1 = 0,
       scoopBonus2 = 0;
-    if (p1Wins === 3) scoopBonus1 = SpecialBonus.SCOOP;
-    if (p2Wins === 3) scoopBonus2 = SpecialBonus.SCOOP;
+    if (p1Wins === 3) {
+      scoopBonus1 = SpecialBonusValue[SpecialBonus.SCOOP];
+      result.scoopResult = 1;
+    }
+    if (p2Wins === 3) {
+      scoopBonus2 = SpecialBonusValue[SpecialBonus.SCOOP];
+      result.scoopResult = -1;
+    }
 
     result.p1Total =
       base1 + result.p1Bonus + scoopBonus1 - result.p2Bonus - scoopBonus2;
@@ -1304,7 +1355,7 @@ export default class MauBinh extends BaseGame<MauBinhState> {
       }
 
       if (wonAllAgainstEvery) {
-        totalPoints += SpecialBonus.SCOOP_ALL;
+        totalPoints += SpecialBonusValue[SpecialBonus.SCOOP_ALL];
       }
     }
 
