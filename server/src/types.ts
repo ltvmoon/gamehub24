@@ -26,7 +26,10 @@ export interface ChatMessage {
   message: string;
   timestamp: number;
   type: "user" | "system";
+  gameType?: string;
   temp?: boolean;
+  reports?: string[]; // user IDs who reported this
+  isDeleted?: boolean;
 }
 
 export interface CreateRoomData {

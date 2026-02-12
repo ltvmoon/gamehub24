@@ -3,21 +3,22 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { initSocket, connectSocket } from "./services/socket";
 import { canBecomeActiveTab, acquireTabLock } from "./services/tabLock";
 import { useUserStore } from "./stores/userStore";
+import { useSettingsStore } from "./stores/settingsStore";
 import useLanguage from "./stores/languageStore";
 import AlertModal from "./components/AlertModal";
 import UsernameModal from "./components/UsernameModal";
-import Lobby from "./pages/Lobby";
-import Room from "./pages/Room";
 import GlobalChat from "./components/GlobalChat";
 import SettingsModal from "./components/SettingsModal";
-import { useSettingsStore } from "./stores/settingsStore";
+import Lobby from "./pages/Lobby";
+import Room from "./pages/Room";
+import Dashboard from "./pages/Dashboard";
 
 export default function App() {
   const [isChecking, setIsChecking] = useState(true);
   const [isDuplicateTab, setIsDuplicateTab] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const { username, setUsername, hasHydrated } = useUserStore();
-  const { enableGlassEffects } = useSettingsStore();
+  const { enableGlassEffects, showSettingsModal } = useSettingsStore();
   const { ti } = useLanguage();
 
   useEffect(() => {
@@ -117,11 +118,12 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Lobby />} />
         <Route path="/room/:roomId" element={<Room />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       <GlobalChat />
-      {useSettingsStore.getState().showSettingsModal && <SettingsModal />}
+      {showSettingsModal && <SettingsModal />}
     </HashRouter>
   );
 }

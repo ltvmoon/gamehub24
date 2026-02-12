@@ -8,6 +8,11 @@ import {
   Circle,
   Search,
   Globe,
+  Eye,
+  EyeOff,
+  Flag,
+  RotateCcw,
+  Undo2,
 } from "lucide-react";
 import { useUserStore } from "../stores/userStore";
 import { getSocket } from "../services/socket";
@@ -15,21 +20,34 @@ import useLanguage from "../stores/languageStore";
 import { useChatStore, type ChatMessage } from "../stores/chatStore";
 import { useDMStore, type DMMessage, type OnlineUser } from "../stores/dmStore";
 import { useRoomStore } from "../stores/roomStore";
+import { useAlertStore } from "../stores/alertStore";
 import { formatTimeAgo } from "../utils";
 
 type Tab = "global" | "online";
 
 export default function GlobalChat() {
   const { currentRoom } = useRoomStore();
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
   const { userId, username } = useUserStore();
-  const { isGlobalChatOpen, setGlobalChatOpen, onlineCount, setOnlineCount } =
-    useChatStore();
+  const {
+    isGlobalChatOpen,
+    setGlobalChatOpen,
+    onlineCount,
+    setOnlineCount,
+    messages,
+    addMessage,
+    setMessages,
+    updateMessage,
+    hiddenUsers,
+    hideUser,
+    unhideUser,
+    unhideAllUsers,
+  } = useChatStore();
   const {
     onlineUsers,
     setOnlineUsers,
+    addUser,
+    removeUser,
     conversations,
     addMessage: addDMMessage,
     activeChat,
@@ -42,13 +60,13 @@ export default function GlobalChat() {
     setTyping,
   } = useDMStore();
   const { ti, ts } = useLanguage();
+  const alert = useAlertStore();
   const socket = getSocket();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [tab, setTab] = useState<Tab>("global");
   const [searchQuery, setSearchQuery] = useState("");
-
   const compactMode = currentRoom != undefined;
 
   const isOpenRef = useRef(isGlobalChatOpen);
@@ -66,12 +84,14 @@ export default function GlobalChat() {
     tabRef.current = tab;
   }, [tab]);
 
+  const hiddenUsersSet = useMemo(() => new Set(hiddenUsers), [hiddenUsers]);
+
   // Socket listeners
   useEffect(() => {
     if (!socket) return;
 
     const handleMessage = (msg: ChatMessage) => {
-      setMessages((prev) => [...prev, msg]);
+      addMessage(msg);
       if (!isOpenRef.current || tabRef.current !== "global") {
         setUnreadCount((prev) => prev + 1);
       }
@@ -87,6 +107,26 @@ export default function GlobalChat() {
       console.log("online users", users);
       setOnlineUsers(users);
       setOnlineCount(users.length);
+    };
+
+    const handleUserJoined = (user: OnlineUser) => {
+      addUser(user);
+      // Use latest state to avoid stale closure
+      const currentUsers = useDMStore.getState().onlineUsers;
+      if (!currentUsers.some((u) => u.username === user.username)) {
+        setOnlineCount(currentUsers.length + 1);
+      } else {
+        setOnlineCount(currentUsers.length);
+      }
+    };
+
+    const handleUserLeft = (username: string) => {
+      removeUser(username);
+      // Use latest state to avoid stale closure
+      const currentUsers = useDMStore.getState().onlineUsers;
+      setOnlineCount(
+        Math.max(0, currentUsers.filter((u) => u.username !== username).length),
+      );
     };
 
     const handleDMReceive = (msg: DMMessage) => {
@@ -109,9 +149,20 @@ export default function GlobalChat() {
       }
     };
 
+    const handleModeration = (data: {
+      id: string;
+      isDeleted?: boolean;
+      reports?: string[];
+    }) => {
+      updateMessage(data.id, data);
+    };
+
     socket.on("global:chat", handleMessage);
     socket.on("global:chat:error", handleError);
+    socket.on("global:chat:moderation", handleModeration);
     socket.on("dm:online_users", handleOnlineUsers);
+    socket.on("dm:user_joined", handleUserJoined);
+    socket.on("dm:user_left", handleUserLeft);
     socket.on("dm:receive", handleDMReceive);
     socket.on("dm:typing", handleDMTyping);
 
@@ -123,7 +174,10 @@ export default function GlobalChat() {
     return () => {
       socket.off("global:chat", handleMessage);
       socket.off("global:chat:error", handleError);
+      socket.off("global:chat:moderation", handleModeration);
       socket.off("dm:online_users", handleOnlineUsers);
+      socket.off("dm:user_joined", handleUserJoined);
+      socket.off("dm:user_left", handleUserLeft);
       socket.off("dm:receive", handleDMReceive);
       socket.off("dm:typing", handleDMTyping);
     };
@@ -202,6 +256,65 @@ export default function GlobalChat() {
       socket.emit("global:chat", chatMessage);
     }
     setMessage("");
+  };
+
+  const handleReport = async (messageId: string) => {
+    if (!messageId) return;
+    const confirmed = await alert.confirm(
+      ts({
+        en: "Report if you see any bad behavior",
+        vi: "Báo cáo nếu bạn thấy hành vi xấu",
+      }),
+      ts({ en: "Report this message?", vi: "Báo cáo tin nhắn?" }),
+    );
+    if (confirmed) {
+      socket.emit("global:chat:report", { messageId });
+    }
+  };
+
+  const handleHideUser = async (targetUserId: string) => {
+    const isHidden = hiddenUsersSet.has(targetUserId);
+
+    if (isHidden) {
+      const confirmed = await alert.confirm(
+        ts({
+          en: "Unhide all messages from this user",
+          vi: "Bỏ ẩn tất cả tin nhắn từ người dùng này",
+        }),
+        ts({ en: "Unhide user?", vi: "Bỏ ẩn người dùng?" }) +
+          " " +
+          targetUserId,
+      );
+      if (confirmed) {
+        unhideUser(targetUserId);
+      }
+      return;
+    }
+
+    const confirmed = await alert.confirm(
+      ts({
+        en: "Hide all messages from this user",
+        vi: "Ẩn tất cả tin nhắn từ người dùng này",
+      }),
+      ts({ en: "Hide user?", vi: "Ẩn người dùng?" }) + " " + targetUserId,
+    );
+    if (confirmed) {
+      hideUser(targetUserId);
+    }
+  };
+
+  const handleUnreport = async (messageId: string) => {
+    if (!messageId) return;
+    const confirmed = await alert.confirm(
+      ts({
+        en: "Cancel report this message",
+        vi: "Huỷ báo cáo tin nhắn",
+      }),
+      ts({ en: "Cancel report?", vi: "Hủy báo cáo?" }),
+    );
+    if (confirmed) {
+      socket.emit("global:chat:unreport", { messageId });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -455,34 +568,97 @@ export default function GlobalChat() {
                 })}
               </div>
             )}
-            {messages.map((msg) => (
-              <div key={msg.id} className="flex gap-2.5 animate-fadeIn">
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-primary/80 to-purple-600 flex items-center justify-center shrink-0 shadow-lg text-xs font-bold text-white uppercase mt-0.5">
-                  {msg.username[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="text-sm font-bold text-text-primary truncate">
-                      {msg.username}
-                    </span>
-                    <span className="text-[10px] text-text-muted">
-                      {ts(formatTimeAgo(msg.timestamp))} -{" "}
-                      {new Date(msg.timestamp).toLocaleString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "2-digit",
-                        hour12: false,
-                      })}
-                    </span>
+            {messages
+              .filter((m) => !m.isDeleted)
+              // .filter((m) => !hiddenUsers.includes(m.userId))
+              .map((msg) => {
+                const isHidden = hiddenUsersSet.has(msg.userId);
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex gap-2.5 animate-fadeIn group transition-all duration-300 ${isHidden ? "opacity-50 grayscale" : ""}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-primary/80 to-purple-600 flex items-center justify-center shrink-0 shadow-lg text-xs font-bold text-white uppercase mt-0.5">
+                      {msg.username[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 mb-0.5">
+                        <span className="text-sm font-bold text-text-primary truncate">
+                          {msg.username}
+                        </span>
+                        <span className="text-[10px] text-text-muted">
+                          {ts(formatTimeAgo(msg.timestamp))}
+                        </span>
+                        {msg.userId !== userId && (
+                          <div className="flex gap-1 ml-auto opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleHideUser(msg.userId)}
+                              className={`p-1 hover:bg-white/10 rounded transition-colors ${isHidden ? "text-primary hover:text-primary-light" : "text-text-muted hover:text-white"}`}
+                            >
+                              {isHidden ? (
+                                <Eye className="w-3 h-3" />
+                              ) : (
+                                <EyeOff className="w-3 h-3" />
+                              )}
+                            </button>
+                            {msg.reports?.includes(userId || "") ? (
+                              <button
+                                onClick={() => handleUnreport(msg.id)}
+                                className="p-1 hover:bg-white/10 rounded text-red-400 hover:text-red-500 transition-colors"
+                              >
+                                <Undo2 className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleReport(msg.id)}
+                                className="p-1 hover:bg-white/10 rounded text-text-muted hover:text-red-400 transition-colors"
+                              >
+                                <Flag className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <p
+                        className={`text-sm text-text-secondary leading-relaxed wrap-break-word p-2 rounded-r-xl rounded-bl-xl relative transition-all duration-300 ${
+                          msg.reports && msg.reports.length > 0
+                            ? "bg-red-500/10 border border-red-500/30 shadow-sm shadow-red-500/10"
+                            : "bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        {isHidden ? (
+                          <span className="text-text-muted">
+                            {ts({
+                              en: "This user is hidden",
+                              vi: "Người dùng này đã bị ẩn",
+                            })}
+                          </span>
+                        ) : (
+                          msg.message
+                        )}
+                        {msg.reports && msg.reports.length > 0 && (
+                          <span className="absolute -top-1 -right-1 flex px-2 bg-red-500/80 rounded-full text-xs">
+                            {ts({ en: "Reported", vi: "Bị báo cáo" })}{" "}
+                            {msg.reports.length}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-text-secondary leading-relaxed wrap-break-word bg-white/5 p-2 rounded-r-xl rounded-bl-xl">
-                    {msg.message}
-                  </p>
-                </div>
+                );
+              })}
+            {hiddenUsers.length > 0 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={unhideAllUsers}
+                  className="text-[10px] text-text-muted hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  {ti({ en: "Unhide all users", vi: "Hiện lại tất cả" })} (
+                  {hiddenUsers.length})
+                </button>
               </div>
-            ))}
+            )}
             {error && (
               <div className="mx-auto text-xs text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20 text-center animate-pulse">
                 {error}

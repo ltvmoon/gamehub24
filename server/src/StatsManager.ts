@@ -4,6 +4,13 @@ import path from "path";
 interface GameStats {
   plays: Record<string, number>;
   dataTransfer: Record<string, number>;
+  daily: Record<
+    string,
+    {
+      plays: Record<string, number>;
+      dataTransfer: Record<string, number>;
+    }
+  >;
 }
 
 export class StatsManager {
@@ -11,6 +18,7 @@ export class StatsManager {
   private gameStats: GameStats = {
     plays: {},
     dataTransfer: {},
+    daily: {},
   };
 
   private stateChanged: boolean = false;
@@ -34,6 +42,9 @@ export class StatsManager {
       if (fs.existsSync(this.STATS_FILE)) {
         const data = fs.readFileSync(this.STATS_FILE, "utf-8");
         this.gameStats = JSON.parse(data);
+        if (!this.gameStats.daily) {
+          this.gameStats.daily = {};
+        }
       }
     } catch (error) {
       console.error("Error loading stats:", error);
@@ -51,9 +62,29 @@ export class StatsManager {
     }
   }
 
+  private getTodayKey() {
+    const today = new Date();
+    return today.toISOString().split("T")[0]; // YYYY-MM-DD
+  }
+
+  private ensureDailyKey(dateKey: string) {
+    if (!this.gameStats.daily[dateKey]) {
+      this.gameStats.daily[dateKey] = {
+        plays: {},
+        dataTransfer: {},
+      };
+    }
+  }
+
   public trackPlay(gameType: string) {
     if (!gameType) return;
     this.gameStats.plays[gameType] = (this.gameStats.plays[gameType] || 0) + 1;
+
+    const today = this.getTodayKey();
+    this.ensureDailyKey(today);
+    this.gameStats.daily[today].plays[gameType] =
+      (this.gameStats.daily[today].plays[gameType] || 0) + 1;
+
     this.stateChanged = true;
   }
 
@@ -61,6 +92,12 @@ export class StatsManager {
     if (!gameType) return;
     this.gameStats.dataTransfer[gameType] =
       (this.gameStats.dataTransfer[gameType] || 0) + size;
+
+    const today = this.getTodayKey();
+    this.ensureDailyKey(today);
+    this.gameStats.daily[today].dataTransfer[gameType] =
+      (this.gameStats.daily[today].dataTransfer[gameType] || 0) + size;
+
     this.stateChanged = true;
   }
 

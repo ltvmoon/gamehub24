@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import express from "express";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
@@ -5,9 +7,17 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { RoomManager } from "./RoomManager";
 import { statsManager } from "./StatsManager";
-import { calculateSize, formatSize, log, uuidShort } from "./utils";
-import type { ChatMessage, CreateRoomData, JoinRoomData } from "./types";
 import { chatPersistence } from "./ChatPersistence";
+import { moderationStore } from "./ModerationStore";
+import { setupAdminRoutes } from "./AdminRoutes";
+import {
+  calculateSize,
+  formatSize,
+  log,
+  uuidShort,
+  formatUpTime,
+} from "./utils";
+import type { ChatMessage, CreateRoomData, JoinRoomData } from "./types";
 
 dotenv.config();
 
@@ -150,53 +160,21 @@ setInterval(async () => {
   }
 }, ROOM_CLEANUP_INTERVAL_MS);
 
-function formatUpTime(diff: number) {
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  const hoursRemainder = hours % 24;
-  const minutesRemainder = minutes % 60;
-  const secondsRemainder = seconds % 60;
-  return `${days}d ${hoursRemainder}h ${minutesRemainder}m ${secondsRemainder}s`;
-}
-
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Overview statistic
-app.get("/stats", (req, res) => {
-  const rooms = roomManager.getPublicRooms();
-  const playersInRooms = rooms.reduce(
-    (acc, room) => acc + room.players.length,
-    0,
-  );
-  const stats = statsManager.getStats();
-  const dataTransfer = Object.entries(stats.dataTransfer).reduce(
-    (acc, [key, value]) => {
-      acc[key] = {
-        value,
-        formatted: formatSize(value),
-      };
-      return acc;
-    },
-    {} as Record<string, { value: number; formatted: string }>,
-  );
-  const result = {
-    online: io.engine.clientsCount,
-    rooms: rooms.length,
-    players: playersInRooms,
-    startTime: new Date(START_TIME).toISOString(),
-    uptime: formatUpTime(Date.now() - START_TIME),
-    stats: {
-      ...stats,
-      dataTransfer,
-    },
-  };
-  res.json(result);
-});
+// Admin Routes setup
+setupAdminRoutes(
+  app,
+  roomManager,
+  statsManager,
+  chatPersistence,
+  io,
+  START_TIME,
+  formatUpTime,
+);
 
 // Socket.IO connection handler
 io.on("connection", (socket: Socket) => {
@@ -206,7 +184,7 @@ io.on("connection", (socket: Socket) => {
 
   // Track online user (by username)
   onlineUsers.set(username, { userId, socketId: socket.id });
-  io.emit("dm:online_users", getOnlineUserList());
+  io.emit("dm:user_joined", { userId, username });
 
   // Update socket ID if user reconnects
   roomManager.updatePlayerSocketId(userId, socket.id);
@@ -216,6 +194,19 @@ io.on("connection", (socket: Socket) => {
   if (currentRoom) {
     socket.join(currentRoom.id);
     log(`🔄 User ${username} rejoined room ${currentRoom.id} (socket updated)`);
+
+    // System message for rejoin
+    const systemMessage: ChatMessage = {
+      id: uuidShort(),
+      roomId: currentRoom.id,
+      userId: "system",
+      username: "System",
+      message: `${username} rejoined the game`,
+      timestamp: Date.now(),
+      type: "system",
+      gameType: currentRoom.gameType,
+    };
+    io.to(currentRoom.id).emit("chat:message", systemMessage);
   }
 
   // heartbeat
@@ -323,6 +314,7 @@ io.on("connection", (socket: Socket) => {
           message: `${username} joined the room`,
           timestamp: Date.now(),
           type: "system",
+          gameType: result.room.gameType,
         };
         io.to(data.roomId).emit("chat:message", systemMessage);
 
@@ -367,6 +359,7 @@ io.on("connection", (socket: Socket) => {
             message: `${username} left the room`,
             timestamp: Date.now(),
             type: "system",
+            gameType: result.room.gameType,
           };
           io.to(result.roomId).emit("chat:message", systemMessage);
         } else {
@@ -672,10 +665,12 @@ io.on("connection", (socket: Socket) => {
   // Send chat message
   socket.on("chat:message", (data: Omit<ChatMessage, "id" | "timestamp">) => {
     try {
+      const room = roomManager.getRoom(data.roomId);
       const message: ChatMessage = {
         ...data,
         id: uuidShort(),
         timestamp: Date.now(),
+        gameType: room?.gameType,
       };
 
       // Store in history
@@ -759,6 +754,7 @@ io.on("connection", (socket: Socket) => {
           id: uuidShort(),
           roomId: "global",
           timestamp: now,
+          gameType: "global",
         };
 
         // Store in history
@@ -778,8 +774,43 @@ io.on("connection", (socket: Socket) => {
     },
   );
 
+  socket.on("global:chat:report", (data: { messageId: string }) => {
+    try {
+      const { messageId } = data;
+      if (!messageId) return;
+
+      const updated = moderationStore.reportMessage(messageId, userId);
+      if (updated) {
+        log(`🚩 Message reported: ${messageId} by ${username}`);
+        // Notify admins or broadcast moderation update if needed
+        io.emit("global:chat:moderation", {
+          id: messageId,
+          ...moderationStore.getModeration(messageId),
+        });
+      }
+    } catch (error) {
+      console.error("Error reporting message:", error);
+    }
+  });
+
+  socket.on("global:chat:unreport", ({ messageId }) => {
+    try {
+      if (!messageId || !userId) return;
+      const success = moderationStore.unreportMessage(messageId, userId);
+      if (success) {
+        io.emit("global:chat:moderation", {
+          id: messageId,
+          ...moderationStore.getModeration(messageId),
+        });
+      }
+    } catch (error) {
+      console.error("Error unreporting message:", error);
+    }
+  });
+
   socket.on("global:chat:history", (callback) => {
-    callback?.(globalChatHistory);
+    const history = chatPersistence.getRecentMessages("global", 20);
+    callback?.(history);
   });
 
   // DM EVENTS
@@ -831,6 +862,7 @@ io.on("connection", (socket: Socket) => {
         message: dmMessage.message,
         timestamp: dmMessage.timestamp,
         type: "user",
+        gameType: "dm",
       });
 
       // Send to target user if online
@@ -866,7 +898,7 @@ io.on("connection", (socket: Socket) => {
 
     // Remove from online users and broadcast
     onlineUsers.delete(username);
-    io.emit("dm:online_users", getOnlineUserList());
+    io.emit("dm:user_left", username);
 
     // Handle room cleanup
     const result = roomManager.leaveRoom(userId);
@@ -883,6 +915,7 @@ io.on("connection", (socket: Socket) => {
           message: `${username} disconnected`,
           timestamp: Date.now(),
           type: "system",
+          gameType: result.room.gameType,
         };
         io.to(result.roomId).emit("chat:message", systemMessage);
       } else {

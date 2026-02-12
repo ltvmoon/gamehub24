@@ -19,6 +19,8 @@ export interface OnlineUser {
 interface DMStore {
   onlineUsers: OnlineUser[];
   setOnlineUsers: (users: OnlineUser[]) => void;
+  addUser: (user: OnlineUser) => void;
+  removeUser: (username: string) => void;
 
   // Conversations: keyed by the OTHER user's USERNAME
   conversations: Map<string, DMMessage[]>;
@@ -74,6 +76,16 @@ export const useDMStore = create<DMStore>()(
     (set, get) => ({
       onlineUsers: [],
       setOnlineUsers: (users) => set({ onlineUsers: users }),
+      addUser: (user) =>
+        set((state) => {
+          if (state.onlineUsers.some((u) => u.username === user.username))
+            return state;
+          return { onlineUsers: [...state.onlineUsers, user] };
+        }),
+      removeUser: (username) =>
+        set((state) => ({
+          onlineUsers: state.onlineUsers.filter((u) => u.username !== username),
+        })),
 
       conversations: new Map(),
       addMessage: (otherUsername, message) =>

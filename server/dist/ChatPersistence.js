@@ -7,6 +7,7 @@ exports.chatPersistence = exports.ChatPersistence = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const utils_1 = require("./utils");
+const ModerationStore_1 = require("./ModerationStore");
 const DATA_DIR = "data/chats";
 class ChatPersistence {
     constructor() {
@@ -102,25 +103,175 @@ class ChatPersistence {
                             return null;
                         }
                     })
-                        .filter((msg) => msg !== null);
+                        .filter((msg) => msg !== null)
+                        .map((msg) => ({
+                        ...msg,
+                        ...ModerationStore_1.moderationStore.getModeration(msg.id),
+                    }))
+                        .filter((msg) => !msg.isDeleted); // Filter out deleted messages
                     // We need the NEWEST messages.
-                    // If we are iterating dates Newest -> Oldest,
-                    // and within a file lines are Oldest -> Newest (append only).
-                    // We should take messages from the END of the file first.
                     // Reverse messages from file so [0] is newest in that file
                     msgsInFile.reverse();
-                    allMessages.push(...msgsInFile);
+                    for (const msg of msgsInFile) {
+                        if (allMessages.length < limit) {
+                            allMessages.push(msg);
+                        }
+                        else {
+                            break;
+                        }
+                    }
                 }
             }
-            // We might have more than limit now
-            const result = allMessages.slice(0, limit);
+            // result is [Newest -> Oldest]
             // The caller expects chronological order (Oldest -> Newest)
-            // currently 'result' is [Newest -> Oldest]
-            result.reverse();
-            return result;
+            return allMessages.reverse();
         }
         catch (error) {
             console.error(`[ChatPersistence] Error loading messages for room ${roomId}:`, error);
+            return [];
+        }
+    }
+    getDashboardStats() {
+        try {
+            const stats = {
+                totalMessages: 0,
+                messagesByDate: {},
+                messagesByRoom: {},
+                messagesByUser: {},
+                rooms: {},
+                lastSynced: new Date().toISOString(),
+            };
+            if (!fs_1.default.existsSync(path_1.default.resolve(DATA_DIR))) {
+                return stats;
+            }
+            const dateDirs = fs_1.default
+                .readdirSync(path_1.default.resolve(DATA_DIR))
+                .filter((name) => /^\d{4}-\d{2}-\d{2}$/.test(name))
+                .sort()
+                .reverse();
+            for (const dateStr of dateDirs) {
+                const datePath = path_1.default.resolve(DATA_DIR, dateStr);
+                const files = fs_1.default
+                    .readdirSync(datePath)
+                    .filter((f) => f.endsWith(".jsonl"));
+                for (const file of files) {
+                    const filePath = path_1.default.join(datePath, file);
+                    const roomId = file.replace(".jsonl", "");
+                    const content = fs_1.default.readFileSync(filePath, "utf-8");
+                    const lines = content.split("\n").filter((l) => l.trim());
+                    if (lines.length === 0)
+                        continue;
+                    stats.totalMessages += lines.length;
+                    stats.messagesByDate[dateStr] =
+                        (stats.messagesByDate[dateStr] || 0) + lines.length;
+                    stats.messagesByRoom[roomId] =
+                        (stats.messagesByRoom[roomId] || 0) + lines.length;
+                    // Process the last message for the room summary (only if not already set by a newer date)
+                    if (!stats.rooms[roomId]) {
+                        try {
+                            const lastLine = lines[lines.length - 1];
+                            const lastMsg = JSON.parse(lastLine);
+                            stats.rooms[roomId] = {
+                                lastMessage: lastMsg,
+                                count: stats.messagesByRoom[roomId],
+                            };
+                        }
+                        catch (e) {
+                            // skip
+                        }
+                    }
+                    else {
+                        // Update total count if we found more in an older folder
+                        stats.rooms[roomId].count = stats.messagesByRoom[roomId];
+                    }
+                    // Update user frequency (sampled/partial if needed, but here simple)
+                    for (const line of lines) {
+                        try {
+                            const msg = JSON.parse(line);
+                            if (msg.username) {
+                                stats.messagesByUser[msg.username] =
+                                    (stats.messagesByUser[msg.username] || 0) + 1;
+                            }
+                        }
+                        catch (e) {
+                            /* skip */
+                        }
+                    }
+                }
+            }
+            return stats;
+        }
+        catch (error) {
+            console.error("[ChatPersistence] Error generating dashboard stats:", error);
+            return {
+                totalMessages: 0,
+                messagesByDate: {},
+                messagesByRoom: {},
+                messagesByUser: {},
+                rooms: {},
+                lastSynced: new Date().toISOString(),
+            };
+        }
+    }
+    getLogDates() {
+        try {
+            const dirPath = path_1.default.resolve(DATA_DIR);
+            if (!fs_1.default.existsSync(dirPath))
+                return [];
+            return fs_1.default
+                .readdirSync(dirPath)
+                .filter((name) => /^\d{4}-\d{2}-\d{2}$/.test(name))
+                .sort()
+                .reverse();
+        }
+        catch (error) {
+            console.error("[ChatPersistence] Error getting log dates:", error);
+            return [];
+        }
+    }
+    getLogRooms(dateStr) {
+        try {
+            const dirPath = path_1.default.resolve(DATA_DIR, dateStr);
+            if (!fs_1.default.existsSync(dirPath))
+                return [];
+            return fs_1.default
+                .readdirSync(dirPath)
+                .filter((f) => f.endsWith(".jsonl"))
+                .map((f) => {
+                const roomId = f.replace(".jsonl", "");
+                const filePath = path_1.default.join(dirPath, f);
+                // Simple line count for .jsonl
+                const content = fs_1.default.readFileSync(filePath, "utf-8");
+                const count = content.split("\n").filter((l) => l.trim()).length;
+                return { id: roomId, count };
+            });
+        }
+        catch (error) {
+            console.error("[ChatPersistence] Error getting log rooms:", error);
+            return [];
+        }
+    }
+    getLogMessages(dateStr, roomId) {
+        try {
+            const filePath = this.getFilePath(roomId, dateStr);
+            if (!fs_1.default.existsSync(filePath))
+                return [];
+            const fileContent = fs_1.default.readFileSync(filePath, "utf-8");
+            return fileContent
+                .split("\n")
+                .filter((line) => line.trim())
+                .map((line) => {
+                try {
+                    return JSON.parse(line);
+                }
+                catch {
+                    return null;
+                }
+            })
+                .filter((msg) => msg !== null);
+        }
+        catch (error) {
+            console.error("[ChatPersistence] Error getting log messages:", error);
             return [];
         }
     }

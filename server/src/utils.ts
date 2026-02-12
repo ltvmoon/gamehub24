@@ -29,3 +29,14 @@ export function formatSize(size: number) {
 export function uuidShort(): string {
   return uuidv4().substring(0, 8);
 }
+
+export function formatUpTime(diff: number) {
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const hoursRemainder = hours % 24;
+  const minutesRemainder = minutes % 60;
+  const secondsRemainder = seconds % 60;
+  return `${days}d ${hoursRemainder}h ${minutesRemainder}m ${secondsRemainder}s`;
+}
