@@ -48,12 +48,13 @@ export const CATEGORY_CONFIG: Record<
   },
 };
 
-export type UpdateType = "new" | "hot" | "fix";
+export type UpdateType = "new" | "hot" | "fix" | "update";
 
 export const UpdateTypeColor: Record<UpdateType, string> = {
   new: "text-green-500",
   hot: "text-red-500",
   fix: "text-yellow-500",
+  update: "text-blue-500",
 };
 
 export const updates: {
@@ -64,6 +65,13 @@ export const updates: {
   gameId?: string;
   link?: string;
 }[] = [
+  {
+    type: "update",
+    en: "Thirteen: Better Bot + logic chopping",
+    vi: "Tiến lên: Bot xịn hơn + logic chặt",
+    gameId: "thirteen",
+    timestamp: 1770970731524,
+  },
   {
     type: "new",
     en: "New game: Parabox",

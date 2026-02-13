@@ -328,11 +328,42 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                     vi: "Giá trị (Thấp đến Cao): 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A, 2.",
                   })}
                 </li>
-                <li>
-                  {ti({
-                    en: "Suits (Low to High): Spades ♠ < Clubs ♣ < Diamonds ♦ < Hearts ♥.",
-                    vi: "Chất (Thấp đến Cao): Bích ♠ < Chuồn ♣ < Rô ♦ < Cơ ♥.",
-                  })}
+                <li className="flex items-center flex-wrap gap-1">
+                  <span>
+                    {ti({
+                      en: "Suits (Low to High):",
+                      vi: "Chất (Thấp đến Cao):",
+                    })}
+                  </span>
+                  <div className="flex items-center gap-1 ml-1">
+                    <Spade
+                      size={14}
+                      className="text-slate-400"
+                      fill="currentColor"
+                    />
+                    {ts({ en: "Spades", vi: "Bích" })}
+                    <span className="text-xs text-slate-500">{"<"}</span>
+                    <Club
+                      size={14}
+                      className="text-slate-400"
+                      fill="currentColor"
+                    />
+                    {ts({ en: "Clubs", vi: "Chuồn" })}
+                    <span className="text-xs text-slate-500">{"<"}</span>
+                    <Diamond
+                      size={14}
+                      className="text-red-500"
+                      fill="currentColor"
+                    />
+                    {ts({ en: "Diamonds", vi: "Rô" })}
+                    <span className="text-xs text-slate-500">{"<"}</span>
+                    <Heart
+                      size={14}
+                      className="text-red-500"
+                      fill="currentColor"
+                    />
+                    {ts({ en: "Hearts", vi: "Cơ" })}
+                  </div>
                 </li>
               </ul>
 
@@ -341,45 +372,69 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
               </h3>
               <ul className="list-disc pl-5 space-y-1">
                 <li>
-                  <strong>{ti({ en: "Single", vi: "Cóc" })}</strong>:{" "}
-                  {ti({ en: "A single card.", vi: "Một lá bài lẻ." })}
+                  <strong className="text-blue-400">
+                    {ti({ en: "Single", vi: "Cóc" })}
+                  </strong>
+                  : {ti({ en: "A single card.", vi: "Một lá bài lẻ." })}
                 </li>
                 <li>
-                  <strong>{ti({ en: "Pair", vi: "Đôi" })}</strong>:{" "}
+                  <strong className="text-emerald-400">
+                    {ti({ en: "Pair", vi: "Đôi" })}
+                  </strong>
+                  :{" "}
                   {ti({
                     en: "Two cards of the same rank.",
                     vi: "2 lá cùng giá trị.",
                   })}
                 </li>
                 <li>
-                  <strong>{ti({ en: "Triple", vi: "3 (Sám cô)" })}</strong>:{" "}
+                  <strong className="text-purple-400">
+                    {ti({ en: "Triple", vi: "3 (Sám cô)" })}
+                  </strong>
+                  :{" "}
                   {ti({
                     en: "Three cards of the same rank.",
                     vi: "3 lá cùng giá trị.",
                   })}
                 </li>
                 <li>
-                  <strong>{ti({ en: "Straight", vi: "Sảnh" })}</strong>:{" "}
+                  <strong className="text-orange-400">
+                    {ti({ en: "Straight", vi: "Sảnh" })}
+                  </strong>
+                  :{" "}
                   {ti({
                     en: "3+ consecutive rank cards (e.g., 3-4-5). 2 cannot be in a straight.",
                     vi: "3+ lá liên tiếp (VD: 3-4-5). 2 không được nằm trong sảnh.",
                   })}
                 </li>
                 <li>
-                  <strong>{ti({ en: "Four of a Kind", vi: "Tứ quý" })}</strong>:{" "}
+                  <strong className="text-red-400">
+                    {ti({ en: "Four of a Kind", vi: "Tứ quý" })}
+                  </strong>
+                  :{" "}
                   {ti({
                     en: "Four cards of the same rank.",
                     vi: "4 lá cùng giá trị.",
                   })}
                 </li>
                 <li>
-                  <strong>
+                  <strong className="text-pink-400">
                     {ti({ en: "Three consecutive pairs", vi: "3 đôi thông" })}
                   </strong>
                   :{" "}
                   {ti({
                     en: "Three consecutive pairs of cards.",
                     vi: "3 đôi liên tiếp.",
+                  })}
+                </li>
+                <li>
+                  <strong className="text-pink-400">
+                    {ti({ en: "Four consecutive pairs", vi: "4 đôi thông" })}
+                  </strong>
+                  :{" "}
+                  {ti({
+                    en: "Four consecutive pairs of cards.",
+                    vi: "4 đôi liên tiếp.",
                   })}
                 </li>
               </ul>
@@ -400,11 +455,48 @@ export default function ThirteenUI({ game: baseGame }: GameUIProps) {
                     vi: "Nếu tất cả bỏ lượt, người đánh cuối cùng sẽ được đi tiếp với bất kỳ bộ nào.",
                   })}
                 </li>
-                <li>
-                  {ti({
-                    en: "Special: Four of a Kind cuts a 2. Three consecutive pairs cuts a single 2 or three consecutive pairs.",
-                    vi: "Đặc biệt: Tứ quý chặt 2. 3 đôi thông chặt 2 hoặc 3 đôi thông nhỏ hơn.",
-                  })}
+                <li className="list-none mt-2">
+                  <span className="font-bold text-yellow-400">
+                    {ts({ en: "Special (Chopping):", vi: "Đặc biệt (Chặt):" })}
+                  </span>
+                  <ul className="list-disc pl-5 mt-1 space-y-1">
+                    <li>
+                      <span className="text-red-400 font-semibold">
+                        {ts({ en: "Four of a Kind", vi: "Tứ quý" })}
+                      </span>
+                      <span>
+                        {ts({
+                          en: " cuts single 2 or a pair of 2s.",
+                          vi: " chặt 1 heo hoặc đôi heo.",
+                        })}
+                      </span>
+                    </li>
+                    <li>
+                      <span className="text-pink-400 font-semibold">
+                        {ts({
+                          en: "Three consecutive pairs",
+                          vi: "3 đôi thông",
+                        })}
+                      </span>
+                      <span>
+                        {ts({ en: " cuts a single 2.", vi: " chặt 1 heo." })}
+                      </span>
+                    </li>
+                    <li>
+                      <span className="text-pink-400 font-semibold">
+                        {ts({
+                          en: "Four consecutive pairs",
+                          vi: "4 đôi thông",
+                        })}
+                      </span>
+                      <span>
+                        {ts({
+                          en: " cuts single 2, pair of 2s, or Four of a Kind.",
+                          vi: " chặt 1 heo, đôi heo, hoặc tứ quý.",
+                        })}
+                      </span>
+                    </li>
+                  </ul>
                 </li>
               </ul>
             </div>
@@ -698,18 +790,9 @@ function CardDisplay({
       <div
         className={`absolute top-1 left-1 @md:top-1.5 @md:left-2 flex flex-col items-center leading-none ${suitColor}`}
       >
-        <span className="text-base @md:text-xl font-bold">
-          {RANK_DISPLAY[rank]}
-        </span>
-        <span className="text-sm @md:text-lg">{SUIT_SYMBOLS[suit]}</span>
+        <span className="text-xl font-bold">{RANK_DISPLAY[rank]}</span>
+        <span className="text-lg">{SUIT_SYMBOLS[suit]}</span>
       </div>
-
-      {/* Center symbol */}
-      {/* <div
-        className={`absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none`}
-      >
-        <span className="text-4xl @md:text-6xl">{SUIT_SYMBOLS[suit]}</span>
-      </div> */}
     </button>
   );
 }

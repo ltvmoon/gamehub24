@@ -47,7 +47,7 @@ export const INITIAL_LEVELS: Record<string, LevelData> = {
       *******
       *     *
       * b b *
-      *  g  *
+      *  g  0
       *  b  *
       *     *
       *******

@@ -189,7 +189,7 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       }
     }
 
-    // Check three consecutive pairs (sám cô): 334455, 778899, etc.
+    // Check three consecutive pairs: 334455, 778899, etc.
     if (cards.length === 6) {
       const isThreeConsecutivePairs = this.isThreeConsecutivePairs(sorted);
       if (isThreeConsecutivePairs) {
@@ -201,32 +201,52 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       }
     }
 
+    // Check four consecutive pairs: 33445566, etc.
+    if (cards.length === 8) {
+      const isFourConsecutivePairs = this.isFourConsecutivePairs(sorted);
+      if (isFourConsecutivePairs) {
+        return {
+          type: CombinationType.FOUR_CONSECUTIVE_PAIRS,
+          cardCount: 8,
+          value: sorted[sorted.length - 1],
+        };
+      }
+    }
+
     return null;
   }
 
-  // Check if 6 cards form 3 consecutive pairs (sám cô)
-  private isThreeConsecutivePairs(sorted: Card[]): boolean {
-    if (sorted.length !== 6) return false;
-    // Cannot have 2 in consecutive pairs
-    if (sorted.some((c) => decodeCard(c).rank === Rank.TWO)) return false;
+  // Check if cards form consecutive pairs
+  private isConsecutivePairs(sorted: Card[], count: number): boolean {
+    if (sorted.length !== count * 2) return false;
 
-    // Group by rank
-    const rankCounts = new Map<Rank, number>();
-    for (const card of sorted) {
-      const { rank } = decodeCard(card);
-      rankCounts.set(rank, (rankCounts.get(rank) || 0) + 1);
+    for (let i = 0; i < count; i++) {
+      const c1 = decodeCard(sorted[i * 2]);
+      const c2 = decodeCard(sorted[i * 2 + 1]);
+
+      // Each pair must have same rank
+      if (c1.rank !== c2.rank) return false;
+
+      // No 2s allowed in consecutive pairs
+      if (c1.rank === Rank.TWO) return false;
+
+      // Compare with next pair
+      if (i < count - 1) {
+        const nextPairFirst = decodeCard(sorted[(i + 1) * 2]);
+        if (nextPairFirst.rank !== c1.rank + 1) return false;
+      }
     }
-
-    // Must have exactly 3 different ranks, each appearing exactly twice
-    const ranks = Array.from(rankCounts.keys()).sort((a, b) => a - b);
-    if (ranks.length !== 3) return false;
-    if (!Array.from(rankCounts.values()).every((count) => count === 2))
-      return false;
-
-    // Ranks must be consecutive
-    if (ranks[1] !== ranks[0] + 1 || ranks[2] !== ranks[1] + 1) return false;
-
     return true;
+  }
+
+  // Check if 6 cards form 3 consecutive pairs
+  private isThreeConsecutivePairs(sorted: Card[]): boolean {
+    return this.isConsecutivePairs(sorted, 3);
+  }
+
+  // Check if 8 cards form 4 consecutive pairs
+  private isFourConsecutivePairs(sorted: Card[]): boolean {
+    return this.isConsecutivePairs(sorted, 4);
   }
 
   private isStraight(sorted: Card[]): boolean {
@@ -247,26 +267,50 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   ): boolean {
     if (!lastCombo) return true;
 
-    // Four of a kind can beat any 2
-    if (
-      newCombo.type === CombinationType.FOUR_OF_KIND &&
-      lastCombo.type === CombinationType.SINGLE &&
-      decodeCard(
-        this.state.currentTrick[this.state.currentTrick.length - 1].cards[0],
-      ).rank === Rank.TWO
-    ) {
-      return true;
-    }
+    // Higher combinations can beat 2s
+    const lastCards =
+      this.state.currentTrick[this.state.currentTrick.length - 1]?.cards;
+    if (lastCards && lastCards.length > 0) {
+      const lastRank = decodeCard(lastCards[0]).rank;
 
-    // Three consecutive pairs (sám cô) can beat a single 2
-    if (
-      newCombo.type === CombinationType.THREE_CONSECUTIVE_PAIRS &&
-      lastCombo.type === CombinationType.SINGLE &&
-      decodeCard(
-        this.state.currentTrick[this.state.currentTrick.length - 1].cards[0],
-      ).rank === Rank.TWO
-    ) {
-      return true;
+      // Single 2 can be beaten by Quad or 3+ Consecutive Pairs
+      if (lastCombo.type === CombinationType.SINGLE && lastRank === Rank.TWO) {
+        if (
+          newCombo.type === CombinationType.FOUR_OF_KIND ||
+          newCombo.type === CombinationType.THREE_CONSECUTIVE_PAIRS ||
+          newCombo.type === CombinationType.FOUR_CONSECUTIVE_PAIRS
+        ) {
+          return true;
+        }
+      }
+
+      // Pair of 2s can be beaten by Quad or 4+ Consecutive Pairs
+      if (lastCombo.type === CombinationType.PAIR && lastRank === Rank.TWO) {
+        if (
+          newCombo.type === CombinationType.FOUR_OF_KIND ||
+          newCombo.type === CombinationType.FOUR_CONSECUTIVE_PAIRS
+        ) {
+          return true;
+        }
+      }
+
+      // 3 Consecutive Pairs can be beaten by Quad or 4 Consecutive Pairs
+      if (lastCombo.type === CombinationType.THREE_CONSECUTIVE_PAIRS) {
+        if (
+          newCombo.type === CombinationType.FOUR_OF_KIND ||
+          newCombo.type === CombinationType.FOUR_CONSECUTIVE_PAIRS
+        ) {
+          return true;
+        }
+      }
+
+      // Quad can be beaten by 4 Consecutive Pairs
+      if (
+        lastCombo.type === CombinationType.FOUR_OF_KIND &&
+        newCombo.type === CombinationType.FOUR_CONSECUTIVE_PAIRS
+      ) {
+        return true;
+      }
     }
 
     // Must be same type
@@ -615,8 +659,13 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       // Pass if can't beat
       this.handlePass(bot.id);
     } else {
-      // Must play if starting new trick - play lowest single
-      this.handlePlayCards(bot.id, [bot.hand[0]]);
+      // Must play if starting new trick
+      // Strategy: if many cards, play lowest. If few cards, play highest (to finish fast).
+      if (bot.hand.length < 4) {
+        this.handlePlayCards(bot.id, [bot.hand[bot.hand.length - 1]]);
+      } else {
+        this.handlePlayCards(bot.id, [bot.hand[0]]);
+      }
     }
   }
 
@@ -642,11 +691,27 @@ export default class Thirteen extends BaseGame<ThirteenState> {
           // Check for Four of a Kind
           const fourKinds = this.findFourOfAKind(hand);
           if (fourKinds.length > 0) return fourKinds[0];
+
+          // Check for 4 consecutive pairs
+          const fourPairs = this.findFourConsecutivePairs(hand);
+          if (fourPairs.length > 0) return fourPairs[0];
         }
         return this.findBeatingSingle(hand, lastCombo);
       }
-      case CombinationType.PAIR:
+      case CombinationType.PAIR: {
+        const lastCards =
+          this.state.currentTrick[this.state.currentTrick.length - 1].cards;
+        if (decodeCard(lastCards[0]).rank === Rank.TWO) {
+          // Check for Four of a Kind
+          const fourKinds = this.findFourOfAKind(hand);
+          if (fourKinds.length > 0) return fourKinds[0];
+
+          // Check for 4 consecutive pairs
+          const fourPairs = this.findFourConsecutivePairs(hand);
+          if (fourPairs.length > 0) return fourPairs[0];
+        }
         return this.findBeatingPair(hand, lastCombo);
+      }
       case CombinationType.TRIPLE:
         return this.findBeatingTriple(hand, lastCombo);
       case CombinationType.STRAIGHT:
@@ -886,7 +951,13 @@ export default class Thirteen extends BaseGame<ThirteenState> {
       if (tp.includes(pivotCard)) results.push(tp);
     }
 
-    // 4. Single
+    // 4. Four consecutive pairs containing pivot
+    const fourPairs = this.findFourConsecutivePairs(hand);
+    for (const fp of fourPairs) {
+      if (fp.includes(pivotCard)) results.push(fp);
+    }
+
+    // 5. Single
     results.push([pivotCard]);
 
     return results;
@@ -944,39 +1015,45 @@ export default class Thirteen extends BaseGame<ThirteenState> {
   // Keep these as they are useful helper but might fail if calling 'this'
   // so we rewrite them cleanly or ensure `this` context is fine
 
-  private findThreeConsecutivePairs(hand: Card[]): Card[][] {
-    // Basic implementation: find distinct pairs
+  private findConsecutivePairs(hand: Card[], count: number): Card[][] {
     const grouped = this.groupByRank(hand);
-    // Get all pairs (just one pair per rank for simplicity in "checking existence")
-    // But for suggestion we might need specific ones?
-    // Let's iterate ranks
     const ranks = Object.keys(grouped)
       .map(Number)
       .sort((a, b) => a - b);
 
-    const consecutivePairs: Card[][] = [];
+    const results: Card[][] = [];
 
-    for (let i = 0; i <= ranks.length - 3; i++) {
-      const r1 = ranks[i];
-      const r2 = ranks[i + 1];
-      const r3 = ranks[i + 2];
+    for (let i = 0; i <= ranks.length - count; i++) {
+      let isConsec = true;
+      const currentSet: Card[] = [];
 
-      if (r2 === r1 + 1 && r3 === r2 + 1 && r3 !== Rank.TWO) {
-        const c1 = grouped[r1];
-        const c2 = grouped[r2];
-        const c3 = grouped[r3];
-
-        if (c1.length >= 2 && c2.length >= 2 && c3.length >= 2) {
-          // Return a valid set
-          consecutivePairs.push([
-            ...c1.slice(0, 2),
-            ...c2.slice(0, 2),
-            ...c3.slice(0, 2),
-          ]);
+      for (let j = 0; j < count; j++) {
+        const r = ranks[i + j];
+        // Must be consecutive and no 2s
+        if (
+          (j > 0 && r !== ranks[i + j - 1] + 1) ||
+          r === Rank.TWO ||
+          grouped[r].length < 2
+        ) {
+          isConsec = false;
+          break;
         }
+        currentSet.push(...grouped[r].slice(0, 2));
+      }
+
+      if (isConsec) {
+        results.push(currentSet);
       }
     }
-    return consecutivePairs;
+    return results;
+  }
+
+  private findThreeConsecutivePairs(hand: Card[]): Card[][] {
+    return this.findConsecutivePairs(hand, 3);
+  }
+
+  private findFourConsecutivePairs(hand: Card[]): Card[][] {
+    return this.findConsecutivePairs(hand, 4);
   }
 
   // Helper for bot (legacy/simple)

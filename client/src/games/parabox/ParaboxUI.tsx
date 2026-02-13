@@ -9,6 +9,7 @@ import {
   ZoomOut,
   BookOpen,
   X,
+  Layers,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import useLanguage from "../../stores/languageStore";
@@ -30,6 +31,7 @@ import type {
   LevelData,
   TileType,
 } from "./types";
+import { useAlertStore } from "../../stores/alertStore";
 
 // Sub-component for the static elements of the level (walls, goals, floors)
 const StaticGrid = React.memo(({ level }: { level: LevelData }) => {
@@ -322,6 +324,9 @@ const BoardRenderer = React.memo(
 
 const ParaboxUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
   const game = baseGame as ParaboxGame;
+
+  const { confirm: showConfirm } = useAlertStore();
+
   const [state] = useGameState(game);
   const currentUserId = game.userId;
   const myState = currentUserId ? state.players[currentUserId] : null;
@@ -343,41 +348,80 @@ const ParaboxUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
     direction: Direction;
     time: number;
   } | null>(null);
-  const [viewLevelId, setViewLevelId] = useState<string | null>(null);
+  const [viewLevel, setViewLevel] = useState<{
+    id: string;
+    depth: number;
+  } | null>(null);
   const [renderMode, setRenderMode] = useState<"dom" | "canvas">("dom");
   const [showRules, setShowRules] = useState(false);
   const { ti, ts } = useLanguage();
 
   const activeLevelId = myState?.currentLevelId || "root";
 
-  // Reset viewLevelId when player moves to a different level
-  useEffect(() => {
-    setViewLevelId(null);
-  }, [activeLevelId]);
+  // Track stack length for transitions and camera resets
+  const prevStackLengthRef = useRef(0);
+  const currentStackLength = myState?.levelStack.length || 0;
 
-  const displayedLevelId = viewLevelId || activeLevelId;
+  // Reset viewLevel when player "reaches" the manually viewed level/depth
+  useEffect(() => {
+    if (
+      viewLevel &&
+      activeLevelId === viewLevel.id &&
+      currentStackLength === viewLevel.depth
+    ) {
+      setViewLevel(null);
+    }
+  }, [activeLevelId, currentStackLength, viewLevel]);
+
+  const displayedLevelId = viewLevel?.id || activeLevelId;
+  const displayedStackLength =
+    viewLevel !== null ? viewLevel.depth : currentStackLength;
 
   const handleZoom = (type: "in" | "out") => {
     if (!myState) return;
     const stack = myState.levelStack;
     if (type === "out") {
-      // Find the index of the level currently being viewed in the stack
-      // or start from the current level
-      const currentIdx = stack.findIndex((s) => s.levelId === displayedLevelId);
-      if (displayedLevelId === activeLevelId) {
+      // If we are currently at the player's level, zoom out to the last level in stack
+      if (
+        displayedLevelId === activeLevelId &&
+        displayedStackLength === currentStackLength
+      ) {
         if (stack.length > 0) {
-          setViewLevelId(stack[stack.length - 1].levelId);
+          setViewLevel({
+            id: stack[stack.length - 1].levelId,
+            depth: stack.length - 1,
+          });
         }
-      } else if (currentIdx > 0) {
-        setViewLevelId(stack[currentIdx - 1].levelId);
+      } else {
+        // Find current viewed level in stack to go one more out
+        const currentIdx = stack.findIndex(
+          (s, idx) =>
+            s.levelId === displayedLevelId && idx === displayedStackLength,
+        );
+        if (currentIdx > 0) {
+          setViewLevel({
+            id: stack[currentIdx - 1].levelId,
+            depth: currentIdx - 1,
+          });
+        }
       }
     } else {
       // Zoom In
-      const currentIdx = stack.findIndex((s) => s.levelId === displayedLevelId);
+      const currentIdx = stack.findIndex(
+        (s, idx) =>
+          s.levelId === displayedLevelId && idx === displayedStackLength,
+      );
       if (currentIdx !== -1 && currentIdx < stack.length - 1) {
-        setViewLevelId(stack[currentIdx + 1].levelId);
-      } else if (currentIdx === stack.length - 1) {
-        setViewLevelId(null); // Back to active level
+        setViewLevel({
+          id: stack[currentIdx + 1].levelId,
+          depth: currentIdx + 1,
+        });
+      } else if (
+        currentIdx === stack.length - 1 ||
+        (displayedLevelId === stack[stack.length - 1]?.levelId &&
+          displayedStackLength === stack.length - 1)
+      ) {
+        setViewLevel(null); // Back to active level
       }
     }
   };
@@ -417,19 +461,15 @@ const ParaboxUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentUserId, game, handleMove]);
 
-  // Track stack length to determine transition direction
-  const prevStackLengthRef = useRef(0);
-  const currentStackLength = myState?.levelStack.length || 0;
-
   const transitionDirection = useMemo(() => {
-    if (currentStackLength > prevStackLengthRef.current) return "enter";
-    if (currentStackLength < prevStackLengthRef.current) return "exit";
+    if (displayedStackLength > prevStackLengthRef.current) return "enter";
+    if (displayedStackLength < prevStackLengthRef.current) return "exit";
     return "none";
-  }, [currentStackLength]);
+  }, [displayedStackLength]);
 
   useEffect(() => {
-    prevStackLengthRef.current = currentStackLength;
-  }, [currentStackLength]);
+    prevStackLengthRef.current = displayedStackLength;
+  }, [displayedStackLength]);
 
   const activeLevel = state.levels[displayedLevelId];
 
@@ -473,9 +513,6 @@ const ParaboxUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
           <div className="mt-2 flex flex-wrap gap-2">
             {myState ? (
               <>
-                <span className="bg-slate-800/80 px-2.5 py-1 rounded-lg text-[10px] text-slate-300 border border-slate-700 font-bold uppercase tracking-widest shadow-lg hidden md:inline-block">
-                  WASD to Move
-                </span>
                 <span className="bg-slate-800/80 px-2.5 py-1 rounded-lg text-[10px] text-slate-300 border border-slate-700 font-bold uppercase tracking-widest shadow-lg">
                   Co-op Mode
                 </span>
@@ -495,21 +532,74 @@ const ParaboxUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
             </button>
           </div>
         </div>
-
-        {/* Description - Hidden on small mobile to save space */}
-        <div className="hidden sm:block text-slate-500 text-[10px] md:text-xs italic max-w-xs opacity-50">
-          Push boxes into goals. Boxes can contain other boxes... or even
-          themselves! Paradoxes are encouraged.
-        </div>
       </div>
 
-      {/* Game World Wrapper - Takes remaining space and centers */}
       <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+        {/* Floating Navigation Center (Depth + Zoom) */}
+        {myState && (
+          <div
+            className={`absolute top-4 right-4 z-50 flex items-center gap-1 p-1 rounded-xl border backdrop-blur-md shadow-2xl transition-all duration-500 ${
+              displayedStackLength === 0
+                ? "bg-slate-900/60 border-white/5 text-slate-400"
+                : "bg-blue-600/20 border-blue-500/40 text-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.1)]"
+            }`}
+          >
+            {/* Depth Information */}
+            <div className="flex items-center gap-2 px-2 py-1">
+              <div className="relative">
+                <Layers
+                  size={16}
+                  className={
+                    displayedStackLength > 0
+                      ? "text-blue-300 animate-pulse"
+                      : "text-slate-400"
+                  }
+                />
+                {displayedStackLength > 0 && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-ping" />
+                )}
+              </div>
+              <span
+                className={`text-xs font-black tabular-nums ${displayedStackLength > 0 ? "text-blue-300" : "text-slate-400"}`}
+              >
+                {displayedStackLength}
+              </span>
+            </div>
+
+            {/* Quick Zoom Actions */}
+            <div className="flex gap-0.5 border-l border-white/5 pl-1">
+              <button
+                onClick={() => handleZoom("out")}
+                disabled={
+                  displayedLevelId ===
+                    (myState.levelStack[0]?.levelId || "root") &&
+                  displayedStackLength === 0
+                }
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-90 transition-all text-slate-400 disabled:opacity-10 disabled:pointer-events-none"
+                title="Zoom Out"
+              >
+                <ZoomOut size={16} />
+              </button>
+              <button
+                onClick={() => handleZoom("in")}
+                disabled={
+                  displayedLevelId === activeLevelId &&
+                  displayedStackLength === currentStackLength
+                }
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-90 transition-all text-blue-400 disabled:opacity-10 disabled:pointer-events-none"
+                title="Zoom In"
+              >
+                <ZoomIn size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Transitioning Level */}
         {renderMode === "dom" ? (
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
-              key={displayedLevelId}
+              key={`${displayedLevelId}-${displayedStackLength}`}
               initial={
                 transitionDirection === "enter"
                   ? { opacity: 0, scale: 0.5 }
@@ -548,31 +638,7 @@ const ParaboxUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
       </div>
 
       {/* Footer Section - Controls */}
-      <div className="p-4 flex flex-col md:flex-row items-center justify-center gap-6">
-        {/* Zoom Controls */}
-        {myState && myState.levelStack.length > 0 && (
-          <div className="flex gap-2 p-2 bg-slate-900/40 rounded-2xl border border-white/5 backdrop-blur-sm shadow-2xl">
-            <button
-              onClick={() => handleZoom("out")}
-              disabled={
-                displayedLevelId === (myState.levelStack[0]?.levelId || "root")
-              }
-              className="w-12 h-12 bg-slate-800/90 rounded-xl flex items-center justify-center border border-slate-700 active:bg-blue-600 active:scale-90 transition-all shadow-lg text-slate-300 disabled:opacity-30 disabled:pointer-events-none"
-              title="Zoom Out"
-            >
-              <ZoomOut size={22} />
-            </button>
-            <button
-              onClick={() => handleZoom("in")}
-              disabled={displayedLevelId === activeLevelId}
-              className="w-12 h-12 bg-slate-800/90 rounded-xl flex items-center justify-center border border-slate-700 active:bg-blue-600 active:scale-90 transition-all shadow-lg text-slate-300 disabled:opacity-30 disabled:pointer-events-none"
-              title="Zoom In"
-            >
-              <ZoomIn size={22} />
-            </button>
-          </div>
-        )}
-
+      <div className="p-4 flex flex-col items-center justify-center gap-6">
         {/* Movement Controls */}
         {myState && (
           <div className="flex flex-col items-start">
@@ -610,9 +676,21 @@ const ParaboxUI: React.FC<GameUIProps> = ({ game: baseGame }) => {
         {/* Global Reset Button */}
         {game.isHost && (
           <button
-            onClick={() =>
-              game.makeAction({ type: "RESET", playerId: currentUserId! })
-            }
+            onClick={async () => {
+              if (
+                await showConfirm(
+                  ts({
+                    en: "Current progress will be lost",
+                    vi: "Tiến trình hiện tại sẽ mất",
+                  }),
+                  ts({
+                    en: "Reset game?",
+                    vi: "Reset game?",
+                  }),
+                )
+              )
+                game.makeAction({ type: "RESET", playerId: currentUserId! });
+            }}
             className="group relative px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition-all"
           >
             <span className="text-xs font-black tracking-widest uppercase">
