@@ -66,6 +66,13 @@ export const updates: {
 }[] = [
   {
     type: "new",
+    en: "New game: Parabox",
+    vi: "Game mới: Parabox",
+    gameId: "parabox",
+    timestamp: 1770943822135,
+  },
+  {
+    type: "new",
     en: "New game: Chinese Poker (Mậu Binh)",
     vi: "Game mới: Mậu Binh (Xập Xám)",
     gameId: "maubinh",

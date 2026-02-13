@@ -97,22 +97,20 @@ setInterval(async () => {
                     // Check if it's been empty long enough
                     const emptyAt = emptyRoomTimestamps.get(room.id);
                     if (Date.now() - emptyAt >= ROOM_EMPTY_TIMEOUT_MS) {
-                        // Delete the room
+                        // Delete the room using the new robust method
                         (0, utils_1.log)(`🗑️  Auto-deleting empty room "${room.name}" (${room.id}) — no connected sockets for 5 minutes`);
-                        // Clean up all players/spectators from the room via RoomManager
-                        for (const player of [...room.players, ...room.spectators]) {
-                            roomManager.leaveRoom(player.id);
-                        }
-                        // If room still exists (e.g. leaveRoom didn't delete it), force delete
-                        if (roomManager.getRoom(room.id)) {
-                            // Force remove via leaveRoom of the owner
-                            roomManager.leaveRoom(room.ownerId);
-                        }
+                        roomManager.deleteRoom(room.id);
                         // Clean up chat history
                         chatHistory.delete(room.id);
                         emptyRoomTimestamps.delete(room.id);
                         // Broadcast updated room list
-                        io.emit("room:list:update", roomManager.getPublicRooms());
+                        if (room.isPublic) {
+                            io.emit("room:list:update", roomManager.getPublicRooms());
+                        }
+                        // Notify any stragglers that the room is gone
+                        io.to(room.id).emit("room:deleted", {
+                            reason: "Room auto-deleted due to inactivity",
+                        });
                     }
                 }
             }

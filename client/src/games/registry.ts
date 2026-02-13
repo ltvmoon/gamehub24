@@ -525,6 +525,26 @@ games.set("maubinh", {
   loadUI: () => import("./maubinh/MauBinhUI").then((m) => m.default),
 });
 
+// Register Parabox
+games.set("parabox", {
+  id: "parabox",
+  name: { en: "Parabox", vi: "Hộp Parabox" },
+  description: {
+    en: "Is this a paradox? No, it's Parabox!",
+    vi: "Game đẩy hộp vô hạn!",
+  },
+  icon: Layers,
+  categories: ["puzzle", "strategy"],
+  minPlayers: 1,
+  maxPlayers: 4,
+  isAvailable: true,
+  createGame: async (room, socket, isHost, userId) => {
+    const { default: ParaboxGame } = await import("./parabox/ParaboxGame");
+    return new ParaboxGame(room, socket, isHost, userId);
+  },
+  loadUI: () => import("./parabox/ParaboxUI").then((m) => m.default),
+});
+
 // Registry functions
 export const getGame = (gameType: string): GameModule | undefined => {
   return games.get(gameType);

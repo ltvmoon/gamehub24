@@ -150,13 +150,43 @@ class RoomManager {
         (0, utils_1.log)(`[RoomManager] User ${userId} (${username}) joined room ${roomId}`);
         return { success: true, room };
     }
+    deleteRoom(roomId) {
+        const room = this.rooms.get(roomId);
+        if (!room)
+            return false;
+        // Remove all players from player-room map
+        room.players.forEach((p) => this.playerRoomMap.delete(p.id));
+        room.spectators.forEach((p) => this.playerRoomMap.delete(p.id));
+        // Delete the room
+        this.rooms.delete(roomId);
+        // Also clean up settings for this room to prevent accidental auto-recreation
+        this.roomSettings.delete(roomId);
+        (0, utils_1.log)(`[RoomManager] Force deleted room ${roomId}`);
+        this.saveState();
+        return true;
+    }
     leaveRoom(userId) {
         const roomId = this.playerRoomMap.get(userId);
         if (!roomId) {
-            return { wasHost: false };
+            // Edge case: if the user is not in the map but might be in a room object (ghost)
+            // We search all rooms as a fallback
+            let foundRoomId;
+            for (const [rid, r] of this.rooms.entries()) {
+                if (r.players.some((p) => p.id === userId) ||
+                    r.spectators.some((p) => p.id === userId)) {
+                    foundRoomId = rid;
+                    break;
+                }
+            }
+            if (!foundRoomId)
+                return { wasHost: false };
+            // Sync the map if found
+            this.playerRoomMap.set(userId, foundRoomId);
+            return this.leaveRoom(userId);
         }
         const room = this.rooms.get(roomId);
         if (!room) {
+            this.playerRoomMap.delete(userId); // Cleanup orphaned map entry
             return { wasHost: false };
         }
         const wasHost = room.ownerId === userId;
@@ -166,23 +196,14 @@ class RoomManager {
         this.playerRoomMap.delete(userId);
         // If room is empty or host left, delete room
         if (room.players.length === 0 || wasHost) {
-            this.rooms.delete(roomId);
-            // Remove all players from this room
+            // Re-verify all participants are removed from map
             room.players.forEach((p) => this.playerRoomMap.delete(p.id));
             room.spectators.forEach((p) => this.playerRoomMap.delete(p.id));
-            // Remove all chats from room
+            this.rooms.delete(roomId);
             (0, utils_1.log)(`[RoomManager] Deleted room ${roomId} (Host Left: ${wasHost}, Empty: ${room.players.length === 0})`);
             this.saveState();
             return { roomId, wasHost };
         }
-        // If host left but room not empty, assign new host
-        // if (wasHost && room.players.length > 0) {
-        //   room.players[0].isHost = true;
-        //   room.ownerId = room.players[0].id;
-        //   console.log(
-        //     `[RoomManager] Reassigned host for room ${roomId} to ${room.players[0].username}`,
-        //   );
-        // }
         this.saveState();
         return { roomId, room, wasHost };
     }

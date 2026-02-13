@@ -41,7 +41,7 @@ const RecentUpdates = memo(
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out ${
             showUpdates
-              ? "max-h-[500px] opacity-100 mt-2"
+              ? "max-h-[300px] opacity-100 mt-2 overflow-y-auto"
               : "max-h-0 opacity-0 mt-0"
           }`}
         >

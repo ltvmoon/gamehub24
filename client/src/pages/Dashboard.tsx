@@ -20,6 +20,7 @@ import {
   Layout,
   ExternalLink,
   MessageSquare,
+  ChevronLeft,
 } from "lucide-react";
 import { getServerUrl } from "../services/socket";
 import { formatTimeAgo } from "../utils";
@@ -772,7 +773,11 @@ export default function Dashboard() {
             >
               <div className="bg-background-secondary/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-[600px]">
                 {/* Rooms Sidebar */}
-                <div className="w-full md:w-64 border-r border-white/10 flex flex-col bg-white/2">
+                <div
+                  className={`w-full md:w-64 border-r border-white/10 flex-col bg-white/2 ${
+                    selectedMessengerRoom ? "hidden md:flex" : "flex"
+                  }`}
+                >
                   <div className="p-4 border-b border-white/10 bg-white/2 space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted">
@@ -833,7 +838,7 @@ export default function Dashboard() {
                                 {roomId === "global" ? "Global Chat" : roomId}
                               </span>
                               <div className="flex flex-col items-end shrink-0">
-                                <span className="text-[9px] text-text-muted font-mono opacity-60">
+                                <span className="text-[10px] text-text-muted font-mono opacity-60">
                                   {new Date(lastMsg.timestamp).toLocaleString(
                                     [],
                                     {
@@ -842,6 +847,7 @@ export default function Dashboard() {
                                       day: "2-digit",
                                       hour: "2-digit",
                                       minute: "2-digit",
+                                      hour12: false,
                                     },
                                   )}
                                 </span>
@@ -873,11 +879,21 @@ export default function Dashboard() {
                 </div>
 
                 {/* Chat View */}
-                <div className="flex-1 flex flex-col overflow-hidden">
+                <div
+                  className={`flex-1 flex-col overflow-hidden ${
+                    selectedMessengerRoom ? "flex" : "hidden md:flex"
+                  }`}
+                >
                   {selectedMessengerRoom ? (
                     <>
                       <div className="p-4 border-b border-white/10 bg-white/2 flex items-center justify-between">
                         <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setSelectedMessengerRoom(null)}
+                            className="md:hidden p-1 -ml-2 text-text-muted hover:text-white"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
                           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-xs">
                             {selectedMessengerRoom.charAt(0).toUpperCase()}
                           </div>
@@ -927,7 +943,7 @@ export default function Dashboard() {
                                   >
                                     {!isSystem && (
                                       <div className="flex items-center gap-2 mb-1 px-1">
-                                        <span className="text-[10px] font-black text-primary/80 uppercase">
+                                        <span className="text-xs font-black text-primary/80">
                                           {msg.username}
                                         </span>
                                         {msg.gameType && (
@@ -946,12 +962,16 @@ export default function Dashboard() {
                                               Reported ({msg.reports.length})
                                             </span>
                                           )}
-                                        <span className="text-[9px] text-text-muted font-mono opacity-40">
+                                        <span className="text-[10px] text-text-muted font-mono opacity-60">
                                           {new Date(
                                             msg.timestamp,
                                           ).toLocaleTimeString([], {
                                             hour: "2-digit",
                                             minute: "2-digit",
+                                            day: "2-digit",
+                                            month: "2-digit",
+                                            year: "2-digit",
+                                            hour12: false,
                                           })}
                                         </span>
                                       </div>
