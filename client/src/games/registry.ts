@@ -22,6 +22,7 @@ import {
   Cat,
   Pencil,
   Club,
+  Infinity,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
@@ -533,7 +534,7 @@ games.set("parabox", {
     en: "Is this a paradox? No, it's Parabox!",
     vi: "Game đẩy hộp vô hạn!",
   },
-  icon: Layers,
+  icon: Infinity,
   categories: ["puzzle", "strategy"],
   minPlayers: 1,
   maxPlayers: 4,

@@ -38,6 +38,14 @@ export default class ParaboxGame extends BaseGame<ParaboxState> {
 
     if (this.isHost) {
       players.forEach((p) => this.ensurePlayerState(p.id));
+
+      // Cleanup stale players who left the room
+      const currentIds = new Set(players.map((p) => p.id));
+      Object.keys(this.state.players).forEach((id) => {
+        if (!currentIds.has(id)) {
+          delete this.state.players[id];
+        }
+      });
     }
   }
 
@@ -100,12 +108,12 @@ export default class ParaboxGame extends BaseGame<ParaboxState> {
   }
 
   private handleReset(_userId: string) {
-    // Collect new player objects for the fresh state
+    // Collect new player objects for the fresh state based on current room players
     const newPlayers: Record<string, any> = {};
-    Object.keys(this.state.players).forEach((id) => {
-      newPlayers[id] = {
-        id,
-        username: (this.state.players[id] as any).username,
+    this.players.forEach((p) => {
+      newPlayers[p.id] = {
+        id: p.id,
+        username: p.username || "Unknown",
         pos: { x: 3, y: 5 },
         currentLevelId: "root",
         levelStack: [],
